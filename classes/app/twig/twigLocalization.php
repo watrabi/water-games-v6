@@ -12,6 +12,7 @@ class twigLocalization extends AbstractExtension
     {
         return [
             new TwigFunction('t', function ($key) {
+                // TODO: Proper localization
                 localization::init("en_US");
                 return localization::get($key);
             }),
