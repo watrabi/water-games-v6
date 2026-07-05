@@ -1,8 +1,18 @@
 {% extends "models/base.twig" %}
 {% block pageName %}Landing{% endblock %}
 {% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/index.css?t=3">
 {% endblock %}
 
 {% block body %}
-yo
+<div id="index-div">
+    <div>
+        <h1>{{ env("APP_NAME") }}</h1>
+        <p>The games were <span class="italicized">meant</span> to be played.</p>
+        <a href="/auth/sign-up" class="button">Sign Up</a>
+    </div>
+    <div>
+        
+    </div>
+</div>
 {% endblock %}

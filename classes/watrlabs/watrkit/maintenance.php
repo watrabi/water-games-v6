@@ -9,16 +9,16 @@ class maintenance {
 
     // this adds to the bypass array for any useragents that can be allowed to bypass
     // more functionality will be added in the future (TODO)
-    public function addBypass(array $bypasskeys) {
+    public function addBypass(array $bypassKeys) {
         
         if(isset($bypassKeys["bypassFeature"]) && isset($bypassKeys["bypassKey"])){
             if($this->isValidBypassFeature($bypassKeys["bypassFeature"])){
-                $this->bypassKeys = $bypassKeys;
+                $this->bypassKeys[] = $bypassKeys;
             } else {
-                throw \ErrorException("Maintenance feature unsupported or invalid");
+                throw new \ErrorException("Maintenance feature unsupported or invalid");
             }
         } else {
-            throw \ErrorException("Invalid maintenance bypass added!");
+            throw new \ErrorException("Invalid maintenance bypass added!");
         }
     }
 
@@ -59,11 +59,12 @@ class maintenance {
                     if(str_contains($userAgent, $bypassKey["bypassKey"])){
                         return false;
                     }
+                    break;
                 case "Cookie":
                     // right now only checks for the name, should add support for name and value
                     return isset($_COOKIE[$bypassKey["bypassKey"]]);
                 default:
-                    throw \ErrorException("Invalid bypass feature encountered");
+                    throw new \ErrorException("Invalid bypass feature encountered");
                     break;
                 }
         }

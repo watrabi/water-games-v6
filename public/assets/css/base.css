@@ -15,6 +15,18 @@
   transition: 0.2s;
 }
 
+h1, h2, h3, h4, h5, p {
+  margin: 5px;
+}
+
+.italicized {
+  font-style: italic;
+}
+
+.bold {
+  font-style: bold;
+}
+
 body, html {
   padding: 0px;
   margin: 0px;
@@ -110,10 +122,12 @@ body, html {
 }
 
 button, .button {
+  display: inline flow-root;
   border: none;
   background-color: var(--secondary-color);
   border-radius: 1em;
   padding: 10px;
+  margin-top: 10px;
 }
 
 #main {
@@ -121,6 +135,7 @@ button, .button {
   margin: 15px;
   display: flex;
   flex-direction: column;
+  overflow: auto;
 }
 
 #content {
@@ -140,4 +155,14 @@ button, .button {
   align-items: center;
   background-color: var(--primary-color);
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.emoji {
+  height: 13px;
+}
+
+#footerText {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
 }
