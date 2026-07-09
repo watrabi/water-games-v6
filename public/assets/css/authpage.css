@@ -1,0 +1,32 @@
+#authForm {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    height: 100%;
+    align-items: center;
+}
+
+#form {
+    display: flex;
+    flex-direction: column;
+    width: 300px;
+}
+
+#parentForm {
+    flex-direction: row;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 100%;
+}
+
+#authText {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+#video {
+    height: 300px;
+    aspect-ratio: 16 / 9;
+}

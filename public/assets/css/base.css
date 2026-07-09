@@ -7,6 +7,9 @@
   --text-color: #F5F1ED;
   --secondary-color: #01537a;
   --tertiary-color: #A99985;
+  --btn-color: #01537a;
+  --btn-hover-color: #026a9a;
+  --btn-click-color: #027fb9;
 }
 
 * {
@@ -121,18 +124,38 @@ body, html {
   overflow: hidden;
 }
 
-button, .button {
+button, .button, input {
   display: inline flow-root;
   border: none;
-  background-color: var(--secondary-color);
-  border-radius: 1em;
+  background-color: var(--btn-color);
+  border-radius: 5px;
   padding: 10px;
   margin-top: 10px;
+  text-decoration: none;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 2px 10px 0 rgba(0, 0, 0, 0.19);
+}
+
+button:hover, .button:hover, input:hover {
+  transition: 0.2s;
+  background-color: var(--btn-hover-color);
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  padding: 11px;
+}
+
+button:active, .button:active, input:active {
+  transition: 0.2s;
+  padding: 9px;
+  background-color: var(--btn-click-color);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 2px 10px 0 rgba(0, 0, 0, 0.19);
+}
+
+input::placeholder {
+  color: lightgray;
 }
 
 #main {
   flex: 1;
-  margin: 15px;
+  margin-left: 15px;
   display: flex;
   flex-direction: column;
   overflow: auto;

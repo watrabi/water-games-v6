@@ -1,0 +1,30 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Landing{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/authpage.css?t=18">
+{% endblock %}
+
+{% block body %}
+<div id="parentForm">
+    <div id="authText">
+        <h1>Sign Up</h1>
+        <p>or else the centipedes will get you....</p>
+        <iframe id="video" src="https://www.youtube.com/embed/fKD7IsY_ir4?si=P4bA0um1H9W-XWhU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share autoplay" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    <div class="center" id="authForm">
+        <div id="error-area">
+            <div style="display: none;" class="danger" id="dangermsg">
+                An error occured
+            </div>
+        </div>
+        <form id="form">
+            <input id="username" name="username" placeholder="username" required>
+            <input id="email" name="email" placeholder="email (optional)">
+            <input id="password" name="password" placeholder="password" required>
+            <input id="passwordconf" name="passconf" placeholder="password confirmation" required>
+            <a class="button" type="submit" value="Sign Up" id="signupButton" onclick="register()">Sign Up</a>
+        </form>
+    </div>
+</div>
+<script src="/assets/js/signup.js?t=1" defer></script>
+{% endblock %}

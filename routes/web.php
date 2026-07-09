@@ -25,6 +25,32 @@ $router->get("/", function() {
     echo $twig->render('default.twig');
 });
 
+$router->get("/auth/sign-up", function() {
+    global $twig;
+    global $currentuser;
+
+    if($currentuser){
+        header("Location: /home");
+        die();
+    }
+
+    echo $twig->render('auth/sign-up.twig');
+});
+
+
+$router->get("/auth/sign-in", function() {
+    global $twig;
+    global $currentuser;
+
+    if($currentuser){
+        header("Location: /home");
+        die();
+    }
+
+    echo $twig->render('auth/sign-in.twig');
+});
+
+
 /*
 $router->group('/group', function($router) {
     

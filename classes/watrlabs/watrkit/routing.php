@@ -132,7 +132,7 @@ class Routing {
     }
 
     public function return_status($statuscode){
-        call_user_func($this->notfound);
+        echo "$statuscode Error";
         http_response_code($statuscode);
     }
     

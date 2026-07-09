@@ -24,6 +24,11 @@ $maintenance->addBypass([
     "bypassKey"=>"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
 ]);
 
+$maintenance->addBypass([
+    "bypassFeature"=>"userAgent",
+    "bypassKey"=>"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:152.0) Gecko/20100101 Firefox/152.0"
+]);
+
 
 $maintenanceCallBack = function() {
     global $twig;
