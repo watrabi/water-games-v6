@@ -24,9 +24,6 @@ class authentication {
 
         }
     }
-
-
-
     // checks if the user is currently authenticated and has a session
     public function hasAccount() {
         return (bool) $this->currentSession;

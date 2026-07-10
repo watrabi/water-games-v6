@@ -26,7 +26,7 @@ class encryption {
     }
 
     // this generates a random string at will
-    public function genRandString(int $length, bool $safe) {
+    public function genRandString(int $length, bool $safe = true) {
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
         if(!$safe){
