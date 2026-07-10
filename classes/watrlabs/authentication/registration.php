@@ -5,6 +5,7 @@ namespace watrlabs\authentication;
 use watrlabs\users\users;
 use watrlabs\encryption;
 use watrlabs\authentication\security;
+use watrlabs\authentication\sessions;
 
 class registration {
     private static function hasSpecialCharacters($text){
@@ -34,6 +35,8 @@ class registration {
 
         $security = new security();
         $encryption = new encryption();
+        $sessions = new sessions();
+
         $isValidUsername = self::isValidUsername($username);
 
         if(!$isValidUsername){
@@ -55,6 +58,9 @@ class registration {
 
 
         if($insertId){
+            $sessionId = $sessions->createSession();
+            $sessions->assignSession($sessionId);
+            $sessions->assignUserIdToSession($sessionId, $insertId);
             return ["status"=>"okay", "message"=>"user created."];
         }
 

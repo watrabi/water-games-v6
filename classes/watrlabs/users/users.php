@@ -4,26 +4,13 @@ namespace watrlabs\users;
 
 class users {
 
-    // returns user data straight from the database if a userid or username is provided
-    public function getUserInfo($User, $Multiple = false){
+    // returns user data straight from the database using userid
+    public function getUserInfo($userId){
 
         global $db;
 
-        $query = $db->table("users");
-
-        if(is_int($User)){
-            $query = $query->where("id", $User);
-        } else {
-            $query = $query->where("username", $User);
-        }
-
-        if($query && $Multiple){
-            return $query->get();
-        } else {
-            return $query->first();
-        } 
-
-        return null;
+        return $db->table("users")->where("id", $userId)->first();
+        
     }
 
     public function update(int $id, $value, $key){

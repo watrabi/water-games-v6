@@ -2,6 +2,7 @@
 use watrlabs\router\Routing;
 use watrlabs\watrkit\sanitize;
 use watrlabs\encryption;
+use watrlabs\authentication\sessions;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -37,6 +38,18 @@ $router->get("/auth/sign-up", function() {
     echo $twig->render('auth/sign-up.twig');
 });
 
+$router->get("/auth/isAuthed", function(){
+
+    $sessions = new sessions();
+
+    $userInfo = $sessions->getUserInfoFromCookie();
+
+    if($userInfo){
+        echo "You are authenticated.<br>";
+        echo $userInfo->username;
+    }
+
+});
 
 $router->get("/auth/sign-in", function() {
     global $twig;

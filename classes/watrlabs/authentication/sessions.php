@@ -3,10 +3,11 @@
 namespace watrlabs\authentication;
 
 use watrlabs\encryption;
+use watrlabs\users\users;
 
 class sessions {
 
-    private cookieTime = null; 
+    private $cookieTime = null; 
 
     function __construct() {
         // doing it like this so I can easily change it or make it read from db
@@ -31,20 +32,41 @@ class sessions {
 
     }
 
+    // assigns user id to session
+    public function assignUserIdToSession($sessionId, $userId){
+        global $db;
+
+        $sessionInfo = $this->getSessionInfo($sessionId);
+
+        if($sessionInfo){
+            $update = [
+                "userid"=>$userId
+            ];
+
+            $db->table("sessions")->where("session", $sessionId)->update($update);
+
+            return true;
+            
+        }
+
+        return false;
+    }
+
     // assigns someone a session
     public function assignSession($sessionId = null){
 
-        if(!$sessionId):
+        if(!$sessionId){
             $sessionId = $this->createSession(); 
+        }
 
-        setcookie($_ENV["COOKIE_NAME"], $sessionId, $this->cookieTime, "", "." . $_ENV["APP_DOMAIN"]); // jank but ok
+        setcookie($_ENV["COOKIE_NAME"], $sessionId, $this->cookieTime, "/", "." . $_ENV["APP_DOMAIN"]); // jank but ok
     }
 
     // destroys a session
     public function destroySession($sessionId){
         global $db;
         
-        setcookie($_ENV["COOKIE_NAME"], $sessionId, -$this->cookieTime, "", "." . $_ENV["APP_DOMAIN"]); // jank but ok
+        setcookie($_ENV["COOKIE_NAME"], $sessionId, -$this->cookieTime, "/", "." . $_ENV["APP_DOMAIN"]); // jank but ok
         $db->table("sessions")->where("session", $sessionId)->delete();
 
     }
@@ -70,7 +92,7 @@ class sessions {
                 $this->assignSession($sessionId);
                 
                 $update = [
-                    "expiration"=>$this->cookieTime;
+                    "expiration"=>$this->cookieTime
                 ];
 
                 $db->table("sessions")->where("session", $sessionId)->update($update);
@@ -88,10 +110,11 @@ class sessions {
 
             $sessionInfo = $this->getSessionInfo($session);
 
-            if($sessionInfo):
+            if($sessionInfo){
                 $this->assignSession($sessionId);
+            }
 
-
+            $this->extendLease();
         }
     }
 
@@ -101,6 +124,27 @@ class sessions {
         $session = $db->table("sessions")->where("session", $session)->first();
 
         return $session->userid;
+    }
+
+    public function getUserInfoFromCookie(){
+
+        $users = new users();
+
+        if(isset($_COOKIE[$_ENV["COOKIE_NAME"]])){
+            $sessionId = $_COOKIE[$_ENV["COOKIE_NAME"]];
+
+            $sessionInfo = $this->getSessionInfo($sessionId);
+
+            if($sessionInfo){
+                if($sessionInfo->userid){
+                    return $users->getUserInfo($sessionInfo->userid);
+                }
+            }
+
+        }
+
+        return false;
+
     }
 
 }
