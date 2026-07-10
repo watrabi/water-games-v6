@@ -3,6 +3,7 @@ use Pixie\Connection;
 use Pixie\QueryBuilder\QueryBuilderHandler;
 use watrlabs\authentication\authentication;
 use watrlabs\watrkit\errors;
+use watrlabs\authentication\sessions;
 
 global $db;
 global $twig;
@@ -48,13 +49,8 @@ try {
     $errors->displayTextError("Something went wrong and your request was not processed. Please try again later. (DBERR)");
 }
 
-$auth = new authentication();
-
-if($auth->hasaccount()){
-    $currentuser = $auth->getuserinfo($_COOKIE["_ROBLOSECURITY"]);
-} else {
-    $currentuser = null;
-}
+$sessions = new sessions();
+$currentuser = $sessions->getUserInfoFromCookie();
 
 $loader = new \Twig\Loader\FilesystemLoader('../views');
 

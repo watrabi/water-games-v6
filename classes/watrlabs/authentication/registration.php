@@ -6,7 +6,6 @@ use watrlabs\users\users;
 use watrlabs\encryption;
 use watrlabs\authentication\security;
 use watrlabs\authentication\sessions;
-
 class registration {
     private static function hasSpecialCharacters($text){
 
@@ -43,6 +42,10 @@ class registration {
             return ["status"=>"error", "message"=>"This username is taken or contains special characters."];
         }
 
+        if($security->hasTooManyAlts()){
+            return ["status"=>"error", "message"=>"Too many accounts on this IP Address."];
+        }
+
         $insert = [
             "accountid"=>$encryption->genRandString(30),
             "username"=>$username,
@@ -58,9 +61,7 @@ class registration {
 
 
         if($insertId){
-            $sessionId = $sessions->createSession();
-            $sessions->assignSession($sessionId);
-            $sessions->assignUserIdToSession($sessionId, $insertId);
+            $sessions->authenticateUser($insertId);
             return ["status"=>"okay", "message"=>"user created."];
         }
 

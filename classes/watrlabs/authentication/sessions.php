@@ -13,6 +13,13 @@ class sessions {
         // doing it like this so I can easily change it or make it read from db
         $this->cookieTime = time() + 2629743; // about a month
     }
+
+    public function authenticateUser($userId){
+        $sessionId = $this->createSession();
+        $this->assignSession($sessionId);
+        $this->assignUserIdToSession($sessionId, $userId);
+
+    }
     
     // create session, and get its id returned.
     public function createSession(){

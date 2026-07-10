@@ -38,6 +38,18 @@ $router->get("/auth/sign-up", function() {
     echo $twig->render('auth/sign-up.twig');
 });
 
+$router->get('/home', function(){
+    global $twig;
+    global $currentuser;
+
+    if(!$currentuser){
+        header("Location: /auth/sign-in");
+        die();
+    }
+
+    echo $twig->render('home.twig');
+});
+
 $router->get("/auth/isAuthed", function(){
 
     $sessions = new sessions();
