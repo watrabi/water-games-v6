@@ -25,7 +25,7 @@ function register() {
 }
 
 function didHappen(data){
-    if(data.status == "Okay"){
+    if(data.status == "okay"){
         errorMsg.css("display", "none");
         window.location.href = "/home";
     } else {

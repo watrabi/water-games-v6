@@ -1,0 +1,25 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Games{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=1">
+{% endblock %}
+{% block body %}
+<div style="margin-top: 30px; margin-left: 20px; margin-right: 30px;">
+    <h1>Games, for you.</h1>
+    <br>
+    <div id="gameholder">
+
+        {% for game in games %}
+            <div class="gamecard">
+                <img src="/game-files/icons/Slope.png" style="min-width: 100%;">
+                <p>{{ game.name }}<br>{{ game.plays }} plays - 0 favorites</p>
+            </div>
+        {% else %}
+            <h1>Nothing Yet.</h1>
+        {% endfor %}
+
+    </div>
+</div>
+
+</div>
+{% endblock %}

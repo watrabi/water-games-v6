@@ -26,6 +26,17 @@ $router->get("/", function() {
     echo $twig->render('default.twig');
 });
 
+$router->get("/games", function(){
+    global $twig;
+    global $currentuser;
+    global $db;
+
+    $games = $db->table("games")->get(); // should prob put a limit on this but its ok
+
+    echo $twig->render('games.twig', ["games"=>$games]);
+
+});
+
 $router->get("/auth/sign-up", function() {
     global $twig;
     global $currentuser;

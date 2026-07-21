@@ -30,7 +30,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 try {
-
+    
     $config = [
         'driver'    => 'mysql',
         'host'      => $_ENV["DB_HOST"],
@@ -40,6 +40,10 @@ try {
         'charset'   => 'utf8',
         'collation' => 'utf8_unicode_ci',
         'prefix'    => '', // if you have a prefix for all your tables.
+        'options'   => [
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]
     ];
 
     $connection = new Connection('mysql', $config);

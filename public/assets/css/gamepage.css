@@ -1,0 +1,26 @@
+.gamecard {
+    text-decoration: none;
+    transition: 0.2s;
+	width: 170px;
+	background-color: var(--btn-color);
+	padding: 5px;
+	border-radius: 0.2em;
+}
+
+.gamecard p {
+    text-decoration: none;
+	margin: 5px;
+}
+
+.gamecard:hover {
+    padding: 7px;
+    background-color: var(--btn-hover-color);
+    border-radius: 0.3em
+}
+
+#gameholder {
+    display: flex;
+	justify-content: space-between;
+	overflow-y: auto;
+	gap: 7px;
+}

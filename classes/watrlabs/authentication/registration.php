@@ -42,10 +42,16 @@ class registration {
             return ["status"=>"error", "message"=>"This username is taken or contains special characters."];
         }
 
-        if($security->hasTooManyAlts()){
+        if($security->hasTooManyAlts($security->getRequestIp())){
             return ["status"=>"error", "message"=>"Too many accounts on this IP Address."];
         }
 
+        if($email){
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return ["status"=>"error", "message"=>"Email is not valid."];
+            }
+        }
+        
         $insert = [
             "accountid"=>$encryption->genRandString(30),
             "username"=>$username,

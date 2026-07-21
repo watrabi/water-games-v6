@@ -8,8 +8,8 @@ class encryption {
     private $iv = '';
 
     // this starts are the variables
-    function construct__() {
-        $this->key = $_ENV["randomKey"];
+    function __construct() {
+        $this->key = $_ENV["encryptionKey"];
         $this->iv = $_ENV["encryptionIv"];
     }
     
