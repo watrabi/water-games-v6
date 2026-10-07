@@ -31,7 +31,7 @@ body.aiBody #main {
 .aiChatList a {
     display: block;
     padding: 7px 10px;
-    color: var(--foam);
+    color: var(--text);
     font-size: 14px;
     white-space: nowrap;
     overflow: hidden;
@@ -45,7 +45,7 @@ body.aiBody #main {
 
 .aiChatList a.active {
     background-color: var(--raised);
-    box-shadow: inset 3px 0 0 var(--shallows);
+    box-shadow: inset 3px 0 0 var(--link);
 }
 
 .aiNoChats {
@@ -107,14 +107,14 @@ body.aiBody #main {
     flex-shrink: 0;
     border: none;
     background: none;
-    color: var(--sand);
+    color: var(--muted);
     font-size: 14px;
     cursor: pointer;
 }
 
 .aiIconButton:hover {
     background-color: var(--raised);
-    color: var(--foam);
+    color: var(--text);
 }
 
 .aiIconButton.small {
@@ -233,8 +233,8 @@ body.aiBody #main {
 
 .aiText blockquote {
     padding-left: 12px;
-    border-left: 3px solid var(--sand);
-    color: var(--sand);
+    border-left: 3px solid var(--muted);
+    color: var(--muted);
 }
 
 .aiText hr {
@@ -259,7 +259,7 @@ body.aiBody #main {
 }
 
 .aiText th {
-    background-color: var(--shelf);
+    background-color: var(--surface);
 }
 
 .aiText img {
@@ -268,7 +268,7 @@ body.aiBody #main {
 
 .aiCode {
     border: 1px solid var(--line);
-    background-color: #0b1620;
+    background-color: var(--code-bg);
 }
 
 .aiCodeBar {
@@ -278,21 +278,21 @@ body.aiBody #main {
     padding: 4px 6px 4px 12px;
     border-bottom: 1px solid var(--line);
     font-size: 12px;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .aiCopy {
     padding: 3px 8px;
     border: none;
     background: none;
-    color: var(--sand);
+    color: var(--muted);
     font: inherit;
     cursor: pointer;
 }
 
 .aiCopy:hover {
     background-color: var(--raised);
-    color: var(--foam);
+    color: var(--text);
 }
 
 .aiCode pre {
@@ -319,7 +319,7 @@ body.aiBody #main {
     cursor: pointer;
     list-style: none;
     font-size: 13px;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .aiThinking summary::-webkit-details-marker,
@@ -349,7 +349,7 @@ body.aiBody #main {
 }
 
 .aiThinking.live summary {
-    color: var(--foam);
+    color: var(--text);
     animation: aiPulse 1.4s ease-in-out infinite;
 }
 
@@ -358,7 +358,7 @@ body.aiBody #main {
     padding-left: 12px;
     border-left: 2px solid var(--line);
     font-size: 13px;
-    color: var(--sand);
+    color: var(--muted);
     white-space: pre-wrap;
     max-height: 300px;
     overflow-y: auto;
@@ -370,7 +370,7 @@ body.aiBody #main {
 
 .aiTool {
     border: 1px solid var(--line);
-    background-color: var(--shelf);
+    background-color: var(--surface);
 }
 
 .aiTool summary {
@@ -383,15 +383,15 @@ body.aiBody #main {
 }
 
 .aiTool.running summary {
-    color: var(--foam);
+    color: var(--text);
 }
 
 .aiTool.running summary i {
-    color: var(--shallows);
+    color: var(--link);
 }
 
 .aiTool.failed summary i {
-    color: var(--coral);
+    color: var(--danger);
 }
 
 .aiToolBody pre {
@@ -404,23 +404,23 @@ body.aiBody #main {
     overflow-wrap: anywhere;
     max-height: 240px;
     overflow-y: auto;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .aiNotice {
     font-size: 13px;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .aiNotice.error {
-    color: var(--coral);
+    color: var(--danger);
 }
 
 .aiRetry {
     padding: 0;
     border: none;
     background: none;
-    color: var(--shallows);
+    color: var(--link);
     font: inherit;
     text-decoration: underline;
     cursor: pointer;
@@ -442,7 +442,7 @@ body.aiBody #main {
 .aiWaiting span {
     width: 7px;
     height: 7px;
-    background-color: var(--sand);
+    background-color: var(--muted);
     animation: aiPulse 1.2s ease-in-out infinite;
 }
 
@@ -485,7 +485,7 @@ body.aiBody #main {
     padding: 10px 12px;
     border: 1px solid var(--line);
     background: none;
-    color: var(--foam);
+    color: var(--text);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -493,7 +493,7 @@ body.aiBody #main {
 
 .aiSuggestions button:hover {
     background-color: var(--raised);
-    border-color: rgba(245, 241, 237, 0.2);
+    border-color: var(--line-strong);
 }
 
 /* ---------- composer ---------- */
@@ -503,15 +503,15 @@ body.aiBody #main {
     max-width: 760px;
     margin: 0 auto 18px;
     border: 1px solid var(--line);
-    background-color: var(--shelf);
+    background-color: var(--surface);
 }
 
 .aiComposer:focus-within {
-    border-color: rgba(124, 196, 228, 0.6);
+    border-color: color-mix(in srgb, var(--link) 60%, transparent);
 }
 
 .aiComposer.dragging {
-    border-color: var(--shallows);
+    border-color: var(--link);
     border-style: dashed;
 }
 
@@ -543,7 +543,7 @@ body.aiBody #main {
     padding: 6px 8px;
     border: 1px solid var(--line);
     background-color: var(--raised);
-    color: var(--foam);
+    color: var(--text);
     font: inherit;
     font-size: 13px;
     cursor: pointer;
@@ -553,7 +553,7 @@ body.aiBody #main {
     flex: 1;
     min-width: 0;
     font-size: 12px;
-    color: var(--sand);
+    color: var(--muted);
     text-align: right;
     white-space: nowrap;
     overflow: hidden;
@@ -561,7 +561,7 @@ body.aiBody #main {
 }
 
 .aiHint.warn {
-    color: var(--coral);
+    color: var(--danger);
 }
 
 #aiSend {
@@ -571,6 +571,7 @@ body.aiBody #main {
 #aiSend.stop {
     background-color: var(--raised);
     border-color: var(--line);
+    color: var(--text);
 }
 
 #aiSend:disabled {
@@ -611,8 +612,8 @@ body.aiBody #main {
     height: 20px;
     padding: 0;
     border: none;
-    background-color: rgba(0, 16, 24, 0.85);
-    color: var(--foam);
+    background-color: var(--scrim-strong);
+    color: var(--text);
     font-size: 11px;
     cursor: pointer;
 }
@@ -632,7 +633,7 @@ body.aiBody #main {
         z-index: 12;
         width: 270px;
         display: none;
-        background-color: var(--deep);
+        background-color: var(--bg);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
     }
 
@@ -645,7 +646,7 @@ body.aiBody #main {
         position: absolute;
         inset: 0;
         z-index: 11;
-        background-color: rgba(0, 16, 24, 0.6);
+        background-color: var(--scrim);
     }
 
     #aiChatsToggle {

@@ -70,3 +70,101 @@ $(document).ready(function(){
         });
     }
 });
+
+// ---------- themes ----------
+
+function saveTheme(data){
+    return $.post("/api/v1/theme", data);
+}
+
+$("#footerTheme").on("change", function() {
+    saveTheme({ theme: this.value }).done(function() {
+        location.reload();
+    });
+});
+
+$("#siteBannerClose").on("click", function() {
+    let banner = $("#siteBanner");
+    document.cookie = "wg_dismissed=" + banner.data("id") + "; path=/; max-age=31536000; samesite=lax";
+    banner.remove();
+});
+
+// falling snow for the christmas theme. a canvas behind nothing, clicks go straight through it
+function startSnow(){
+    if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+        return;
+    }
+
+    let canvas = document.createElement("canvas");
+    canvas.id = "snow";
+    canvas.setAttribute("aria-hidden", "true");
+    document.body.append(canvas);
+
+    let ctx = canvas.getContext("2d");
+    let flakes = [];
+    let width, height;
+
+    function resize(){
+        let ratio = window.devicePixelRatio || 1;
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width * ratio;
+        canvas.height = height * ratio;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    let count = Math.round(Math.min(90, width / 14));
+    for(let i = 0; i < count; i++){
+        flakes.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            r: 1 + Math.random() * 2.2,
+            speed: 0.3 + Math.random() * 0.9,
+            drift: Math.random() * Math.PI * 2
+        });
+    }
+
+    function frame(){
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+
+        flakes.forEach(function(f) {
+            f.y += f.speed;
+            f.drift += 0.01;
+            f.x += Math.sin(f.drift) * 0.4;
+
+            if(f.y > height + 5){
+                f.y = -5;
+                f.x = Math.random() * width;
+            }
+
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // pause in background tabs, one loop at a time
+        if(document.hidden){
+            running = false;
+        } else {
+            requestAnimationFrame(frame);
+        }
+    }
+
+    let running = true;
+    document.addEventListener("visibilitychange", function() {
+        if(!document.hidden && !running){
+            running = true;
+            requestAnimationFrame(frame);
+        }
+    });
+
+    requestAnimationFrame(frame);
+}
+
+if(document.documentElement.dataset.effect === "snow"){
+    startSnow();
+}

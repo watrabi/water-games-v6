@@ -23,8 +23,29 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/ai` chat with saved conversations, tools and image input (see below)
 - `/proxy` is a "coming later" placeholder
 
+# admin panel
+`/admin` (404s for everyone who isn't an admin). make your first admin in the database:
+```sql
+UPDATE users SET admin = 1 WHERE username = 'yourname';
+```
+after that you can make other people admins from the panel. it covers:
+- games and apps: add / edit / delete, upload icons
+- music: add / edit / delete, upload audio and covers (the length fills itself in)
+- users: ban (signs them out and stops them signing in), make admin, sign out of every device
+- site & themes: default theme, seasonal themes, a site-wide announcement strip
+- AI: turn it on, limits, tools, and providers + models (see below)
+
+uploads go to `public/uploads/`, which the web server needs to be able to write to.
+big audio files also need `upload_max_filesize` / `post_max_size` raised in php.ini.
+
+# themes
+four themes people can pick (Deep, Abyss, Reef, Foam) plus seasonal ones that switch on by date:
+New Year, Valentine's, St. Patrick's, Easter, Halloween and Christmas (with snow).
+people pick from the footer or their settings page; guests get a cookie, accounts get it saved.
+add `?theme=halloween` (or any theme id) to a url to preview one without changing anything.
+
 # adding games
-there's no admin panel yet, insert rows into `games` directly:
+the admin panel is easiest. you can still insert rows directly:
 ```sql
 INSERT INTO games (name, description, gamePath, gameIcon, plays)
 VALUES ('Slope', 'Roll down the slope.', '/game-files/slope/index.html', '/game-files/icons/Slope.png', 0);
@@ -47,8 +68,14 @@ VALUES ('Low Tide', 'watrlabs', '/music-files/low-tide.mp3', '/music-files/cover
 for seeking to work (apache and nginx do by default, `php -S` doesn't)
 
 # AI chat
-set `AI_ENABLED=true` in `.env` and list models for at least one provider (`OLLAMA_MODELS`, `ANTHROPIC_MODELS`,
-`OPENAI_MODELS`). `.env.example` has every setting. people need an account to use it, chats are saved per user.
+the easy way is **admin panel → AI**: add a provider (pick Ollama, Anthropic compatible or OpenAI compatible, give it a
+base url and key), hit "fetch available models" to add the ones you want, then switch the AI on. you can have as many
+providers as you like, e.g. a local ollama, openrouter and anthropic side by side. keys are stored encrypted with
+`encryptionKey` / `encryptionIv`, so don't change those once you've saved keys.
+
+you can also set providers in `.env` (`OLLAMA_MODELS`, `ANTHROPIC_MODELS`, `OPENAI_MODELS`, see `.env.example`); those
+show up in the panel as read-only. settings saved in the panel (on/off, limits, tools, extra instructions, default
+model) win over the matching `AI_*` values in `.env`. people need an account to use it, chats are saved per user.
 
 - **ollama** uses ollama's own api. the site asks ollama what each model supports, so text-only models
   don't get sent images or tools
@@ -67,7 +94,8 @@ if something else buffers responses (gzip on `text/event-stream`, some proxies) 
 at the end instead of streaming.
 
 # notes
-- run migrations after pulling, there are new `favorites`, `tracks` and `ai_*` tables and a `type` column on `games`
+- run migrations after pulling, there are new `favorites`, `tracks`, `settings` and `ai_*` tables, a `type` column on
+  `games` and `admin` / `banned` / `theme` columns on `users`
 - the turnstile captcha on sign up only turns on when `CONFIG_CaptchaEnabled=true` AND both turnstile keys are set
 - signup/login IPs are stored encrypted with `encryptionKey`/`encryptionIv` so the alt limit can match them
 - `/randTest` and `/auth/isAuthed` only exist when `APP_DEBUG=true`

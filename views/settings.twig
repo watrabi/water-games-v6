@@ -21,6 +21,34 @@
         <button class="button" type="submit">Save blurb</button>
     </form>
 
+    <form class="panel" id="themeForm">
+        <h2>Appearance</h2>
+        <p class="muted">Seasonal themes show up on their own around the holidays when you're on the site default.</p>
+        <div class="notice" id="themeMsg" role="status" hidden></div>
+        <fieldset class="themePicker">
+            <legend class="sr-only">Theme</legend>
+            <label class="themeOption">
+                <input type="radio" name="theme" value="auto"{% if themePref == 'auto' %} checked{% endif %}>
+                <span class="themeSwatch auto" aria-hidden="true"><i class="fa-solid fa-calendar-days"></i></span>
+                <span class="themeName">Site default</span>
+                <span class="themeNote">Follows the seasons</span>
+            </label>
+            {% for item in themes %}
+            <label class="themeOption">
+                <input type="radio" name="theme" value="{{ item.id }}"{% if themePref == item.id %} checked{% endif %}>
+                <span class="themeSwatch" aria-hidden="true">{% for color in item.swatch %}<span style="background-color: {{ color }}"></span>{% endfor %}</span>
+                <span class="themeName">{{ item.name }}{% if item.emoji %} {{ item.emoji }}{% endif %}</span>
+                <span class="themeNote">{{ item.description }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+        <label class="checkRow">
+            <input type="checkbox" name="effects" id="effectsToggle"{% if effectsOn %} checked{% endif %}>
+            <span>Seasonal effects, like snow at Christmas</span>
+        </label>
+        <button class="button" type="submit">Save appearance</button>
+    </form>
+
     <form class="panel" id="passwordForm">
         <h2>Password</h2>
         <p class="muted">Changing it signs you out everywhere else.</p>
@@ -48,5 +76,5 @@
         <a class="button quiet" href="/auth/logout">Sign out</a>
     </div>
 </div>
-<script src="/assets/js/settings.js?t=1" defer></script>
+<script src="/assets/js/settings.js?t=2" defer></script>
 {% endblock %}

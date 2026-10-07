@@ -12,11 +12,11 @@ class anthropic extends provider {
     private string $event = "";
 
     protected function request(string $system, array $messages, array $tools): array {
-        $firstParty = config::isFirstPartyAnthropic();
+        $firstParty = config::isFirstPartyAnthropic($this->model["url"]);
 
         $body = [
             "model"=>$this->model["name"],
-            "max_tokens"=>(int) config::env("ANTHROPIC_MAX_TOKENS", 64000),
+            "max_tokens"=>(int) config::option($this->model, "max_tokens", 64000),
             "stream"=>true,
             "system"=>$system,
             "messages"=>$this->convertMessages($messages),
@@ -40,16 +40,16 @@ class anthropic extends provider {
         }
 
         // optional, for models where you want to tune thinking depth / show summarized thinking
-        if($effort = config::env("ANTHROPIC_EFFORT")){
+        if($effort = config::option($this->model, "effort")){
             $body["output_config"] = ["effort"=>$effort];
         }
 
-        if(config::env("ANTHROPIC_THINKING") === "summarized"){
+        if(config::option($this->model, "thinking") === "summarized"){
             $body["thinking"] = ["type"=>"adaptive", "display"=>"summarized"];
         }
 
         $headers = [
-            "x-api-key: " . config::providerKey("anthropic"),
+            "x-api-key: " . $this->model["key"],
             "anthropic-version: 2023-06-01",
         ];
 
@@ -59,13 +59,13 @@ class anthropic extends provider {
             $body["cache_control"] = ["type"=>"ephemeral"];
 
             // if the model declines, let anthropic retry on the fallback it recommends
-            if(filter_var(config::env("ANTHROPIC_FALLBACKS", true), FILTER_VALIDATE_BOOLEAN)){
+            if(filter_var(config::option($this->model, "fallbacks", true), FILTER_VALIDATE_BOOLEAN)){
                 $body["fallbacks"] = "default";
                 $headers[] = "anthropic-beta: server-side-fallback-2026-07-01";
             }
         }
 
-        $base = config::providerUrl("anthropic");
+        $base = $this->model["url"];
         $url = preg_match('#/v1$#', $base) ? "$base/messages" : "$base/v1/messages";
 
         return [$url, $headers, $body];

@@ -1,0 +1,66 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Users{% endblock %}
+
+{% macro action(user, action, label, back, danger) %}
+  <form method="post" action="/admin/users/{{ user.id }}/action" class="inlineForm"{% if danger %} data-confirm="{{ label }} {{ user.username }}?"{% endif %}>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <button type="submit" class="button quiet{{ danger ? ' danger' : '' }}">{{ label }}</button>
+  </form>
+{% endmacro %}
+{% import _self as u %}
+
+{% block admin %}
+{% set back = '?' ~ {q: search, filter: filter, page: page}|url_encode %}
+<div class="pageHeader">
+    <div>
+        <h1>Users</h1>
+        <p>{{ total|number_format }} account{{ total == 1 ? '' : 's' }}</p>
+    </div>
+    <div class="headerActions">
+        <form class="inlineSearch" method="get">
+            <input type="hidden" name="filter" value="{{ filter }}">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="adminSearch">Search</label>
+            <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Username">
+        </form>
+        <nav class="sortTabs" aria-label="Filter users">
+            {% for key, label in {all: 'Everyone', admins: 'Admins', banned: 'Banned'} %}
+                <a href="?{{ {filter: key, q: search}|url_encode }}"{% if filter == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+            {% endfor %}
+        </nav>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr><th>Username</th><th>Email</th><th>Joined</th><th></th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for user in rows %}
+        {% set me = user.id == currentuser.id %}
+        <tr>
+            <td><a href="/users/{{ user.username|lower|url_encode }}">{{ user.username }}</a>{% if me %} <span class="muted">(you)</span>{% endif %}</td>
+            <td class="muted ellipsis">{{ user.email ?: '–' }}</td>
+            <td class="muted">{{ user.registered|date("M j, Y") }}</td>
+            <td>
+                {% if user.admin %}<span class="badge">admin</span>{% endif %}
+                {% if user.banned %}<span class="badge danger">banned</span>{% endif %}
+            </td>
+            <td class="rowActions">
+                {% if not me %}
+                    {% if user.banned %}{{ u.action(user, 'unban', 'Unban', back, false) }}{% else %}{{ u.action(user, 'ban', 'Ban', back, true) }}{% endif %}
+                    {% if user.admin %}{{ u.action(user, 'unadmin', 'Remove admin', back, true) }}{% else %}{{ u.action(user, 'admin', 'Make admin', back, true) }}{% endif %}
+                {% endif %}
+                {{ u.action(user, 'signout', 'Sign out everywhere', back, false) }}
+            </td>
+        </tr>
+    {% else %}
+        <tr><td colspan="5" class="muted">Nobody matches that.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{{ m.pager(page, pages, {q: search, filter: filter}) }}
+{% endblock %}

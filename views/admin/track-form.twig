@@ -1,0 +1,55 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}{{ track.id ? track.title : 'New track' }}{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>{{ track.id ? track.title : 'New track' }}</h1>
+        <p><a href="/admin/music">Back to music</a>{% if track.id %} · {{ track.plays|number_format }} plays{% endif %}</p>
+    </div>
+    {% if track.id %}{{ m.deleteButton('/admin/music/' ~ track.id ~ '/delete', 'this track') }}{% endif %}
+</div>
+
+<form class="panel adminForm" method="post" action="/admin/music/save" enctype="multipart/form-data">
+    {{ m.csrf() }}
+    <input type="hidden" name="id" value="{{ track.id }}">
+
+    <div class="formRow">
+        <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" value="{{ track.title }}" maxlength="255" required>
+        </div>
+        <div class="field">
+            <label for="artist">Artist <span class="muted">(optional)</span></label>
+            <input id="artist" name="artist" value="{{ track.artist }}" maxlength="255">
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="filePath">Audio</label>
+        <input id="filePath" name="filePath" value="{{ track.filePath }}" class="mono" placeholder="/music-files/low-tide.mp3">
+        <input type="file" name="audioFile" id="audioFile" accept="audio/*" aria-label="Upload an audio file">
+        <p class="hint">Upload an mp3, ogg, wav, m4a, flac or webm, or paste the path of one that's already on the server.</p>
+        <audio id="audioPreview" controls preload="metadata"{% if track.filePath %} src="{{ track.filePath }}"{% else %} hidden{% endif %}></audio>
+    </div>
+
+    <div class="field">
+        <label for="coverPath">Cover <span class="muted">(optional)</span></label>
+        <div class="fileRow">
+            <span class="adminThumb large" id="coverPreview">{% if track.coverPath %}<img src="{{ track.coverPath }}" alt="">{% else %}<i class="fa-solid fa-music"></i>{% endif %}</span>
+            <div class="fileInputs">
+                <input id="coverPath" name="coverPath" value="{{ track.coverPath }}" class="mono" placeholder="/music-files/covers/low-tide.jpg">
+                <input type="file" name="coverFile" accept="image/png,image/jpeg,image/gif,image/webp" data-preview="#coverPreview" aria-label="Upload a cover">
+            </div>
+        </div>
+    </div>
+
+    <div class="field narrowField">
+        <label for="duration">Length</label>
+        <input id="duration" name="duration" value="{% if track.duration %}{{ track.duration // 60 }}:{{ '%02d'|format(track.duration % 60) }}{% endif %}" placeholder="3:25" inputmode="numeric">
+        <p class="hint">Filled in for you once the audio loads.</p>
+    </div>
+
+    <button class="button" type="submit">{{ track.id ? 'Save changes' : 'Add track' }}</button>
+</form>
+{% endblock %}

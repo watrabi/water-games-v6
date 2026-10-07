@@ -5,19 +5,38 @@ Short reference so new pages match the old ones. Tokens live at the top of
 
 ## Color
 
-| Token          | Value     | Used for                                   |
-|----------------|-----------|--------------------------------------------|
-| `--deep`       | `#002131` | page background                            |
-| `--shelf`      | `#032b40` | navbar, sidebar, footer                    |
-| `--raised`     | `#08374f` | cards, inputs, game tile backgrounds       |
-| `--current`    | `#01537a` | primary buttons (hover `#026a9a`)          |
-| `--shallows`   | `#7cc4e4` | links, focus rings, active nav item        |
-| `--foam`       | `#F5F1ED` | body text                                  |
-| `--sand`       | `#A99985` | secondary text, metadata (plays, dates)    |
-| `--coral`      | `#f08a7a` | errors                                     |
+Colors are tokens, never hardcoded hex. `base.css` `:root` holds the default
+theme (Deep); every other theme in `themes.css` redefines the same tokens.
 
-Borders are `--line` (foam at 10%). No gradients, no blur, no glow (the only
-gradient is the hard-stop fill on the music seek bar).
+| Token            | Deep      | Used for                                   |
+|------------------|-----------|--------------------------------------------|
+| `--bg`           | `#002131` | page background                            |
+| `--surface`      | `#032b40` | navbar, sidebar, panels                    |
+| `--raised`       | `#08374f` | cards, inputs, game tile backgrounds       |
+| `--accent`       | `#01537a` | primary buttons, banner strip              |
+| `--on-accent`    | `#F5F1ED` | text on `--accent`                         |
+| `--link`         | `#7cc4e4` | links, focus rings, active nav item        |
+| `--text`         | `#F5F1ED` | body text                                  |
+| `--muted`        | `#A99985` | secondary text, metadata (plays, dates)    |
+| `--danger`       | `#f08a7a` | errors, destructive buttons                |
+| `--line`         | text 10%  | borders (`--line-strong` is 20%)           |
+
+Tints are `color-mix(in srgb, var(--token) N%, transparent)` so they follow the
+theme. No gradients, no blur, no glow (the only gradient is the hard-stop fill
+on the music seek bar). Code blocks stay dark (`--code-bg`) in every theme.
+
+## Themes
+
+- Base themes people can pick: Deep (default), Abyss, Reef, Foam (light).
+- Seasonal themes switch on by date for anyone on "Site default": New Year,
+  Valentine's Day, St. Patrick's Day, Easter, Halloween, Christmas. Each one is
+  a palette, an emoji after the wordmark, and an optional greeting strip.
+  Christmas also gets snow (respects reduced motion, can be turned off).
+- Every palette is checked at 4.5:1 for text, muted text, links, button text
+  (normal, hover and pressed) and errors. Pressed buttons go darker, not
+  lighter, so white text keeps its contrast.
+- Dates and names live in `classes/watrlabs/watrkit/themes.php`; adding a theme
+  means a block in `themes.css` plus an entry there.
 
 ## Type
 

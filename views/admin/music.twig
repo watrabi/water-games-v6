@@ -1,0 +1,42 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Music{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Music</h1>
+        <p>{{ total|number_format }} track{{ total == 1 ? '' : 's' }}{% if search %} matching “{{ search }}”{% endif %}</p>
+    </div>
+    <div class="headerActions">
+        <form class="inlineSearch" method="get">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="adminSearch">Search</label>
+            <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Title or artist">
+        </form>
+        <a class="button" href="/admin/music/new"><i class="fa-solid fa-plus"></i>Add track</a>
+    </div>
+</div>
+
+{% if rows is empty %}
+    <div class="empty"><img src="/assets/images/BlobEmoji/blobsleeping.png" alt=""><div><strong>No tracks{% if search %} for that search{% endif %}.</strong><a href="/admin/music/new">Add one</a></div></div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr><th></th><th>Title</th><th>Artist</th><th class="right">Length</th><th class="right">Plays</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td class="thumbCell"><span class="adminThumb">{% if row.coverPath %}<img src="{{ row.coverPath }}" alt="">{% else %}<i class="fa-solid fa-music"></i>{% endif %}</span></td>
+            <td><a href="/admin/music/{{ row.id }}">{{ row.title }}</a></td>
+            <td class="muted">{{ row.artist ?: '–' }}</td>
+            <td class="right muted">{% if row.duration %}{{ row.duration // 60 }}:{{ '%02d'|format(row.duration % 60) }}{% else %}–{% endif %}</td>
+            <td class="right">{{ row.plays|number_format }}</td>
+            <td class="rowActions">{{ m.deleteButton('/admin/music/' ~ row.id ~ '/delete', '“' ~ row.title ~ '”') }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{{ m.pager(page, pages, {q: search}) }}
+{% endif %}
+{% endblock %}

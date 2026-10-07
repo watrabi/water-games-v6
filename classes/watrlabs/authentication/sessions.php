@@ -143,7 +143,15 @@ class sessions {
 
                 $this->extendLease($sessionInfo);
 
-                return $users->getUserInfo($sessionInfo->userid);
+                $user = $users->getUserInfo($sessionInfo->userid);
+
+                // banned accounts get signed out
+                if(!$user || !empty($user->banned)){
+                    $this->destroySession($sessionId);
+                    return false;
+                }
+
+                return $user;
             }
 
         }

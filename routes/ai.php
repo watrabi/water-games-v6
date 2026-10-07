@@ -154,7 +154,7 @@ $router->group('/api/v1/ai', function($router) {
 
         $chats = new chats();
 
-        if($chats->uploadsToday($currentuser->id) >= (int) config::env("AI_DAILY_UPLOADS", 50)){
+        if($chats->uploadsToday($currentuser->id) >= config::dailyUploads()){
             return apiError("You've uploaded a lot of images today. Try again tomorrow.", 429);
         }
 

@@ -1,0 +1,156 @@
+/* generated from the palettes in DESIGN.md, every pair checked for 4.5:1 contrast.
+   "deep" is the default and lives in base.css :root */
+
+[data-theme="abyss"] {
+  --bg: #05080c;
+  --surface: #0b1118;
+  --raised: #121b25;
+  --raised-hover: #18232f;
+  --accent: #1d5f86;
+  --accent-hover: #236f9c;
+  --accent-active: #18506f;
+  --on-accent: #eef4f8;
+  --link: #7cc4e4;
+  --text: #e8edf1;
+  --muted: #8f9aa5;
+  --danger: #f08a7a;
+  color-scheme: dark;
+}
+
+[data-theme="reef"] {
+  --bg: #1c1311;
+  --surface: #251a17;
+  --raised: #30221e;
+  --raised-hover: #3a2a25;
+  --accent: #a8452f;
+  --accent-hover: #b84d35;
+  --accent-active: #933c29;
+  --on-accent: #fff4ee;
+  --link: #f2a58e;
+  --text: #f5ece6;
+  --muted: #b8a296;
+  --danger: #ff8a80;
+  color-scheme: dark;
+}
+
+[data-theme="foam"] {
+  --bg: #f6f2ec;
+  --surface: #fffdf9;
+  --raised: #ebe5dc;
+  --raised-hover: #e2dace;
+  --accent: #01537a;
+  --accent-hover: #026a9a;
+  --accent-active: #014261;
+  --on-accent: #ffffff;
+  --link: #0a5f8c;
+  --text: #0d2433;
+  --muted: #5f574d;
+  --danger: #b3261e;
+  --scrim: rgba(20, 24, 40, 0.35);
+  --scrim-strong: rgba(20, 24, 40, 0.7);
+  color-scheme: light;
+}
+
+[data-theme="newyear"] {
+  --bg: #0c0c16;
+  --surface: #141422;
+  --raised: #1d1d2f;
+  --raised-hover: #26263b;
+  --accent: #c9962a;
+  --accent-hover: #d8a63a;
+  --accent-active: #b3851f;
+  --on-accent: #1a1406;
+  --link: #f0d27a;
+  --text: #f4f1e8;
+  --muted: #a9a6b8;
+  --danger: #f08a7a;
+  color-scheme: dark;
+}
+
+[data-theme="valentines"] {
+  --bg: #200f17;
+  --surface: #2a1520;
+  --raised: #361b29;
+  --raised-hover: #422233;
+  --accent: #b8235a;
+  --accent-hover: #c72b65;
+  --accent-active: #a11e4f;
+  --on-accent: #ffffff;
+  --link: #ff9cbf;
+  --text: #fbeef2;
+  --muted: #c7a3b1;
+  --danger: #ff8a80;
+  color-scheme: dark;
+}
+
+[data-theme="stpatricks"] {
+  --bg: #0b1d13;
+  --surface: #10271a;
+  --raised: #163222;
+  --raised-hover: #1c3d2a;
+  --accent: #1f7a3a;
+  --accent-hover: #248644;
+  --accent-active: #1a6a32;
+  --on-accent: #ffffff;
+  --link: #86d9a0;
+  --text: #eef6ee;
+  --muted: #a3bba8;
+  --danger: #ff8a80;
+  color-scheme: dark;
+}
+
+[data-theme="easter"] {
+  --bg: #fbf8f1;
+  --surface: #ffffff;
+  --raised: #f0eaf6;
+  --raised-hover: #e6ddf0;
+  --accent: #6f46a8;
+  --accent-hover: #7d52b8;
+  --accent-active: #5e3a91;
+  --on-accent: #ffffff;
+  --link: #5c3a96;
+  --text: #2a2238;
+  --muted: #665d78;
+  --danger: #b3261e;
+  --scrim: rgba(20, 24, 40, 0.35);
+  --scrim-strong: rgba(20, 24, 40, 0.7);
+  color-scheme: light;
+}
+
+[data-theme="halloween"] {
+  --bg: #17101c;
+  --surface: #201526;
+  --raised: #2b1c33;
+  --raised-hover: #35233f;
+  --accent: #b8520f;
+  --accent-hover: #a94b0d;
+  --accent-active: #9a440c;
+  --on-accent: #ffffff;
+  --link: #f5a04a;
+  --text: #f5ede4;
+  --muted: #b6a2bf;
+  --danger: #ff7f7f;
+  color-scheme: dark;
+}
+
+[data-theme="christmas"] {
+  --bg: #0d1d16;
+  --surface: #12271e;
+  --raised: #183227;
+  --raised-hover: #1e3d30;
+  --accent: #b3202f;
+  --accent-hover: #c22a3a;
+  --accent-active: #9e1c29;
+  --on-accent: #ffffff;
+  --link: #f2c35a;
+  --text: #f7f3ea;
+  --muted: #a9bfae;
+  --danger: #ff8a8a;
+  color-scheme: dark;
+}
+
+/* light themes: shadows read as smudges on a pale background, soften them */
+[data-theme="foam"] .dropdown-content,
+[data-theme="easter"] .dropdown-content {
+  box-shadow: 0 8px 24px rgba(20, 24, 40, 0.12);
+}

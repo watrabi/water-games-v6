@@ -213,7 +213,7 @@ class assistant {
             . "Use the calculator for arithmetic instead of working it out in your head. "
             . "If the user shares an image, look at it carefully before answering.";
 
-        if($extra = config::env("AI_SYSTEM_PROMPT")){
+        if($extra = config::systemExtra()){
             $prompt .= "\n\n" . $extra;
         }
 

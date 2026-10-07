@@ -11,7 +11,8 @@ class Routing {
     protected $notfound = null;
 
     protected function addRoute(string $method, string $uri, callable $callback): void {
-        $fullUri = $this->currentprefix . (rtrim($uri, '/') ?: '/');
+        // a group's "/" route lives at the group's own path (/admin, not /admin/)
+        $fullUri = rtrim($this->currentprefix . rtrim($uri, '/'), '/') ?: '/';
 
         if ($this->currentmiddleware) {
             $originalcallback = $callback;

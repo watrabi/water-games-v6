@@ -31,16 +31,16 @@ class ollama extends provider {
             ], $tools);
         }
 
-        if($keepAlive = config::env("OLLAMA_KEEP_ALIVE")){
+        if($keepAlive = config::option($this->model, "keep_alive")){
             $body["keep_alive"] = $keepAlive;
         }
 
         $headers = [];
-        if($key = config::providerKey("ollama")){
+        if($key = $this->model["key"]){
             $headers[] = "Authorization: Bearer " . $key;
         }
 
-        return [config::providerUrl("ollama") . "/api/chat", $headers, $body];
+        return [$this->model["url"] . "/api/chat", $headers, $body];
     }
 
     private function convertMessages(array $messages){

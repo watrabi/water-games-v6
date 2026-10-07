@@ -1,0 +1,19 @@
+{# little pieces the admin pages share #}
+{% macro pager(page, pages, query) %}
+  {% if pages > 1 %}
+  <nav class="pager" aria-label="Pages">
+    {% if page > 1 %}<a class="button quiet" href="?{{ query|merge({page: page - 1})|url_encode }}">Previous</a>{% endif %}
+    <span class="muted">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="button quiet" href="?{{ query|merge({page: page + 1})|url_encode }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
+{% endmacro %}
+
+{% macro csrf() %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+
+{% macro deleteButton(action, what) %}
+  <form method="post" action="{{ action }}" class="inlineForm" data-confirm="Delete {{ what }}? This can't be undone.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="button quiet danger">Delete</button>
+  </form>
+{% endmacro %}

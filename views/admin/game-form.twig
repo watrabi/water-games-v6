@@ -1,0 +1,61 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% set noun = game.type == 'app' ? 'app' : 'game' %}
+{% block adminTitle %}{{ game.id ? game.name : 'New ' ~ noun }}{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>{{ game.id ? game.name : 'New ' ~ noun }}</h1>
+        <p><a href="/admin/games?type={{ game.type }}">Back to {{ noun }}s</a>{% if game.id %} · <a href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}" target="_blank" rel="noopener">Open on the site</a> · {{ game.plays|number_format }} plays{% endif %}</p>
+    </div>
+    {% if game.id %}{{ m.deleteButton('/admin/games/' ~ game.id ~ '/delete', 'this ' ~ noun) }}{% endif %}
+</div>
+
+<form class="panel adminForm" method="post" action="/admin/games/save" enctype="multipart/form-data">
+    {{ m.csrf() }}
+    <input type="hidden" name="id" value="{{ game.id }}">
+
+    <div class="formRow">
+        <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" value="{{ game.name }}" maxlength="200" required>
+        </div>
+        <div class="field narrowField">
+            <label for="type">Type</label>
+            <select id="type" name="type">
+                <option value="game"{% if game.type == 'game' %} selected{% endif %}>Game</option>
+                <option value="app"{% if game.type == 'app' %} selected{% endif %}>App</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="description">Description <span class="muted">(optional)</span></label>
+        <textarea id="description" name="description">{{ game.description }}</textarea>
+    </div>
+
+    <div class="field">
+        <label for="gamePath">Game path</label>
+        <input id="gamePath" name="gamePath" value="{{ game.gamePath }}" class="mono" placeholder="/game-files/slope/index.html" required>
+        <p class="hint">The page the player loads in a frame. Usually the game's index.html under public/game-files, or a full URL.</p>
+    </div>
+
+    <div class="field">
+        <label for="gameIcon">Icon</label>
+        <div class="fileRow">
+            <span class="adminThumb large" id="iconPreview">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name ? game.name|first|upper : '?' }}{% endif %}</span>
+            <div class="fileInputs">
+                <input id="gameIcon" name="gameIcon" value="{{ game.gameIcon }}" class="mono" placeholder="/game-files/icons/slope.png">
+                <input type="file" name="iconFile" accept="image/png,image/jpeg,image/gif,image/webp" data-preview="#iconPreview" aria-label="Upload an icon">
+                <p class="hint">Paste a path, or upload a square image (it replaces the path). Leave both empty to show the first letter.</p>
+            </div>
+        </div>
+    </div>
+
+    {% if game.id %}
+    <label class="checkRow"><input type="checkbox" name="resetPlays" value="1"><span>Reset the play count to 0</span></label>
+    {% endif %}
+
+    <button class="button" type="submit">{{ game.id ? 'Save changes' : 'Add ' ~ noun }}</button>
+</form>
+{% endblock %}

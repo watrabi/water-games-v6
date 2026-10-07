@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="{{ theme.id }}"{% if theme.effect and effectsOn %} data-effect="{{ theme.effect }}"{% endif %}>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/base.css?t=203">
+    <link rel="stylesheet" href="/assets/css/base.css?t=210">
+    <link rel="stylesheet" href="/assets/css/themes.css?t=1">
     <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="/assets/js/jquery-3.0.0.min.js" defer></script>
-    <script src="/assets/js/watrgames.js?t=200" defer></script>
+    <script src="/assets/js/watrgames.js?t=210" defer></script>
     <script src="/assets/js/music.js?t=1" defer></script>
     <meta content="{{ env("APP_NAME") }}" property="og:title"/>
     <meta content="{{ env("APP_DESC") }}" property="og:description"/>
@@ -16,7 +17,7 @@
     <meta content="" property="og:url"/>
     <meta content="" property="og:image"/>
     -->
-    <meta content="#01537a" name="theme-color"/>
+    <meta content="{{ theme.color }}" name="theme-color"/>
     {% block headerIncludes %}{% endblock %}
     <title>{% block pageName %}{% endblock %} - {{ env("APP_NAME") }}</title>
   </head>
@@ -26,6 +27,12 @@
       {% include "components/sidebar.twig" %}
       <div id="sidebarScrim"></div>
       <main id="main">
+        {% if banner %}
+          <div class="siteBanner" id="siteBanner" data-id="{{ banner.id }}">
+            <p>{% if banner.emoji %}<span class="siteBannerEmoji">{{ banner.emoji }}</span>{% endif %}{{ banner.text }}</p>
+            <button type="button" id="siteBannerClose" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        {% endif %}
         {% block body %}{% endblock %}
         {% block footer %}{% include "components/footer.twig" %}{% endblock %}
       </main>

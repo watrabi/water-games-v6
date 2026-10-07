@@ -1,0 +1,59 @@
+{% extends "admin/base.twig" %}
+{% block adminTitle %}Dashboard{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Dashboard</h1>
+        <p>The site is on the <strong>{{ siteTheme.name }}</strong> theme{% if season %}, because it's {{ themes[season].name }} season{% endif %}. <a href="/admin/settings">Change themes</a></p>
+    </div>
+</div>
+
+<dl class="figures">
+    <div><dt>Accounts</dt><dd>{{ stats.users|number_format }}</dd><dd class="figureNote">{{ stats.newUsers }} this week</dd></div>
+    <div><dt>Games</dt><dd>{{ stats.games|number_format }}</dd><dd class="figureNote">{{ stats.apps }} apps too</dd></div>
+    <div><dt>Plays</dt><dd>{{ stats.plays|compact }}</dd><dd class="figureNote">{{ stats.favorites|number_format }} favorites</dd></div>
+    <div><dt>Tracks</dt><dd>{{ stats.tracks|number_format }}</dd><dd class="figureNote">{{ stats.listens|compact }} listens</dd></div>
+    <div>
+        <dt>AI</dt>
+        {% if ai %}
+            <dd>{{ ai.today|number_format }}</dd><dd class="figureNote">messages today · {{ aiEnabledNow ? 'on' : 'off' }}</dd>
+        {% else %}
+            <dd>–</dd><dd class="figureNote">run migrations</dd>
+        {% endif %}
+    </div>
+</dl>
+
+<div class="adminColumns">
+    <section class="panel">
+        <div class="sectionHeader"><h2>Newest accounts</h2><a href="/admin/users">All users</a></div>
+        <table class="table">
+            <tbody>
+            {% for user in recentUsers %}
+                <tr>
+                    <td><a href="/users/{{ user.username|lower|url_encode }}">{{ user.username }}</a></td>
+                    <td class="muted right">{{ user.registered|date("M j, Y") }}</td>
+                </tr>
+            {% else %}
+                <tr><td class="muted">Nobody yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <div class="sectionHeader"><h2>Most played</h2><a href="/admin/games">All games</a></div>
+        <table class="table">
+            <tbody>
+            {% for game in topGames %}
+                <tr>
+                    <td><a href="/admin/games/{{ game.id }}">{{ game.name }}</a>{% if game.type == 'app' %} <span class="badge">app</span>{% endif %}</td>
+                    <td class="muted right">{{ game.plays|number_format }}</td>
+                </tr>
+            {% else %}
+                <tr><td class="muted">No games yet. <a href="/admin/games/new">Add one</a></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

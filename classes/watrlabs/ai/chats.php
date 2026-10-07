@@ -149,7 +149,7 @@ class chats {
             throw new \InvalidArgumentException("Images have to be under 5MB.");
         }
 
-        $info = getimagesize($file["tmp_name"]);
+        $info = \watrlabs\watrkit\uploads::imageInfo($file["tmp_name"]);
         if(!$info || !in_array($info["mime"], self::ALLOWED_MIME, true)){
             throw new \InvalidArgumentException("That isn't a JPEG, PNG, GIF or WebP image.");
         }

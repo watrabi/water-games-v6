@@ -1,0 +1,30 @@
+{% extends "models/base.twig" %}
+{% block pageName %}{% block adminTitle %}Admin{% endblock %} · Admin{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/admin.css?t=1">
+{% endblock %}
+
+{% block body %}
+<div class="page adminPage">
+    <nav class="adminNav" aria-label="Admin sections">
+        {% set tabs = [
+            ['dashboard', '/admin', 'Dashboard'],
+            ['games', '/admin/games', 'Games'],
+            ['apps', '/admin/games?type=app', 'Apps'],
+            ['music', '/admin/music', 'Music'],
+            ['users', '/admin/users', 'Users'],
+            ['ai', '/admin/ai', 'AI'],
+            ['settings', '/admin/settings', 'Site & themes'],
+        ] %}
+        {% for tab in tabs %}
+            <a href="{{ tab[1] }}"{% if section == tab[0] %} class="active" aria-current="page"{% endif %}>{{ tab[2] }}</a>
+        {% endfor %}
+    </nav>
+
+    {% if flash %}<div class="notice success" role="status">{{ flash }}</div>{% endif %}
+    {% if error is defined and error %}<div class="notice danger" role="alert">{{ error }}</div>{% endif %}
+
+    {% block admin %}{% endblock %}
+</div>
+<script src="/assets/js/admin.js?t=1" defer></script>
+{% endblock %}

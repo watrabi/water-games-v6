@@ -1,0 +1,170 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% set opt = provider.options %}
+{% block adminTitle %}{{ provider.dbId ? provider.name : 'New provider' }}{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>{{ provider.dbId ? provider.name : 'New provider' }}</h1>
+        <p><a href="/admin/ai">Back to AI</a></p>
+    </div>
+    {% if provider.dbId %}{{ m.deleteButton('/admin/ai/providers/' ~ provider.dbId ~ '/delete', 'this provider and its models') }}{% endif %}
+</div>
+
+<form class="panel adminForm" method="post" action="/admin/ai/providers/save" id="providerForm">
+    {{ m.csrf() }}
+    <input type="hidden" name="id" value="{{ provider.dbId }}">
+    <h2>Connection</h2>
+
+    <div class="formRow">
+        <div class="field">
+            <label for="name">Name</label>
+            <input id="name" name="name" value="{{ provider.name }}" maxlength="80" placeholder="e.g. Home Ollama, OpenRouter" required>
+        </div>
+        <div class="field">
+            <label for="type">API</label>
+            <select id="type" name="type">
+                {% for key, label in types %}
+                    <option value="{{ key }}" data-url="{{ defaultUrls[key] }}"{% if provider.type == key %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="base_url">Base URL</label>
+        <input id="base_url" name="base_url" value="{{ provider.url }}" class="mono" placeholder="{{ defaultUrls[provider.type] }}">
+        <p class="hint" data-for="ollama">Where Ollama is running. Leave empty for {{ defaultUrls.ollama }}.</p>
+        <p class="hint" data-for="anthropic">Leave empty for Anthropic's API, or point it at anything that speaks the same Messages API.</p>
+        <p class="hint" data-for="openai">Include the /v1, e.g. https://openrouter.ai/api/v1 or http://localhost:1234/v1. Leave empty for OpenAI.</p>
+    </div>
+
+    <div class="field">
+        <label for="api_key">API key{% if provider.hasKey %} <span class="muted">(one is saved)</span>{% endif %}</label>
+        <input id="api_key" name="api_key" type="password" autocomplete="off" placeholder="{{ provider.hasKey ? 'Leave empty to keep the saved key' : 'Not needed for most local servers' }}">
+        {% if provider.hasKey %}
+            <label class="checkRow"><input type="checkbox" name="clear_key" value="1"><span>Remove the saved key</span></label>
+        {% endif %}
+        <p class="hint">Stored encrypted and never shown again.</p>
+    </div>
+
+    <fieldset class="optionGroup" data-for="anthropic">
+        <legend>Anthropic options</legend>
+        <div class="formRow">
+            <div class="field">
+                <label for="opt_max_tokens_a">Max tokens</label>
+                <input id="opt_max_tokens_a" name="options[anthropic][max_tokens]" type="number" min="1" value="{{ opt.max_tokens ?? '' }}" placeholder="64000">
+            </div>
+            <div class="field">
+                <label for="opt_effort">Effort</label>
+                <select id="opt_effort" name="options[anthropic][effort]">
+                    <option value="">Model default</option>
+                    {% for level in ['low', 'medium', 'high', 'xhigh', 'max'] %}
+                        <option value="{{ level }}"{% if (opt.effort ?? '') == level %} selected{% endif %}>{{ level }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <label class="checkRow"><input type="checkbox" name="options[anthropic][thinking]" value="summarized"{% if (opt.thinking ?? '') == 'summarized' %} checked{% endif %}><span>Show a summary of the model's thinking in the chat</span></label>
+        <label class="checkRow"><input type="checkbox" name="options[anthropic][fallbacks]" value="true"{% if (opt.fallbacks ?? 'true') != 'false' %} checked{% endif %}><span>If a request is declined, let Anthropic retry it on its recommended fallback model <span class="muted">(api.anthropic.com only)</span></span></label>
+    </fieldset>
+
+    <fieldset class="optionGroup" data-for="openai">
+        <legend>OpenAI options</legend>
+        <div class="field narrowField">
+            <label for="opt_max_tokens_o">Max tokens <span class="muted">(optional)</span></label>
+            <input id="opt_max_tokens_o" name="options[openai][max_tokens]" type="number" min="1" value="{{ opt.max_tokens ?? '' }}">
+        </div>
+    </fieldset>
+
+    <fieldset class="optionGroup" data-for="ollama">
+        <legend>Ollama options</legend>
+        <div class="field narrowField">
+            <label for="opt_keep_alive">Keep loaded for <span class="muted">(optional)</span></label>
+            <input id="opt_keep_alive" name="options[ollama][keep_alive]" value="{{ opt.keep_alive ?? '' }}" placeholder="5m">
+            <p class="hint">How long Ollama keeps the model in memory after a reply, like 10m or 1h.</p>
+        </div>
+    </fieldset>
+
+    <label class="checkRow"><input type="checkbox" name="enabled" value="1"{% if provider.enabled %} checked{% endif %}><span>Enabled</span></label>
+
+    <button class="button" type="submit">{{ provider.dbId ? 'Save provider' : 'Add provider' }}</button>
+</form>
+
+{% if provider.dbId %}
+<section class="panel" id="models">
+    <div class="sectionHeader">
+        <h2>Models</h2>
+        <button class="button quiet" type="button" id="fetchModels" data-url="/admin/ai/providers/{{ provider.dbId }}/remote-models"><i class="fa-solid fa-rotate"></i>Fetch available models</button>
+    </div>
+    <p class="muted">The model name has to match what the provider calls it. The label is what people see in the chat.</p>
+
+    <div id="remoteModels" hidden></div>
+
+    {% if provider.models is not empty %}
+    <table class="table modelTable">
+        <thead><tr><th>Model name</th><th>Label</th><th>Images</th><th>Tools</th><th>On</th><th>Order</th><th></th></tr></thead>
+        <tbody>
+        {% for model in provider.models %}
+            {% set f = 'model' ~ model.dbId %}
+            <tr>
+                <td><input form="{{ f }}" name="name" value="{{ model.name }}" class="mono" aria-label="Model name" required></td>
+                <td><input form="{{ f }}" name="label" value="{{ model.label }}" aria-label="Label"></td>
+                <td>
+                    <select form="{{ f }}" name="vision" aria-label="Can read images">
+                        {% for v, l in {auto: 'Auto', yes: 'Yes', no: 'No'} %}<option value="{{ v }}"{% if model.vision == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <select form="{{ f }}" name="tools" aria-label="Can use tools">
+                        {% for v, l in {auto: 'Auto', yes: 'Yes', no: 'No'} %}<option value="{{ v }}"{% if model.tools == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <input form="{{ f }}" type="hidden" name="enabled" value="0">
+                    <input form="{{ f }}" type="checkbox" name="enabled" value="1" aria-label="Enabled"{% if model.enabled %} checked{% endif %}>
+                </td>
+                <td><input form="{{ f }}" name="sort" type="number" value="{{ model.sort ?? 0 }}" class="sortInput" aria-label="Order"></td>
+                <td class="rowActions">
+                    <form id="{{ f }}" method="post" action="/admin/ai/models/save" class="inlineForm">
+                        {{ m.csrf() }}
+                        <input type="hidden" name="id" value="{{ model.dbId }}">
+                        <input type="hidden" name="provider_id" value="{{ provider.dbId }}">
+                        <button type="submit" class="button quiet">Save</button>
+                    </form>
+                    {{ m.deleteButton('/admin/ai/models/' ~ model.dbId ~ '/delete', model.label) }}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <form method="post" action="/admin/ai/models/save" class="addModel" id="addModel">
+        {{ m.csrf() }}
+        <input type="hidden" name="provider_id" value="{{ provider.dbId }}">
+        <h3>Add a model</h3>
+        <div class="formRow">
+            <div class="field">
+                <label for="new_name">Model name</label>
+                <input id="new_name" name="name" class="mono" placeholder="{{ provider.type == 'anthropic' ? 'claude-opus-5-5' : (provider.type == 'ollama' ? 'gemma3:12b' : 'gpt-5') }}" required>
+            </div>
+            <div class="field">
+                <label for="new_label">Label <span class="muted">(optional)</span></label>
+                <input id="new_label" name="label" placeholder="What people see">
+            </div>
+            <div class="field narrowField">
+                <label for="new_vision">Images</label>
+                <select id="new_vision" name="vision"><option value="auto">Auto</option><option value="yes">Yes</option><option value="no">No</option></select>
+            </div>
+            <div class="field narrowField">
+                <label for="new_tools">Tools</label>
+                <select id="new_tools" name="tools"><option value="auto">Auto</option><option value="yes">Yes</option><option value="no">No</option></select>
+            </div>
+        </div>
+        <p class="hint">Auto: Ollama gets asked what the model supports, other APIs are assumed to handle both.</p>
+        <button class="button" type="submit">Add model</button>
+    </form>
+</section>
+{% endif %}
+{% endblock %}

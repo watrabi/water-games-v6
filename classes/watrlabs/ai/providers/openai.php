@@ -32,16 +32,16 @@ class openai extends provider {
             ], $tools);
         }
 
-        if($maxTokens = config::env("OPENAI_MAX_TOKENS")){
+        if($maxTokens = config::option($this->model, "max_tokens")){
             $body["max_tokens"] = (int) $maxTokens;
         }
 
         $headers = [];
-        if($key = config::providerKey("openai")){
+        if($key = $this->model["key"]){
             $headers[] = "Authorization: Bearer " . $key;
         }
 
-        return [config::providerUrl("openai") . "/chat/completions", $headers, $body];
+        return [$this->model["url"] . "/chat/completions", $headers, $body];
     }
 
     private function convertMessages(array $messages){

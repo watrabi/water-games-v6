@@ -1,8 +1,26 @@
 <footer class="footer">
   <span>© watr.lol · {{ eotd() }} · Lucky number: {{ rand(1, 12345678)|number_format }}</span>
-  <nav aria-label="Footer">
-    <a href="/terms">Terms of Service</a>
-    <a href="/privacy">Privacy Policy</a>
-    <a href="/credits">Credits</a>
-  </nav>
+  <div class="footerRight">
+    <label class="footerTheme">
+      <span>Theme</span>
+      <select id="footerTheme" aria-label="Theme">
+        <option value="auto"{% if themePref == 'auto' %} selected{% endif %}>Site default</option>
+        <optgroup label="Themes">
+          {% for item in themes|filter(t => t.kind == 'base') %}
+            <option value="{{ item.id }}"{% if themePref == item.id %} selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Seasonal">
+          {% for item in themes|filter(t => t.kind == 'seasonal') %}
+            <option value="{{ item.id }}"{% if themePref == item.id %} selected{% endif %}>{{ item.name }}</option>
+          {% endfor %}
+        </optgroup>
+      </select>
+    </label>
+    <nav aria-label="Footer">
+      <a href="/terms">Terms of Service</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/credits">Credits</a>
+    </nav>
+  </div>
 </footer>

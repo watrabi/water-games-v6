@@ -82,6 +82,27 @@ $twig->addGlobal('path', strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '
 
 $twig->addGlobal('aiEnabled', \watrlabs\ai\config::enabled());
 
+// themes: which one to draw with, what the person picked, and the list for pickers
+$themeState = \watrlabs\watrkit\themes::resolve($currentuser);
+$twig->addGlobal('theme', $themeState["theme"]);
+$twig->addGlobal('themePref', $themeState["pref"]);
+$twig->addGlobal('themes', \watrlabs\watrkit\themes::all());
+$twig->addGlobal('effectsOn', ($_COOKIE["wg_effects"] ?? "on") !== "off");
+
+// the strip under the navbar: an admin announcement, or a seasonal greeting
+$announcement = trim((string) \watrlabs\watrkit\settings::get("announcement", ""));
+$banner = null;
+if($announcement !== ""){
+    $banner = ["id"=>"a" . substr(md5($announcement), 0, 10), "text"=>$announcement, "emoji"=>null];
+} elseif($themeState["theme"]["kind"] === "seasonal" && \watrlabs\watrkit\settings::bool("seasonal_greeting", true)){
+    $banner = ["id"=>$themeState["theme"]["id"] . date("Y"), "text"=>$themeState["theme"]["greeting"], "emoji"=>$themeState["theme"]["emoji"]];
+}
+if($banner && ($_COOKIE["wg_dismissed"] ?? "") === $banner["id"]){
+    $banner = null;
+}
+$twig->addGlobal('banner', $banner);
+$twig->addGlobal('csrf', \watrlabs\watrkit\csrf::token());
+
 $twig->addGlobal('captcha', [
     "enabled"=>\watrlabs\authentication\security::captchaActive(),
     "siteKey"=>$_ENV["TurnstileSiteKey"] ?? "",

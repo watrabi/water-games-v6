@@ -2,18 +2,25 @@
 
 /* see DESIGN.md before adding colors */
 :root {
-  --deep: #002131;
-  --shelf: #032b40;
+  /* default theme ("deep"), the others live in themes.css. see DESIGN.md */
+  --bg: #002131;
+  --surface: #032b40;
   --raised: #08374f;
   --raised-hover: #0c4361;
-  --current: #01537a;
-  --current-hover: #026a9a;
-  --current-active: #027fb9;
-  --shallows: #7cc4e4;
-  --foam: #F5F1ED;
-  --sand: #A99985;
-  --coral: #f08a7a;
-  --line: rgba(245, 241, 237, 0.1);
+  --accent: #01537a;
+  --accent-hover: #026a9a;
+  --accent-active: #014a6c;
+  --on-accent: #F5F1ED;
+  --link: #7cc4e4;
+  --text: #F5F1ED;
+  --muted: #A99985;
+  --danger: #f08a7a;
+  --line: color-mix(in srgb, var(--text) 10%, transparent);
+  --line-strong: color-mix(in srgb, var(--text) 20%, transparent);
+  --scrim: rgba(0, 16, 24, 0.6);
+  --scrim-strong: rgba(0, 16, 24, 0.85);
+  --code-bg: #0b1620;
+  color-scheme: dark;
 
   --display: 'Archivo', 'Arial Black', sans-serif;
   --body: 'Pliant', 'Segoe UI', Arial, sans-serif;
@@ -30,8 +37,8 @@
 html, body {
   margin: 0;
   height: 100%;
-  background-color: var(--deep);
-  color: var(--foam);
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--body);
   font-size: 15px;
   line-height: 1.5;
@@ -62,7 +69,7 @@ h2 {
 }
 
 a {
-  color: var(--shallows);
+  color: var(--link);
   text-decoration: none;
 }
 
@@ -71,7 +78,7 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--shallows);
+  outline: 2px solid var(--link);
   outline-offset: 2px;
 }
 
@@ -86,7 +93,7 @@ img.emoji {
 }
 
 .muted {
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .sr-only {
@@ -106,7 +113,7 @@ img.emoji {
   gap: 16px;
   height: var(--nav-height);
   padding: 0 16px 0 8px;
-  background-color: var(--shelf);
+  background-color: var(--surface);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
   position: relative;
@@ -116,7 +123,7 @@ img.emoji {
 #sidebarToggle {
   background: none;
   border: none;
-  color: var(--foam);
+  color: var(--text);
   width: 40px;
   height: 40px;
   border-radius: var(--radius);
@@ -133,7 +140,7 @@ img.emoji {
   font-stretch: 125%;
   font-size: 19px;
   font-weight: 900;
-  color: var(--foam);
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -143,7 +150,7 @@ img.emoji {
 
 #branding em {
   font-weight: 900;
-  color: var(--shallows);
+  color: var(--link);
 }
 
 #navSearch {
@@ -158,7 +165,7 @@ img.emoji {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--sand);
+  color: var(--muted);
   font-size: 13px;
   pointer-events: none;
 }
@@ -185,8 +192,8 @@ img.emoji {
   padding: 9px 16px;
   border: 1px solid transparent;
   border-radius: var(--radius);
-  background-color: var(--current);
-  color: var(--foam);
+  background-color: var(--accent);
+  color: var(--on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -196,17 +203,18 @@ img.emoji {
 }
 
 .button:hover {
-  background-color: var(--current-hover);
+  background-color: var(--accent-hover);
   text-decoration: none;
 }
 
 .button:active {
-  background-color: var(--current-active);
+  background-color: var(--accent-active);
 }
 
 .button.quiet {
   background-color: transparent;
   border-color: var(--line);
+  color: var(--text);
 }
 
 .button.quiet:hover {
@@ -225,7 +233,7 @@ input, textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background-color: var(--raised);
-  color: var(--foam);
+  color: var(--text);
   font: inherit;
 }
 
@@ -237,7 +245,7 @@ input[type=range] {
   border: none;
   border-radius: 0;
   background-color: var(--line);
-  accent-color: var(--shallows);
+  accent-color: var(--link);
   cursor: pointer;
 }
 
@@ -246,7 +254,7 @@ input[type=range]::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
   border-radius: 0;
-  background-color: var(--foam);
+  background-color: var(--text);
 }
 
 input[type=range]::-moz-range-thumb {
@@ -254,26 +262,26 @@ input[type=range]::-moz-range-thumb {
   height: 12px;
   border: none;
   border-radius: 0;
-  background-color: var(--foam);
+  background-color: var(--text);
 }
 
 input[type=range]::-moz-range-progress {
   height: 4px;
   border-radius: 0;
-  background-color: var(--shallows);
+  background-color: var(--link);
 }
 
 input::placeholder, textarea::placeholder {
-  color: var(--sand);
+  color: var(--muted);
 }
 
 input:hover, textarea:hover {
-  border-color: rgba(245, 241, 237, 0.2);
+  border-color: var(--line-strong);
 }
 
 input:focus, textarea:focus {
   outline: none;
-  border-color: var(--shallows);
+  border-color: var(--link);
 }
 
 textarea {
@@ -295,7 +303,7 @@ label {
 .hint {
   margin-top: 5px;
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .notice {
@@ -307,15 +315,15 @@ label {
 }
 
 .notice.danger {
-  color: var(--coral);
-  border-color: rgba(240, 138, 122, 0.4);
-  background-color: rgba(240, 138, 122, 0.08);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background-color: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 .notice.success {
-  color: var(--shallows);
-  border-color: rgba(124, 196, 228, 0.4);
-  background-color: rgba(124, 196, 228, 0.08);
+  color: var(--link);
+  border-color: color-mix(in srgb, var(--link) 40%, transparent);
+  background-color: color-mix(in srgb, var(--link) 8%, transparent);
 }
 
 [hidden] {
@@ -336,7 +344,7 @@ label {
   border: none;
   border-radius: var(--radius);
   background: none;
-  color: var(--foam);
+  color: var(--text);
   font: inherit;
   cursor: pointer;
 }
@@ -347,7 +355,7 @@ label {
 
 .navUser i {
   font-size: 11px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .avatar {
@@ -357,8 +365,8 @@ label {
   width: 32px;
   height: 32px;
   border-radius: 0;
-  background-color: var(--sand);
-  color: var(--deep);
+  background-color: var(--muted);
+  color: var(--bg);
   font-weight: 700;
   font-size: 15px;
   flex-shrink: 0;
@@ -380,7 +388,7 @@ label {
   right: 0;
   min-width: 180px;
   padding: 6px;
-  background-color: var(--shelf);
+  background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -394,7 +402,7 @@ label {
   display: block;
   padding: 8px 10px;
   border-radius: 0;
-  color: var(--foam);
+  color: var(--text);
 }
 
 .dropdownItem:hover {
@@ -421,7 +429,7 @@ label {
   width: var(--sidebar-width);
   flex-shrink: 0;
   padding: 12px 8px;
-  background-color: var(--shelf);
+  background-color: var(--surface);
   border-right: 1px solid var(--line);
   overflow-y: auto;
 }
@@ -437,14 +445,14 @@ body.sidebar-closed #sidebar {
   padding: 9px 12px;
   margin-bottom: 2px;
   border-radius: var(--radius);
-  color: var(--foam);
+  color: var(--text);
   font-size: 15px;
 }
 
 .sidebarItem i {
   width: 18px;
   text-align: center;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .sidebarItem:hover {
@@ -454,21 +462,21 @@ body.sidebar-closed #sidebar {
 
 .sidebarItem.active {
   background-color: var(--raised);
-  box-shadow: inset 3px 0 0 var(--shallows);
+  box-shadow: inset 3px 0 0 var(--link);
 }
 
 .sidebarItem.active i {
-  color: var(--shallows);
+  color: var(--link);
 }
 
 .sidebarItem.later {
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .sidebarItem .tag {
   margin-left: auto;
   font-size: 11px;
-  color: var(--sand);
+  color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 0;
   padding: 0 5px;
@@ -477,7 +485,7 @@ body.sidebar-closed #sidebar {
 .sidebarHeading {
   margin: 20px 12px 6px;
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 #main {
@@ -511,7 +519,7 @@ body.sidebar-closed #sidebar {
 
 .pageHeader p {
   margin-top: 6px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 section + section {
@@ -532,7 +540,7 @@ section + section {
 
 .panel {
   padding: 24px;
-  background-color: var(--shelf);
+  background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
@@ -559,7 +567,7 @@ section + section {
 
 .gameTile {
   display: block;
-  color: var(--foam);
+  color: var(--text);
   min-width: 0;
 }
 
@@ -581,7 +589,7 @@ section + section {
   font-stretch: 125%;
   font-weight: 900;
   font-size: 40px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .gameIcon img {
@@ -596,13 +604,13 @@ section + section {
 }
 
 .gameTile:hover .gameIcon {
-  border-color: var(--shallows);
+  border-color: var(--link);
 }
 
 @media (hover: hover) {
   .gameTile:hover .gameIcon {
     transform: translate(-3px, -3px);
-    box-shadow: 3px 3px 0 var(--shallows);
+    box-shadow: 3px 3px 0 var(--link);
   }
 }
 
@@ -620,7 +628,7 @@ section + section {
 
 .gameMeta {
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -633,7 +641,7 @@ section + section {
   padding: 20px;
   border: 1px dashed var(--line);
   border-radius: var(--radius);
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .empty img {
@@ -643,7 +651,7 @@ section + section {
 
 .empty strong {
   display: block;
-  color: var(--foam);
+  color: var(--text);
 }
 
 /* ---------- status pages ---------- */
@@ -664,7 +672,7 @@ section + section {
   font-family: var(--display);
   font-stretch: 125%;
   font-style: italic;
-  color: var(--sand);
+  color: var(--muted);
   font-size: 18px;
 }
 
@@ -709,7 +717,7 @@ section + section {
   padding: 18px 32px;
   border-top: 1px solid var(--line);
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .footer nav {
@@ -718,11 +726,11 @@ section + section {
 }
 
 .footer a {
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .footer a:hover {
-  color: var(--foam);
+  color: var(--text);
 }
 
 /* ---------- music player ---------- */
@@ -730,7 +738,7 @@ section + section {
 .musicPlayer {
   position: relative;
   flex-shrink: 0;
-  background-color: var(--shelf);
+  background-color: var(--surface);
   border-top: 1px solid var(--line);
 }
 
@@ -741,7 +749,7 @@ section + section {
   right: 0;
   width: 100%;
   border-radius: 0;
-  background: linear-gradient(to right, var(--shallows) var(--progress, 0%), var(--line) var(--progress, 0%));
+  background: linear-gradient(to right, var(--link) var(--progress, 0%), var(--line) var(--progress, 0%));
 }
 
 .playerInner {
@@ -758,7 +766,7 @@ section + section {
   gap: 12px;
   min-width: 0;
   width: 260px;
-  color: var(--foam);
+  color: var(--text);
 }
 
 .playerNow:hover {
@@ -779,7 +787,7 @@ section + section {
   overflow: hidden;
   border-radius: 0;
   background-color: var(--raised);
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .playerCover img {
@@ -806,7 +814,7 @@ section + section {
 
 .playerArtist {
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
 }
 
 .playerControls {
@@ -824,7 +832,7 @@ section + section {
   border: none;
   border-radius: 0;
   background: none;
-  color: var(--foam);
+  color: var(--text);
   font-size: 15px;
   cursor: pointer;
 }
@@ -842,17 +850,18 @@ section + section {
 .playerButton.main {
   width: 40px;
   height: 40px;
-  background-color: var(--foam);
-  color: var(--deep);
+  background-color: var(--text);
+  color: var(--bg);
 }
 
 .playerButton.main:hover {
-  background-color: #fff;
+  background-color: var(--text);
+  opacity: 0.85;
 }
 
 .playerTime {
   font-size: 13px;
-  color: var(--sand);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -868,6 +877,33 @@ section + section {
   width: 90px;
 }
 
+/* ---------- sort / filter tabs ---------- */
+
+.sortTabs {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+}
+
+.sortTabs a {
+  padding: 5px 14px;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sortTabs a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sortTabs a.active {
+  background-color: var(--raised);
+  color: var(--text);
+}
+
 /* ---------- inline search (apps, music) ---------- */
 
 .inlineSearch {
@@ -880,7 +916,7 @@ section + section {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--sand);
+  color: var(--muted);
   font-size: 13px;
   pointer-events: none;
 }
@@ -915,7 +951,7 @@ section + section {
     position: absolute;
     inset: 0;
     z-index: 14;
-    background-color: rgba(0, 16, 24, 0.6);
+    background-color: var(--scrim);
   }
 
   #navSearch {
@@ -1056,4 +1092,172 @@ section + section {
     width: 40px;
     height: 40px;
   }
+}
+
+/* ---------- themes: banner, emoji, picker, snow ---------- */
+
+.brandEmoji {
+  margin-left: 6px;
+}
+
+.brandEmoji img.emoji {
+  vertical-align: -0.1em;
+}
+
+.siteBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 32px;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.siteBanner p {
+  flex: 1;
+  min-width: 0;
+}
+
+.siteBannerEmoji {
+  margin-right: 8px;
+}
+
+.siteBanner button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.siteBanner button:hover {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--on-accent) 15%, transparent);
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.footerTheme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.footerTheme select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+#snow {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+@media (max-width: 800px) {
+  .siteBanner {
+    padding-left: 16px;
+  }
+}
+
+/* ---------- theme picker (settings) ---------- */
+
+.themePicker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: none;
+}
+
+.themeOption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.themeOption:hover {
+  border-color: var(--line-strong);
+}
+
+.themeOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.themeOption:has(input:checked) {
+  border-color: var(--link);
+  box-shadow: inset 0 0 0 1px var(--link);
+}
+
+.themeOption:has(input:focus-visible) {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+.themeSwatch {
+  display: flex;
+  height: 28px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+}
+
+.themeSwatch span {
+  flex: 1;
+}
+
+.themeSwatch.auto {
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.themeName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.themeNote {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.checkRow input {
+  width: auto;
+  accent-color: var(--link);
 }

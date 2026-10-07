@@ -1,0 +1,46 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% set noun = type == 'app' ? 'app' : 'game' %}
+{% block adminTitle %}{{ type == 'app' ? 'Apps' : 'Games' }}{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>{{ type == 'app' ? 'Apps' : 'Games' }}</h1>
+        <p>{{ total|number_format }} {{ noun }}{{ total == 1 ? '' : 's' }}{% if search %} matching “{{ search }}”{% endif %}</p>
+    </div>
+    <div class="headerActions">
+        <form class="inlineSearch" method="get">
+            <input type="hidden" name="type" value="{{ type }}">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="adminSearch">Search</label>
+            <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Search by name">
+        </form>
+        <a class="button" href="/admin/games/new?type={{ type }}"><i class="fa-solid fa-plus"></i>Add {{ noun }}</a>
+    </div>
+</div>
+
+{% if rows is empty %}
+    <div class="empty"><img src="/assets/images/BlobEmoji/blobsleeping.png" alt=""><div><strong>Nothing here{% if search %} for that search{% endif %}.</strong><a href="/admin/games/new?type={{ type }}">Add the first {{ noun }}</a></div></div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr><th></th><th>Name</th><th>Path</th><th class="right">Plays</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td class="thumbCell"><span class="adminThumb">{% if row.gameIcon %}<img src="{{ row.gameIcon }}" alt="">{% else %}{{ row.name|first|upper }}{% endif %}</span></td>
+            <td><a href="/admin/games/{{ row.id }}">{{ row.name }}</a></td>
+            <td class="muted mono ellipsis">{{ row.gamePath }}</td>
+            <td class="right">{{ row.plays|number_format }}</td>
+            <td class="rowActions">
+                <a class="button quiet" href="/{{ type == 'app' ? 'apps' : 'games' }}/{{ row.id }}" target="_blank" rel="noopener">Open</a>
+                {{ m.deleteButton('/admin/games/' ~ row.id ~ '/delete', '“' ~ row.name ~ '”') }}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{{ m.pager(page, pages, {type: type, q: search}) }}
+{% endif %}
+{% endblock %}

@@ -15,7 +15,7 @@
     margin-top: 18px;
     max-width: 44ch;
     font-size: 17px;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .landingActions {
@@ -38,7 +38,7 @@
 }
 
 .mosaic .gameIcon:hover {
-    border-color: var(--shallows);
+    border-color: var(--link);
 }
 
 @media (max-width: 900px) {

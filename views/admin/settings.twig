@@ -1,0 +1,76 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Site & themes{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Site & themes</h1>
+        <p>Right now everyone on "Site default" sees <strong>{{ siteTheme.name }}</strong>{% if currentSeason %}, and by the calendar it's {{ themes[currentSeason].name }}{% endif %}.</p>
+    </div>
+</div>
+
+<form class="adminForm" method="post" action="/admin/settings">
+    {{ m.csrf() }}
+
+    <section class="panel">
+        <h2>Default theme</h2>
+        <p class="muted">What the site looks like outside of holidays, for anyone who hasn't picked their own.</p>
+        <fieldset class="themePicker">
+            <legend class="sr-only">Default theme</legend>
+            {% for item in themes|filter(t => t.kind == 'base') %}
+            <label class="themeOption">
+                <input type="radio" name="theme_default" value="{{ item.id }}"{% if s.theme_default == item.id %} checked{% endif %}>
+                <span class="themeSwatch" aria-hidden="true">{% for color in item.swatch %}<span style="background-color: {{ color }}"></span>{% endfor %}</span>
+                <span class="themeName">{{ item.name }}</span>
+                <span class="themeNote">{{ item.description }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+    </section>
+
+    <section class="panel">
+        <h2>Seasonal themes</h2>
+        <p class="muted">They take over for anyone on "Site default" while it's their season. People can still pick any of them by hand.</p>
+
+        <div class="field narrowField wideSelect">
+            <label for="seasonal_mode">Mode</label>
+            <select id="seasonal_mode" name="seasonal_mode">
+                <option value="auto"{% if s.seasonal_mode == 'auto' %} selected{% endif %}>Automatic, by date</option>
+                <option value="off"{% if s.seasonal_mode == 'off' %} selected{% endif %}>Off</option>
+                <optgroup label="Always use">
+                {% for item in themes|filter(t => t.kind == 'seasonal') %}
+                    <option value="{{ item.id }}"{% if s.seasonal_mode == item.id %} selected{% endif %}>{{ item.name }}</option>
+                {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+
+        <table class="table seasonTable">
+            <thead><tr><th>On</th><th>Season</th><th>When</th><th></th></tr></thead>
+            <tbody>
+            {% for item in themes|filter(t => t.kind == 'seasonal') %}
+                <tr>
+                    <td><input type="checkbox" name="seasons[]" value="{{ item.id }}" aria-label="Use {{ item.name }}"{% if item.id in s.seasons_enabled %} checked{% endif %}></td>
+                    <td><span class="miniSwatch" aria-hidden="true">{% for color in item.swatch %}<span style="background-color: {{ color }}"></span>{% endfor %}</span>{{ item.name }} {{ item.emoji }}{% if item.id == currentSeason %} <span class="badge">now</span>{% endif %}</td>
+                    <td class="muted">{{ item.description }}{% if item.effect %} · with {{ item.effect }}{% endif %}</td>
+                    <td class="right"><a href="/?theme={{ item.id }}" target="_blank" rel="noopener">Preview</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <label class="checkRow"><input type="checkbox" name="seasonal_greeting" value="1"{% if s.seasonal_greeting %} checked{% endif %}><span>Show a greeting strip (like “Happy Halloween!”) while a seasonal theme is on</span></label>
+    </section>
+
+    <section class="panel">
+        <h2>Announcement</h2>
+        <p class="muted">A strip across the top of every page. It replaces the seasonal greeting while it's set. People can dismiss it; changing the text shows it again.</p>
+        <div class="field">
+            <label for="announcement">Text</label>
+            <input id="announcement" name="announcement" value="{{ s.announcement }}" maxlength="300" placeholder="Leave empty for no announcement">
+        </div>
+    </section>
+
+    <button class="button" type="submit">Save site settings</button>
+</form>
+{% endblock %}

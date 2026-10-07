@@ -1,0 +1,87 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}AI{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>AI</h1>
+        <p>The chat at <a href="/ai">/ai</a> is <strong>{{ aiLive ? 'on' : 'off' }}</strong>{% if not aiLive and s.enabled %}: it's switched on but there are no enabled models yet{% endif %}.</p>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="sectionHeader">
+        <h2>Providers</h2>
+        <a class="button" href="/admin/ai/providers/new"><i class="fa-solid fa-plus"></i>Add provider</a>
+    </div>
+    <p class="muted">Each one is a server that speaks one of the three APIs: Ollama, Anthropic's or OpenAI's (OpenRouter, LM Studio, vLLM, Groq and most others use OpenAI's).</p>
+
+    {% if providers is empty %}
+        <div class="empty"><img src="/assets/images/BlobEmoji/blobthinking.png" alt=""><div><strong>No providers yet.</strong>Add one, then add the models people can pick.</div></div>
+    {% else %}
+    <table class="table">
+        <thead><tr><th>Name</th><th>Type</th><th>Base URL</th><th class="right">Models</th><th></th></tr></thead>
+        <tbody>
+        {% for p in providers %}
+            <tr>
+                <td>
+                    {% if p.source == 'db' %}<a href="/admin/ai/providers/{{ p.dbId }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
+                    {% if not p.enabled %} <span class="badge">off</span>{% endif %}
+                </td>
+                <td class="muted">{{ p.type }}</td>
+                <td class="muted mono ellipsis">{{ p.url }}</td>
+                <td class="right">{{ p.models|filter(x => x.enabled)|length }}{% if p.models|filter(x => not x.enabled)|length %} <span class="muted">(+{{ p.models|filter(x => not x.enabled)|length }} off)</span>{% endif %}</td>
+                <td class="right muted">{% if p.source == 'env' %}set in .env{% else %}<a href="/admin/ai/providers/{{ p.dbId }}">Edit</a>{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</section>
+
+<form class="panel adminForm" method="post" action="/admin/ai">
+    {{ m.csrf() }}
+    <h2>Settings</h2>
+    <p class="muted">These override the matching AI_* values in .env once saved.</p>
+
+    <label class="checkRow"><input type="checkbox" name="enabled" value="1"{% if s.enabled %} checked{% endif %}><span>Turn the AI chat on</span></label>
+
+    <div class="field wideSelect">
+        <label for="default_model">Default model</label>
+        <select id="default_model" name="default_model">
+            {% for model in allModels %}
+                <option value="{{ model.id }}"{% if s.default_model == model.id %} selected{% endif %}>{{ model.label }}</option>
+            {% else %}
+                <option value="">Add a model first</option>
+            {% endfor %}
+        </select>
+        <p class="hint">What new chats start on. People can switch models from the chat.</p>
+    </div>
+
+    <div class="formRow">
+        <div class="field">
+            <label for="daily_limit">Messages per person per day</label>
+            <input id="daily_limit" name="daily_limit" type="number" min="0" value="{{ s.daily_limit }}">
+            <p class="hint">0 means no limit.</p>
+        </div>
+        <div class="field">
+            <label for="daily_uploads">Images per person per day</label>
+            <input id="daily_uploads" name="daily_uploads" type="number" min="0" value="{{ s.daily_uploads }}">
+        </div>
+    </div>
+
+    <fieldset class="field checkGroup">
+        <legend>Tools the AI can use</legend>
+        {% for key, label in toolNames %}
+            <label class="checkRow"><input type="checkbox" name="tools[]" value="{{ key }}"{% if key in s.tools %} checked{% endif %}><span>{{ label }}{% if key == 'fetch' %} <span class="muted">(only public addresses)</span>{% endif %}</span></label>
+        {% endfor %}
+    </fieldset>
+
+    <div class="field">
+        <label for="system_prompt">Extra instructions <span class="muted">(optional)</span></label>
+        <textarea id="system_prompt" name="system_prompt" maxlength="4000" placeholder="Added to the built in instructions, e.g. “Keep answers family friendly.”">{{ s.system_prompt }}</textarea>
+    </div>
+
+    <button class="button" type="submit">Save AI settings</button>
+</form>
+{% endblock %}

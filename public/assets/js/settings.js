@@ -48,3 +48,16 @@ $("#passwordForm").on("submit", function(event) {
         button.prop("disabled", false);
     });
 });
+
+$("#themeForm").on("submit", function(event) {
+    event.preventDefault();
+
+    $.post("/api/v1/theme", {
+        theme: $(this).find("input[name=theme]:checked").val() || "auto",
+        effects: $("#effectsToggle").is(":checked") ? "on" : "off"
+    }).done(function() {
+        location.reload();
+    }).fail(function(xhr) {
+        showNotice($("#themeMsg"), apiMessage(xhr));
+    });
+});

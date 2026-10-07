@@ -1,28 +1,3 @@
-.sortTabs {
-    display: flex;
-    padding: 3px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background-color: var(--shelf);
-}
-
-.sortTabs a {
-    padding: 5px 14px;
-    border-radius: 0;
-    color: var(--sand);
-    font-size: 14px;
-}
-
-.sortTabs a:hover {
-    color: var(--foam);
-    text-decoration: none;
-}
-
-.sortTabs a.active {
-    background-color: var(--raised);
-    color: var(--foam);
-}
-
 /* the navbar search is hidden on phones, so the games page gets its own */
 .pageSearch {
     display: none;
@@ -108,7 +83,7 @@
 }
 
 #favoriteButton.on i {
-    color: var(--coral);
+    color: var(--danger);
 }
 
 .playDescription {
@@ -121,7 +96,7 @@
 
 .playDescription p {
     max-width: 70ch;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 @media (max-width: 560px) {
@@ -180,19 +155,19 @@
     padding: 8px 10px;
     border: none;
     background: none;
-    color: var(--foam);
+    color: var(--text);
     font: inherit;
     text-align: left;
     cursor: pointer;
 }
 
 .track:hover {
-    background-color: var(--shelf);
+    background-color: var(--surface);
 }
 
 .trackNumber {
     text-align: right;
-    color: var(--sand);
+    color: var(--muted);
     font-size: 14px;
     font-variant-numeric: tabular-nums;
 }
@@ -208,16 +183,16 @@
     font-weight: 900;
     content: "\f04b";
     font-size: 12px;
-    color: var(--foam);
+    color: var(--text);
 }
 
 .track.playing .trackNumber::before {
     content: "\f04c";
-    color: var(--shallows);
+    color: var(--link);
 }
 
 .track.current .trackTitle {
-    color: var(--shallows);
+    color: var(--link);
 }
 
 .trackCover {
@@ -229,7 +204,7 @@
     overflow: hidden;
     border-radius: 0;
     background-color: var(--raised);
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .trackCover img {
@@ -256,7 +231,7 @@
 
 .trackArtist, .trackPlays, .trackDuration {
     font-size: 13px;
-    color: var(--sand);
+    color: var(--muted);
 }
 
 .trackDuration {

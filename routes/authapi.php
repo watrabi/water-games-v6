@@ -35,6 +35,10 @@ $router->group('/api/v1/auth', function($router) {
             return apiError("Username or password incorrect.", 401);
         }
 
+        if(!empty($userInfo->banned)){
+            return apiError("This account has been banned.", 403);
+        }
+
         $db->table("users")->where("id", $userInfo->id)->update([
             "LastIP"=>$security->encryptIp($security::getRequestIp())
         ]);
@@ -105,6 +109,28 @@ $router->group('/api/v1/music', function($router) {
         return ["status"=>"okay"];
     });
 
+});
+
+$router->post("/api/v1/theme", function(){
+    global $currentuser;
+
+    $theme = $_POST["theme"] ?? "auto";
+    if($theme !== "auto" && !\watrlabs\watrkit\themes::exists($theme)){
+        return apiError("That theme doesn't exist.");
+    }
+
+    setcookie("wg_theme", $theme, ["expires"=>time() + 31536000, "path"=>"/", "samesite"=>"Lax"]);
+
+    if(isset($_POST["effects"])){
+        setcookie("wg_effects", $_POST["effects"] === "off" ? "off" : "on", ["expires"=>time() + 31536000, "path"=>"/", "samesite"=>"Lax"]);
+    }
+
+    if($currentuser){
+        $users = new users();
+        $users->update($currentuser->id, ["theme"=>$theme === "auto" ? null : $theme]);
+    }
+
+    return ["status"=>"okay", "theme"=>$theme];
 });
 
 $router->group('/api/v1/account', function($router) {
