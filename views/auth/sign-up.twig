@@ -1,30 +1,52 @@
 {% extends "models/base.twig" %}
-{% block pageName %}Landing{% endblock %}
+{% block pageName %}Sign up{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/authpage.css?t=18">
+<link rel="stylesheet" href="/assets/css/authpage.css?t=31">
+{% if captcha.enabled %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
 {% endblock %}
 
 {% block body %}
-<div id="parentForm">
-    <div id="authText">
-        <h1>Sign Up</h1>
-        <p>or else the centipedes will get you....</p>
-        <iframe id="video" src="https://www.youtube.com/embed/fKD7IsY_ir4?si=P4bA0um1H9W-XWhU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share autoplay" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-    </div>
-    <div class="center" id="authForm">
-        <div id="error-area">
-            <div style="display: none;" class="danger" id="dangermsg">
-                An error occured
-            </div>
+<div class="page authPage">
+    <div class="authText">
+        <h1>Sign up</h1>
+        <p class="muted">or else the centipedes will get you....</p>
+        <div class="authVideo">
+            <iframe src="https://www.youtube.com/embed/fKD7IsY_ir4?si=P4bA0um1H9W-XWhU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" loading="lazy" allowfullscreen></iframe>
         </div>
-        <form id="form">
-            <input id="username" name="username" placeholder="username" required>
-            <input id="email" name="email" placeholder="email (optional)">
-            <input id="password" name="password" placeholder="password" type="password" required>
-            <input id="passwordconf" name="passconf" placeholder="password confirmation" type="password" required>
-            <a class="button" type="submit" value="Sign Up" id="signupButton" onclick="register()">Sign Up</a>
+    </div>
+    <div class="panel authForm">
+        <form id="signupForm" novalidate>
+            <div class="notice danger" id="dangermsg" role="alert" hidden></div>
+            <div class="field">
+                <label for="username">Username</label>
+                <input id="username" name="username" autocomplete="username" maxlength="20" required autofocus>
+                <p class="hint">3 to 20 letters, numbers or underscores.</p>
+            </div>
+            <div class="field">
+                <label for="email">Email <span class="muted">(optional)</span></label>
+                <input id="email" name="email" type="email" autocomplete="email">
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+                <p class="hint">At least 8 characters.</p>
+            </div>
+            <div class="field">
+                <label for="passwordconf">Confirm password</label>
+                <input id="passwordconf" name="passconf" type="password" autocomplete="new-password" required>
+            </div>
+            {% if captcha.enabled %}
+            <div class="field">
+                <div class="cf-turnstile" data-sitekey="{{ captcha.siteKey }}" data-theme="dark"></div>
+            </div>
+            {% endif %}
+            <button class="button" type="submit" id="signupButton">Create account</button>
+            <p class="hint authTerms">By signing up you agree to the <a href="/terms">terms</a>.</p>
         </form>
+        <p class="authSwitch muted">Already have one? <a href="/auth/sign-in">Sign in</a></p>
     </div>
 </div>
-<script src="/assets/js/signup.js?t=2" defer></script>
+<script src="/assets/js/signup.js?t=10" defer></script>
 {% endblock %}

@@ -11,14 +11,14 @@ class storage {
 
     // gets file from storage
     static function getFile(string $fileDir){
-        if(this::doesFileExist($fileDir)){
+        if(self::doesFileExist($fileDir)){
             return file_get_contents(dirname(__DIR__) . '/storage/' . $fileDir);
         }
     }
 
     // this stores a file
     static function storeFile(string $fileDir, $data, $flags){
-        if(this::doesFileExist($fileDir)){
+        if(self::doesFileExist($fileDir)){
             return file_put_contents(dirname(__DIR__) . '/storage/' . $fileDir, $data, $flags);
         }
     }

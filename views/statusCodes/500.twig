@@ -1,11 +1,15 @@
 {% extends "models/base.twig" %}
-{% block pageName %}Landing{% endblock %}
-{% block headerIncludes %}
-{% endblock %}
-
+{% block pageName %}Something broke{% endblock %}
 {% block body %}
-    <div class="container pt-5">
-        <h1 style="margin-bottom: 0.25rem;">500 - Internal Server Error</h1>
-        <p>An error occured on our part. Please try again later.</p>
+<div class="page">
+    <div class="statusPage">
+        <img src="/assets/images/BlobEmoji/blobbroken.png" alt="">
+        <div>
+            <p class="code">500</p>
+            <h1>Something broke on our end.</h1>
+            <p class="muted">It's not you. Give it a minute and try again.</p>
+            <a class="button" href="/">Back to the start</a>
+        </div>
     </div>
+</div>
 {% endblock %}

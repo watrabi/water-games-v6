@@ -1,0 +1,32 @@
+{# shared game tile, use with {% import "components/games.twig" as g %} #}
+{% macro tile(game) %}
+  <a class="gameTile" href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+    <span class="gameIcon">
+      {% if game.gameIcon %}
+        <img src="{{ game.gameIcon }}" alt="" loading="lazy">
+      {% else %}
+        {{ game.name|first|upper }}
+      {% endif %}
+    </span>
+    <p class="gameName" title="{{ game.name }}">{{ game.name }}</p>
+    <p class="gameMeta">{{ game.plays|compact }} {{ game.type == 'app' ? (game.plays == 1 ? 'open' : 'opens') : (game.plays == 1 ? 'play' : 'plays') }}{% if game.favorites %} · {{ game.favorites|compact }} <i class="fa-solid fa-heart" aria-label="favorites"></i>{% endif %}</p>
+  </a>
+{% endmacro %}
+
+{% macro grid(games) %}
+  <div class="gameGrid">
+    {% for game in games %}
+      {{ _self.tile(game) }}
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro empty(blob, title, text) %}
+  <div class="empty">
+    <img src="/assets/images/BlobEmoji/{{ blob }}.png" alt="">
+    <div>
+      <strong>{{ title }}</strong>
+      {{ text|raw }}
+    </div>
+  </div>
+{% endmacro %}

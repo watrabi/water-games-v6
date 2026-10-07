@@ -1,0 +1,29 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}{{ profile.username }}{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="profileHeader">
+        <span class="avatar large">{{ profile.username|first|upper }}</span>
+        <div>
+            <h1>{{ profile.username }}</h1>
+            <p class="muted">Joined {{ profile.registered|date("F Y") }}</p>
+            {% if profile.blurb %}<p class="blurb">{{ profile.blurb }}</p>{% endif %}
+        </div>
+        {% if currentuser and currentuser.id == profile.id %}
+            <a class="button quiet" href="/settings">Edit profile</a>
+        {% endif %}
+    </div>
+
+    <section>
+        <div class="sectionHeader">
+            <h2>Favorite games</h2>
+        </div>
+        {% if favorites is empty %}
+            {{ g.empty('blobthinking', 'No favorites yet.', 'Guess they\'re still deciding.') }}
+        {% else %}
+            {{ g.grid(favorites) }}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

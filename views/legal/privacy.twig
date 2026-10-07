@@ -1,0 +1,32 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Privacy Policy{% endblock %}
+{% block body %}
+<div class="page narrow prose">
+    <h1>Privacy Policy</h1>
+    <p class="muted">What's stored, and why.</p>
+
+    <h2>If you have an account</h2>
+    <ul>
+        <li>Your username, profile blurb, and the date you signed up. These are public on your profile.</li>
+        <li>Your email, only if you gave one. It isn't shown to anyone.</li>
+        <li>Your password, stored as a one-way hash. Nobody can read it, including us.</li>
+        <li>The IP address you signed up from and last signed in from, stored encrypted. It's used to stop people from making piles of alt accounts.</li>
+        <li>The games you've favorited. These are public on your profile.</li>
+    </ul>
+
+    <h2>Cookies</h2>
+    <p>One cookie keeps you signed in. Your browser also remembers whether you collapsed the sidebar. There's no ad tracking.</p>
+
+    <h2>Other services</h2>
+    <p>Some parts of the site load things from other companies, who can see your IP address when they do:</p>
+    <ul>
+        <li>Cloudflare, for the captcha on sign-up</li>
+        <li>YouTube, for the video on the sign-in and sign-up pages</li>
+        <li>Google Fonts, cdnjs, unpkg and jsDelivr, for fonts, icons and emoji</li>
+        <li>Each game, which may load its own scripts or ads</li>
+    </ul>
+
+    <h2>Deleting your account</h2>
+    <p>Ask and your account and everything attached to it will be deleted.</p>
+</div>
+{% endblock %}

@@ -3,31 +3,29 @@ let passwordInput = $("#password");
 let submitBtn = $("#loginButton");
 let errorMsg = $("#dangermsg");
 
-function login() {
+$("#loginForm").on("submit", function(event) {
+    event.preventDefault();
+    errorMsg.prop("hidden", true);
 
-    errorMsg.css("display", "none");
+    if(!usernameInput.val().trim() || !passwordInput.val()){
+        showNotice(errorMsg, "Please make sure both fields are filled out.");
+        return;
+    }
 
-    password = passwordInput.val();
+    submitBtn.prop("disabled", true).text("Signing in...");
 
     $.post("/api/v1/auth/login", {
         username: usernameInput.val(),
         password: passwordInput.val()
-    }).fail(onError).done(didHappen);
-}
-
-function didHappen(data){
-    if(data.status == "okay"){
-        errorMsg.css("display", "none");
-        window.location.href = "/home";
-    } else {
-        errorMsg.text(data.message);
-        errorMsg.css("display", "block");
-    }
-}
-
-function onError() {
-    errorMsg.text("An error occured.");
-    errorMsg.css("display", "block");
-}
-
-$("#sidebar").toggleClass("closed");
+    }).done(function(data) {
+        if(data.status == "okay"){
+            window.location.href = "/home";
+        } else {
+            showNotice(errorMsg, data.message);
+            submitBtn.prop("disabled", false).text("Sign in");
+        }
+    }).fail(function(xhr) {
+        showNotice(errorMsg, apiMessage(xhr));
+        submitBtn.prop("disabled", false).text("Sign in");
+    });
+});

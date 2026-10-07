@@ -11,27 +11,49 @@ class security {
         global $db;
 
         $user = $db->table("users")->where("username", $username)->first();
-        return $user->LastIP;
-        
+
+        if(!$user){
+            return null;
+        }
+
+        if($encrypted){
+            return $user->LastIP;
+        }
+
+        $encryption = new encryption();
+        return $encryption->decrypt($user->LastIP);
+
     }
 
-    // function to detect alts based on a single username
+    // IPs get stored encrypted, this is what goes in the db
+    public function encryptIp(string $ip){
+        $encryption = new encryption();
+        return $encryption->encrypt($ip);
+    }
+
+    // function to detect alts based on a single ip
     public function detectAlts(string $ip) {
         global $db;
 
-        $encryption = new encryption();
+        $encryptedIp = $this->encryptIp($ip);
 
-        $registerAlts = $db->table("users")->where("RegisterIP", $encryption->encrypt($ip))->get();
-        $loginAlts = $db->table("users")->where("LastIP", $encryption->encrypt($ip))->get();
+        $alts = $db->table("users")
+            ->select(["id", "username"])
+            ->where("RegisterIP", $encryptedIp)
+            ->orWhere("LastIP", $encryptedIp)
+            ->get();
 
-        $combinedAlts = array_merge($registerAlts, $loginAlts );
-        $combinedAlts = array_unique($combinedAlts);
+        // dedupe by id since someone can match both columns
+        $unique = [];
+        foreach($alts as $alt){
+            $unique[$alt->id] = $alt;
+        }
 
-        return $combinedAlts;
+        return array_values($unique);
 
     }
 
-    // returns false if more than 5 alts are found
+    // returns true if more than 5 alts are found
     public function hasTooManyAlts($ip){
         $alts = $this->detectAlts($ip);
 
@@ -44,11 +66,53 @@ class security {
     // Retrieved 2026-07-09, License - CC BY-SA 4.0
 
     static function getRequestIp(){
-        if (!empty($_SERVER['CF-Connecting-IP'])) {
-            return $_SERVER['CF-Connecting-IP'];
+        // php exposes request headers as HTTP_*, so CF-Connecting-IP lands here
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return $_SERVER['HTTP_CF_CONNECTING_IP'];
         } else {
             return $_SERVER['REMOTE_ADDR'];
         }
+    }
+
+    // captcha only runs when it's turned on AND both turnstile keys are filled in
+    static function captchaActive(){
+        return filter_var($_ENV["CONFIG_CaptchaEnabled"] ?? false, FILTER_VALIDATE_BOOLEAN)
+            && !empty($_ENV["TurnstileSiteKey"])
+            && !empty($_ENV["PrivateTurnstileKey"]);
+    }
+
+    // checks a cloudflare turnstile token, skipped if captcha isn't active
+    static function verifyCaptcha($token){
+        if(!self::captchaActive()){
+            return true;
+        }
+
+        if(!$token){
+            return false;
+        }
+
+        $context = stream_context_create([
+            "http"=>[
+                "method"=>"POST",
+                "header"=>"Content-Type: application/x-www-form-urlencoded",
+                "content"=>http_build_query([
+                    "secret"=>$_ENV["PrivateTurnstileKey"],
+                    "response"=>$token,
+                    "remoteip"=>self::getRequestIp(),
+                ]),
+                "timeout"=>5,
+            ]
+        ]);
+
+        $response = @file_get_contents("https://challenges.cloudflare.com/turnstile/v0/siteverify", false, $context);
+
+        if($response === false){
+            return false;
+        }
+
+        $result = json_decode($response, true);
+
+        return !empty($result["success"]);
     }
 
 

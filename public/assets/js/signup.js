@@ -1,42 +1,57 @@
 let usernameInput = $("#username");
-let emailInput = $("#email")
+let emailInput = $("#email");
 let passwordInput = $("#password");
 let passwordValInput = $("#passwordconf");
 let submitBtn = $("#signupButton");
 let errorMsg = $("#dangermsg");
 
-function register() {
+function resetButton(){
+    submitBtn.prop("disabled", false).text("Create account");
 
-    errorMsg.css("display", "none");
+    // turnstile tokens are single use
+    if(window.turnstile){
+        turnstile.reset();
+    }
+}
 
-    password = passwordInput.val();
-    passwordConf = passwordValInput.val();
+$("#signupForm").on("submit", function(event) {
+    event.preventDefault();
+    errorMsg.prop("hidden", true);
 
-    if(password != passwordConf){
-        errorMsg.text("Your passwords do not match.");
-        errorMsg.css("display", "block");
+    let username = usernameInput.val().trim();
+    let password = passwordInput.val();
+
+    if(!username || !password){
+        showNotice(errorMsg, "Please make sure the username and password are filled out.");
         return;
     }
 
-    $.post("/api/v1/auth/register", {
-        username: usernameInput.val(),
-        password: passwordInput.val()
-    }).fail(onError).done(didHappen);
-}
-
-function didHappen(data){
-    if(data.status == "okay"){
-        errorMsg.css("display", "none");
-        window.location.href = "/home";
-    } else {
-        errorMsg.text(data.message);
-        errorMsg.css("display", "block");
+    if(password.length < 8){
+        showNotice(errorMsg, "Passwords need to be at least 8 characters.");
+        return;
     }
-}
 
-function onError() {
-    errorMsg.text("An error occured.");
-    errorMsg.css("display", "block");
-}
+    if(password != passwordValInput.val()){
+        showNotice(errorMsg, "Your passwords do not match.");
+        return;
+    }
 
-$("#sidebar").toggleClass("closed");
+    submitBtn.prop("disabled", true).text("Creating account...");
+
+    $.post("/api/v1/auth/register", {
+        username: username,
+        email: emailInput.val().trim(),
+        password: password,
+        "cf-turnstile-response": $("[name='cf-turnstile-response']").val() || ""
+    }).done(function(data) {
+        if(data.status == "okay"){
+            window.location.href = "/home";
+        } else {
+            showNotice(errorMsg, data.message);
+            resetButton();
+        }
+    }).fail(function(xhr) {
+        showNotice(errorMsg, apiMessage(xhr));
+        resetButton();
+    });
+});

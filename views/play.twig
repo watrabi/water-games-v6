@@ -1,0 +1,57 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% set isApp = game.type == 'app' %}
+{% block pageName %}{{ game.name }}{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=12">
+    <meta content="{{ game.name }} on {{ env("APP_NAME") }}" property="og:title"/>
+{% endblock %}
+{% block body %}
+<div class="page playPage">
+    <div class="player" id="player">
+        <iframe id="gameFrame" src="{{ game.gamePath }}" title="{{ game.name }}" allow="fullscreen; gamepad; autoplay" allowfullscreen></iframe>
+    </div>
+
+    <div class="playBar">
+        <div class="playTitle">
+            <span class="gameIcon small">
+                {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
+            </span>
+            <div>
+                <h1>{{ game.name }}</h1>
+                <p class="muted">{{ game.plays|number_format }} {% if isApp %}{{ game.plays == 1 ? 'open' : 'opens' }}{% else %}{{ game.plays == 1 ? 'play' : 'plays' }}{% endif %} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span></p>
+            </div>
+        </div>
+        <div class="playActions">
+            {% if currentuser %}
+                <button class="button quiet{{ favorited ? ' on' : '' }}" id="favoriteButton" data-id="{{ game.id }}" aria-pressed="{{ favorited ? 'true' : 'false' }}">
+                    <i class="fa-{{ favorited ? 'solid' : 'regular' }} fa-heart"></i><span>{{ favorited ? 'Favorited' : 'Favorite' }}</span>
+                </button>
+            {% else %}
+                <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="fa-regular fa-heart"></i>Favorite</a>
+            {% endif %}
+            <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span class="sr-only">Open in a new tab</span></a>
+            <button class="button" id="fullscreenButton"><i class="fa-solid fa-expand"></i>Fullscreen</button>
+        </div>
+    </div>
+    <div class="notice danger" id="playError" role="alert" hidden></div>
+
+    {% if game.description %}
+        <div class="playDescription">
+            <h2>About</h2>
+            <p>{{ game.description|nl2br }}</p>
+        </div>
+    {% endif %}
+
+    {% if related is not empty %}
+    <section>
+        <div class="sectionHeader">
+            <h2>{{ isApp ? 'More apps' : 'Play something else' }}</h2>
+            <a href="/{{ isApp ? 'apps' : 'games' }}">{{ isApp ? 'All apps' : 'All games' }}</a>
+        </div>
+        {{ g.grid(related) }}
+    </section>
+    {% endif %}
+</div>
+<script src="/assets/js/play.js?t=1" defer></script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "models/base.twig" %}
+{% block pageName %}{{ feature }}{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="statusPage">
+        <img src="/assets/images/BlobEmoji/blobsleeping.png" alt="">
+        <div>
+            <p class="code">Not yet</p>
+            <h1>{{ feature }} isn't ready.</h1>
+            <p class="muted">It's being worked on. In the meantime, there are games.</p>
+            <a class="button" href="/games">Go play something</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Apps{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=12">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>{% if search %}Apps matching “{{ search }}”{% else %}Apps{% endif %}</h1>
+            <p>Useful stuff that isn't a game. {{ apps|length }} {{ apps|length == 1 ? 'app' : 'apps' }}{% if search %} · <a href="/apps">clear search</a>{% endif %}</p>
+        </div>
+        <form class="inlineSearch" action="/apps" method="get" role="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="appSearch">Search apps</label>
+            <input id="appSearch" type="search" name="q" placeholder="Search apps" value="{{ search }}">
+        </form>
+    </div>
+
+    {% if apps is empty %}
+        {% if search %}
+            {{ g.empty('blobthinkingeyes', 'Nothing matched that.', '<a href="/apps">See every app</a>.') }}
+        {% else %}
+            {{ g.empty('blobsleeping', 'No apps yet.', 'They\'re on the way.') }}
+        {% endif %}
+    {% else %}
+        {{ g.grid(apps) }}
+    {% endif %}
+</div>
+{% endblock %}

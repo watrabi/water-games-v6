@@ -34,11 +34,9 @@ class Routing {
             http_response_code(302);
         }
 
-        if (filter_var($uri, FILTER_VALIDATE_URL)) {
-            header("Location: $uri");
-            return 'This page has moved. Click <a href="'. $url .'">here</a> to see it.';
-        }
-        
+        header("Location: $url");
+        return 'This page has moved. Click <a href="'. htmlspecialchars($url) .'">here</a> to see it.';
+
     }
 
     public function get(string $uri, callable $callback) {
@@ -50,7 +48,7 @@ class Routing {
     }
     
     public function put(string $uri, callable $callback) {
-        $this->addRoute('POST', $uri, $callback);
+        $this->addRoute('PUT', $uri, $callback);
     }
     
     public function del(string $uri, callable $callback) {
@@ -91,24 +89,20 @@ class Routing {
         $uri = rtrim($uri, '/') ?: '/';
         
         if (isset($this->routes[$method][$uri])) {
-            $method = call_user_func($this->routes[$method][$uri]);
-            if(is_array($method)){
-                header("Content-type: application/json");
-                echo json_encode($method);
-                die();
-            } else {
-                echo $method;
-                return;
-            }
+            return $this->respond(call_user_func($this->routes[$method][$uri]));
         }
         
         if(isset($this->routes[$method])) {
             foreach ($this->routes[$method] as $routepattern => $callback){
+                if(!str_contains($routepattern, '{')){
+                    continue;
+                }
+
                 $regex = $this->convertregex($routepattern);
                 
                 if(preg_match($regex, $uri, $matches)) {
                     array_shift($matches);
-                    return call_user_func_array($callback, $matches);
+                    return $this->respond(call_user_func_array($callback, $matches));
                 }
                 
             }
@@ -123,6 +117,17 @@ class Routing {
         return $this->return_status(404);
     }
 
+    // arrays get sent as json, anything else gets echoed
+    protected function respond($response) {
+        if(is_array($response)){
+            header("Content-type: application/json");
+            echo json_encode($response);
+            die();
+        }
+
+        echo $response;
+    }
+
     public function addrouter($routername) {
         require_once "../routes/{$routername}.php";
     }
@@ -132,8 +137,13 @@ class Routing {
     }
 
     public function return_status($statuscode){
-        echo "$statuscode Error";
         http_response_code($statuscode);
+
+        if($statuscode == 404 && $this->notfound){
+            return call_user_func($this->notfound);
+        }
+
+        echo "$statuscode Error";
     }
     
     protected function convertregex($pattern) {

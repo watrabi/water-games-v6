@@ -1,20 +1,46 @@
 {% extends "models/base.twig" %}
-{% block pageName %}Landing{% endblock %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Free games{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/index.css?t=4">
+<link rel="stylesheet" href="/assets/css/index.css?t=11">
 {% endblock %}
 
 {% block body %}
-<div id="index-div">
-    <div>
-        <h1>{{ env("APP_NAME") }}</h1>
-        <p>The games were <span class="italicized">meant</span> to be played.</p>
-        <a href="/auth/sign-up" class="button">Sign Up</a>
-        <a href="/auth/sign-in" class="button">Sign In</a>
-    </div>
-    <div>
-        
-    </div>
-</div>
+<div class="page">
+    <div class="landing">
+        <div class="landingText">
+            <h1>The games were <span class="italicized">meant</span> to be played.</h1>
+            {% set extras = [] %}
+            {% if appCount %}{% set extras = extras|merge([appCount ~ (appCount == 1 ? ' app' : ' apps')]) %}{% endif %}
+            {% if trackCount %}{% set extras = extras|merge([trackCount ~ (trackCount == 1 ? ' song' : ' songs')]) %}{% endif %}
+            <p>{{ gameCount }} browser games{% if extras %}, plus {{ extras|join(' and ') }}{% endif %}. No downloads, nothing to install. Make an account if you want to keep favorites, or just start playing.</p>
+            <div class="landingActions">
+                <a href="/games" class="button">Browse games</a>
+                <a href="/auth/sign-up" class="button quiet">Sign up</a>
+            </div>
+        </div>
 
+        {% if popular|length >= 4 %}
+        <div class="mosaic" aria-hidden="true">
+            {% for game in popular|slice(0, 9) %}
+                <a href="/games/{{ game.id }}" tabindex="-1" class="gameIcon">
+                    {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
+                </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <section>
+        <div class="sectionHeader">
+            <h2>Popular right now</h2>
+            <a href="/games">See all games</a>
+        </div>
+        {% if popular is empty %}
+            {{ g.empty('blobsleeping', 'No games yet.', 'Check back soon, they\'re on the way.') }}
+        {% else %}
+            {{ g.grid(popular) }}
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

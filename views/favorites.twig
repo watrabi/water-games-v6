@@ -1,0 +1,19 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Favorites{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>Favorites</h1>
+            <p>{{ games|length }} saved {{ games|length == 1 ? 'game' : 'games' }}</p>
+        </div>
+    </div>
+
+    {% if games is empty %}
+        {{ g.empty('blobheart', 'Nothing saved yet.', 'Hit the heart on any game to save it. <a href="/games">Find something to play</a>.') }}
+    {% else %}
+        {{ g.grid(games) }}
+    {% endif %}
+</div>
+{% endblock %}

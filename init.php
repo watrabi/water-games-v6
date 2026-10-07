@@ -65,13 +65,22 @@ $twig = new \Twig\Environment($loader, [
 
 // makes it so you can do {{ env('KEY') }} in twig to get env variables
 $twig->addFunction(new \Twig\TwigFunction('env', function ($key) {
-    return $_ENV[$key];
+    return $_ENV[$key] ?? null;
 }));
 
 
 // adds localization & eotd stuff
 $twig->addExtension(new app\twig\twigLocalization());
 $twig->addExtension(new app\twig\eotdHelper());
+$twig->addExtension(new app\twig\siteHelper());
 
 // this defines all the current info for the user
 $twig->addGlobal('currentuser', $currentuser);
+
+// used by the sidebar to highlight where you are
+$twig->addGlobal('path', strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/')) ?: '/');
+
+$twig->addGlobal('captcha', [
+    "enabled"=>\watrlabs\authentication\security::captchaActive(),
+    "siteKey"=>$_ENV["TurnstileSiteKey"] ?? "",
+]);

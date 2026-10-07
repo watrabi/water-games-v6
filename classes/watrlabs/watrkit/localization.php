@@ -1,7 +1,6 @@
 <?php
 
-namespace localization\watrkit;
-use watrlabs\users;
+namespace watrlabs\watrkit;
 
 class localization
 {
@@ -12,9 +11,10 @@ class localization
     {
         self::$locale = $locale;
 
-        $file = "../storage/translations/{$locale}.json";
+        $file = __DIR__ . "/../../../storage/translations/{$locale}.json";
 
-        self::$translations = json_decode(file_get_contents($file), true);
+        // no translation file yet means every key falls back to [key]
+        self::$translations = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
     }
 
     private static function resolve(string $key)
