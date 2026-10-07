@@ -1,0 +1,68 @@
+{# friends + chat tray, bottom left. chat.js fills it in #}
+<div class="chatTray" id="chatTray">
+  <button type="button" class="chatToggle" id="chatToggle" aria-expanded="false" aria-controls="chatPanel">
+    <i class="fa-solid fa-comments"></i><span class="chatToggleLabel">Chat</span>
+    <span class="chatBadge" id="chatBadge" hidden></span>
+  </button>
+
+  <section class="chatPanel" id="chatPanel" aria-label="Chat" hidden>
+    <header class="chatHead">
+      <button type="button" class="chatIcon" id="chatBack" aria-label="Back to friends" hidden><i class="fa-solid fa-arrow-left"></i></button>
+      <div class="chatTitle">
+        <span id="chatTitle">Friends</span>
+        <span class="chatSub" id="chatSub"></span>
+      </div>
+      <details class="chatMenu" id="chatMenu" hidden>
+        <summary class="chatIcon" aria-label="More options"><i class="fa-solid fa-ellipsis"></i></summary>
+        <div class="chatMenuItems">
+          <a id="chatProfileLink" href="#">View profile</a>
+          <button type="button" data-convo-act="remove">Unfriend</button>
+          <button type="button" data-convo-act="block">Block</button>
+        </div>
+      </details>
+      <button type="button" class="chatIcon" id="chatClose" aria-label="Close chat"><i class="fa-solid fa-minus"></i></button>
+    </header>
+
+    <div class="chatView" id="chatHome">
+      <form class="chatSearch" id="chatSearchForm" role="search">
+        <i class="fa-solid fa-user-plus"></i>
+        <label class="sr-only" for="chatSearch">Add friends by username</label>
+        <input id="chatSearch" type="search" placeholder="Add friends by username" autocomplete="off" maxlength="20">
+      </form>
+      <div class="chatList" id="chatResults" hidden></div>
+      <div class="chatList" id="chatRequests"></div>
+      <div class="chatList" id="chatFriends"></div>
+    </div>
+
+    <div class="chatView chatConvoView" id="chatConvo" hidden>
+      <div class="chatMessages" id="chatMessages" aria-live="polite"></div>
+      <p class="chatNotice" id="chatNotice" hidden></p>
+      <form class="chatComposer" id="chatComposer">
+        <div class="chatAttachment" id="chatAttachment" hidden></div>
+        <div class="chatComposerRow">
+          <button type="button" class="chatIcon" id="chatImageButton" aria-label="Send an image"><i class="fa-solid fa-image"></i></button>
+          <input type="file" id="chatFile" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+          <label class="sr-only" for="chatInput">Message</label>
+          <textarea id="chatInput" rows="1" maxlength="1000" placeholder="Message"></textarea>
+          <button type="submit" class="chatIcon chatSend" id="chatSend" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </form>
+    </div>
+
+    <form class="chatReport" id="chatReport" hidden>
+      <h3>Report this message</h3>
+      <blockquote id="chatReportQuote"></blockquote>
+      <fieldset id="chatReportReasons">
+        <legend class="sr-only">Why are you reporting it?</legend>
+      </fieldset>
+      <label for="chatReportDetails">Anything else? <span class="muted">(optional)</span></label>
+      <textarea id="chatReportDetails" maxlength="1000"></textarea>
+      <p class="chatReportNote">A moderator will see this message and the ones around it. They won't tell the other person who reported it.</p>
+      <div class="chatReportActions">
+        <button type="button" class="button quiet" id="chatReportCancel">Cancel</button>
+        <button type="submit" class="button" id="chatReportSend">Send report</button>
+      </div>
+    </form>
+  </section>
+</div>
+<script src="/assets/js/chat.js?t=1" defer></script>

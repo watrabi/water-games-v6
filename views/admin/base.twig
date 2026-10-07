@@ -13,11 +13,12 @@
             ['apps', '/admin/games?type=app', 'Apps'],
             ['music', '/admin/music', 'Music'],
             ['users', '/admin/users', 'Users'],
+            ['reports', '/admin/reports', 'Reports'],
             ['ai', '/admin/ai', 'AI'],
             ['settings', '/admin/settings', 'Site & themes'],
         ] %}
         {% for tab in tabs %}
-            <a href="{{ tab[1] }}"{% if section == tab[0] %} class="active" aria-current="page"{% endif %}>{{ tab[2] }}</a>
+            <a href="{{ tab[1] }}"{% if section == tab[0] %} class="active" aria-current="page"{% endif %}>{{ tab[2] }}{% if tab[0] == 'reports' and openReports %} <span class="navCount">{{ openReports }}</span>{% endif %}</a>
         {% endfor %}
     </nav>
 

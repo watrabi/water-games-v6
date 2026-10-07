@@ -38,6 +38,19 @@ after that you can make other people admins from the panel. it covers:
 uploads go to `public/uploads/`, which the web server needs to be able to write to.
 big audio files also need `upload_max_filesize` / `post_max_size` raised in php.ini.
 
+# friends + chat
+signed in people get a chat tray in the bottom left. they can find people by username, send friend requests, and
+message friends (only friends, like roblox). messages can have an image. it stays open on the same chat as you move
+between pages.
+
+- **reports**: hover a message from someone else and hit the flag. reports land in admin panel → Reports with the
+  messages around it, where you can dismiss, remove the message, or remove it and ban the sender
+- **blocking**: from the tray's ··· menu or someone's profile. blocked people can't find you, request you or message you
+- **filter**: admin panel → Site & themes → Chat filter. listed words get replaced with #### when a message is sent
+- **limits**: 20 messages a minute, 40 images a day, 200 friends
+- chat images are stored in `storage/private/chat/` and only shown to the two people in the chat (and admins)
+- there's no websocket server, the tray polls: every 3s with a chat open, slower otherwise, 45s in a background tab
+
 # themes
 four themes people can pick (Deep, Abyss, Reef, Foam) plus seasonal ones that switch on by date:
 New Year, Valentine's, St. Patrick's, Easter, Halloween and Christmas (with snow).
@@ -94,8 +107,8 @@ if something else buffers responses (gzip on `text/event-stream`, some proxies) 
 at the end instead of streaming.
 
 # notes
-- run migrations after pulling, there are new `favorites`, `tracks`, `settings` and `ai_*` tables, a `type` column on
-  `games` and `admin` / `banned` / `theme` columns on `users`
+- run migrations after pulling, there are new `favorites`, `tracks`, `settings`, `ai_*`, `friendships`, `blocks` and
+  `chat_*` tables, a `type` column on `games` and `admin` / `banned` / `theme` / `last_seen` columns on `users`
 - the turnstile captcha on sign up only turns on when `CONFIG_CaptchaEnabled=true` AND both turnstile keys are set
 - signup/login IPs are stored encrypted with `encryptionKey`/`encryptionIv` so the alt limit can match them
 - `/randTest` and `/auth/isAuthed` only exist when `APP_DEBUG=true`

@@ -39,6 +39,9 @@ const ADMIN_MESSAGES = [
     "admin"=>"They're an admin now.",
     "unadmin"=>"They're not an admin anymore.",
     "signedout"=>"Signed out of every device.",
+    "dismissed"=>"Report dismissed.",
+    "removed"=>"Message removed.",
+    "removedbanned"=>"Message removed and the sender is banned.",
 ];
 
 function adminRedirect(string $url, ?string $message = null){
@@ -56,6 +59,7 @@ function adminRender(string $view, string $section, array $data = []){
 
     echo $twig->render("admin/$view.twig", array_merge([
         "section"=>$section,
+        "openReports"=>\watrlabs\social\chat::openReports(),
         "flash"=>ADMIN_MESSAGES[$_GET["msg"] ?? ""] ?? null,
     ], $data));
 }
@@ -441,6 +445,7 @@ $router->group('/admin', function($router){
                 "seasons_enabled"=>themes::enabledSeasons(),
                 "seasonal_greeting"=>settings::bool("seasonal_greeting", true),
                 "announcement"=>settings::get("announcement", ""),
+                "chat_filter"=>settings::get("chat_filter", ""),
             ],
             "currentSeason"=>themes::currentSeason(),
             "siteTheme"=>themes::get(themes::siteTheme()),
@@ -461,8 +466,94 @@ $router->group('/admin', function($router){
 
         settings::set("seasonal_greeting", !empty($_POST["seasonal_greeting"]));
         settings::set("announcement", mb_substr(trim(preg_replace('/\s+/', ' ', $_POST["announcement"] ?? "")), 0, 300));
+        settings::set("chat_filter", mb_substr(trim($_POST["chat_filter"] ?? ""), 0, 20000));
 
         adminRedirect("/admin/settings", "saved");
+    });
+
+    // ---------- chat reports ----------
+
+    $router->get("/reports", function(){
+        global $db;
+
+        $status = $_GET["status"] ?? "open";
+        $status = in_array($status, ["open", "dismissed", "actioned"], true) ? $status : "open";
+        $page = adminPage();
+
+        $total = $db->table("chat_reports")->where("status", $status)->count();
+        $rows = $db->query(
+            "SELECT r.*, m.sender_id, m.recipient_id, m.body, m.image_id, m.created AS sent, m.deleted,
+                    s.username AS sender_name, s.banned AS sender_banned, rp.username AS reporter_name, h.username AS handler_name
+             FROM chat_reports r
+             INNER JOIN chat_messages m ON m.id = r.message_id
+             LEFT JOIN users s ON s.id = m.sender_id
+             LEFT JOIN users rp ON rp.id = r.reporter_id
+             LEFT JOIN users h ON h.id = r.handled_by
+             WHERE r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
+            [$status]
+        )->get();
+
+        // the few messages either side, so the moderator sees what it was in reply to
+        foreach($rows as $row){
+            $around = $db->query(
+                "SELECT m.id, m.sender_id, m.body, m.image_id, m.created, m.deleted, u.username FROM chat_messages m
+                 LEFT JOIN users u ON u.id = m.sender_id
+                 WHERE ((m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?))
+                 AND m.id BETWEEN ? AND ? ORDER BY m.id ASC",
+                [$row->sender_id, $row->recipient_id, $row->recipient_id, $row->sender_id, $row->message_id - 400, $row->message_id + 400]
+            )->get();
+
+            $index = array_search((int) $row->message_id, array_map(fn($m) => (int) $m->id, $around));
+            $row->context = $index === false ? [] : array_slice($around, max(0, $index - 5), 11);
+        }
+
+        adminRender("reports", "reports", [
+            "rows"=>$rows,
+            "status"=>$status,
+            "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
+            "page"=>$page,
+            "pages"=>max(1, (int) ceil($total / 25)),
+            "total"=>$total,
+        ]);
+    });
+
+    $router->post("/reports/{id}/action", function($id){
+        global $db;
+        global $currentuser;
+        requireAdminPost();
+
+        $report = $db->table("chat_reports")->where("id", (int) $id)->first();
+        $action = $_POST["action"] ?? "";
+
+        if(!$report){
+            adminRedirect("/admin/reports");
+        }
+
+        $message = $db->table("chat_messages")->where("id", $report->message_id)->first();
+        $handled = ["handled_by"=>$currentuser->id, "handled_at"=>time()];
+
+        if($action === "dismiss"){
+            $db->table("chat_reports")->where("id", $report->id)->update(["status"=>"dismissed", "action"=>"dismissed"] + $handled);
+            adminRedirect("/admin/reports", "dismissed");
+        }
+
+        if(($action === "remove" || $action === "ban") && $message){
+            $db->table("chat_messages")->where("id", $message->id)->update(["deleted"=>1]);
+
+            // every open report on this message is settled by the same decision
+            $db->table("chat_reports")->where("message_id", $message->id)->where("status", "open")
+                ->update(["status"=>"actioned", "action"=>$action === "ban" ? "removed, sender banned" : "removed"] + $handled);
+
+            if($action === "ban" && (int) $message->sender_id !== (int) $currentuser->id){
+                $db->table("users")->where("id", $message->sender_id)->update(["banned"=>1]);
+                $db->table("sessions")->where("userid", $message->sender_id)->delete();
+                adminRedirect("/admin/reports", "removedbanned");
+            }
+
+            adminRedirect("/admin/reports", "removed");
+        }
+
+        adminRedirect("/admin/reports");
     });
 
     // ---------- ai: settings, providers, models ----------

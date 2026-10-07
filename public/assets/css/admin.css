@@ -438,3 +438,104 @@ form.adminForm > .panel:last-of-type {
         max-width: 140px;
     }
 }
+
+/* ---------- reports ---------- */
+
+.navCount {
+    display: inline-block;
+    min-width: 18px;
+    margin-left: 4px;
+    padding: 0 5px;
+    background-color: var(--danger);
+    color: var(--bg);
+    font-size: 11px;
+    text-align: center;
+}
+
+.reportCard + .reportCard {
+    margin-top: 16px;
+}
+
+.reportHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.reportDetails {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--muted);
+    background-color: var(--bg);
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+
+.reportWho {
+    margin: 12px 0 6px;
+    font-size: 13px;
+}
+
+.reportContext {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    background-color: var(--bg);
+    font-size: 14px;
+}
+
+.reportContext li {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.reportContext li:last-child {
+    border-bottom: none;
+}
+
+.reportContext li.reported {
+    background-color: color-mix(in srgb, var(--danger) 12%, transparent);
+    box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.reportAuthor {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fromSender .reportAuthor {
+    color: var(--danger);
+}
+
+.reportBody {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.reportBody img {
+    display: block;
+    max-width: 220px;
+    max-height: 160px;
+    margin-bottom: 4px;
+}
+
+.reportWhen {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+    .reportContext li {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+}

@@ -71,6 +71,15 @@
         </div>
     </section>
 
+    <section class="panel">
+        <h2>Chat filter</h2>
+        <p class="muted">Words to hide in friend chat. Matching whole words get replaced with #### when a message is sent. One per line, or separated with commas.</p>
+        <div class="field">
+            <label for="chat_filter">Blocked words</label>
+            <textarea id="chat_filter" name="chat_filter" rows="5" class="mono">{{ s.chat_filter }}</textarea>
+        </div>
+    </section>
+
     <button class="button" type="submit">Save site settings</button>
 </form>
 {% endblock %}

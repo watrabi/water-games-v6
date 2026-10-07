@@ -7,11 +7,35 @@
         <span class="avatar large">{{ profile.username|first|upper }}</span>
         <div>
             <h1>{{ profile.username }}</h1>
-            <p class="muted">Joined {{ profile.registered|date("F Y") }}</p>
+            <p class="muted">Joined {{ profile.registered|date("F Y") }} · {{ friendCount }} friend{{ friendCount == 1 ? '' : 's' }}</p>
             {% if profile.blurb %}<p class="blurb">{{ profile.blurb }}</p>{% endif %}
         </div>
         {% if currentuser and currentuser.id == profile.id %}
             <a class="button quiet" href="/settings">Edit profile</a>
+        {% elseif currentuser and relation and relation != 'blockedby' %}
+            <div class="friendActions" id="friendActions" data-id="{{ profile.id }}" data-username="{{ profile.username }}" data-relation="{{ relation }}">
+                {% if relation == 'friends' %}
+                    <button class="button" type="button" data-chat><i class="fa-solid fa-comment"></i>Message</button>
+                {% elseif relation == 'incoming' %}
+                    <button class="button" type="button" data-act="accept">Accept friend request</button>
+                    <button class="button quiet" type="button" data-act="decline">Decline</button>
+                {% elseif relation == 'outgoing' %}
+                    <button class="button quiet" type="button" data-act="cancel">Request sent · Cancel</button>
+                {% elseif relation == 'blocked' %}
+                    <button class="button quiet" type="button" data-act="unblock">Unblock</button>
+                {% else %}
+                    <button class="button" type="button" data-act="request"><i class="fa-solid fa-user-plus"></i>Add friend</button>
+                {% endif %}
+                {% if relation != 'blocked' %}
+                <details class="moreMenu">
+                    <summary class="button quiet" aria-label="More"><i class="fa-solid fa-ellipsis"></i></summary>
+                    <div class="moreMenuItems">
+                        {% if relation == 'friends' %}<button type="button" data-act="remove" data-confirm="Unfriend {{ profile.username }}?">Unfriend</button>{% endif %}
+                        <button type="button" data-act="block" data-confirm="Block {{ profile.username }}? They won't be able to message you or send you friend requests.">Block</button>
+                    </div>
+                </details>
+                {% endif %}
+            </div>
         {% endif %}
     </div>
 

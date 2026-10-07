@@ -1,0 +1,75 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Reports{% endblock %}
+
+{% macro action(report, action, label, danger, confirm) %}
+  <form method="post" action="/admin/reports/{{ report.id }}/action" class="inlineForm"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="action" value="{{ action }}">
+    <button type="submit" class="button{{ danger ? ' quiet danger' : ' quiet' }}">{{ label }}</button>
+  </form>
+{% endmacro %}
+{% import _self as r %}
+
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Reports</h1>
+        <p>{{ total|number_format }} {{ status }} report{{ total == 1 ? '' : 's' }}{% if status == 'open' %}, oldest first{% endif %}</p>
+    </div>
+    <nav class="sortTabs" aria-label="Report status">
+        {% for key, label in {open: 'Open', actioned: 'Acted on', dismissed: 'Dismissed'} %}
+            <a href="?status={{ key }}"{% if status == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+</div>
+
+{% if rows is empty %}
+    <div class="empty"><img src="/assets/images/BlobEmoji/blobcool.png" alt=""><div><strong>Nothing to look at.</strong>{% if status == 'open' %}No open reports right now.{% endif %}</div></div>
+{% endif %}
+
+{% for report in rows %}
+<article class="panel reportCard">
+    <header class="reportHead">
+        <div>
+            <strong>{{ reasons[report.reason] ?? report.reason }}</strong>
+            <span class="muted">· reported by <a href="/users/{{ report.reporter_name|lower|url_encode }}">{{ report.reporter_name }}</a> {{ report.created|date("M j, g:i A") }}</span>
+        </div>
+        {% if report.status == 'open' %}
+        <div class="rowActions">
+            {{ r.action(report, 'dismiss', 'Dismiss', false, null) }}
+            {{ r.action(report, 'remove', 'Remove message', true, null) }}
+            {% if not report.sender_banned %}
+                {{ r.action(report, 'ban', 'Remove + ban ' ~ report.sender_name, true, 'Remove the message and ban ' ~ report.sender_name ~ '? They\'ll be signed out everywhere.') }}
+            {% endif %}
+        </div>
+        {% else %}
+            <span class="muted">{{ report.action ?: report.status }}{% if report.handler_name %} by {{ report.handler_name }}{% endif %}{% if report.handled_at %}, {{ report.handled_at|date("M j") }}{% endif %}</span>
+        {% endif %}
+    </header>
+
+    {% if report.details %}<p class="reportDetails">“{{ report.details }}”</p>{% endif %}
+
+    <p class="muted reportWho">
+        From <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
+        to {{ report.reporter_name }}. The conversation around it:
+    </p>
+
+    <ol class="reportContext">
+        {% for msg in report.context %}
+            <li class="{{ msg.id == report.message_id ? 'reported' : '' }}{{ msg.sender_id == report.sender_id ? ' fromSender' : '' }}">
+                <span class="reportAuthor">{{ msg.username }}</span>
+                <span class="reportBody">
+                    {% if msg.image_id %}<a href="/chat/images/{{ msg.image_id }}" target="_blank" rel="noopener"><img src="/chat/images/{{ msg.image_id }}" alt="Image in the chat"></a>{% endif %}
+                    {% if msg.body %}<span class="reportText">{{ msg.body }}</span>{% endif %}
+                    {% if msg.deleted %}<span class="badge">removed</span>{% endif %}
+                </span>
+                <span class="reportWhen">{{ msg.created|date("M j, g:i A") }}</span>
+            </li>
+        {% endfor %}
+    </ol>
+</article>
+{% endfor %}
+
+{{ m.pager(page, pages, {status: status}) }}
+{% endblock %}

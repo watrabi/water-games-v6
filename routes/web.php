@@ -194,11 +194,26 @@ $router->get("/users/{username}", function($username){
         return $router->return_status(404);
     }
 
+    global $currentuser;
+    global $db;
     $games = new games();
+
+    $relation = null;
+    $friendCount = 0;
+    try {
+        $relation = $currentuser ? (new \watrlabs\social\friends())->relation((int) $currentuser->id, (int) $profile->id) : null;
+        $friendCount = $db->table("friendships")->where("status", "accepted")->where(function($q) use ($profile){
+            $q->where("requester_id", $profile->id)->orWhere("addressee_id", $profile->id);
+        })->count();
+    } catch (\Throwable $e) {
+        // friends tables arrive with the migration
+    }
 
     echo $twig->render('profile.twig', [
         "profile"=>$profile,
         "favorites"=>$games->favoritesFor($profile->id, 24),
+        "relation"=>$relation,
+        "friendCount"=>$friendCount,
     ]);
 });
 
