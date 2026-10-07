@@ -31,7 +31,9 @@ let state = {
     attachment: null,   // {id, url, uploading}
     pollTimer: null,
     lastRequests: 0,
-    lastStateLoad: 0
+    lastStateLoad: 0,
+    realtime: null,     // {url, token} when the websocket server is set up
+    live: false         // websocket connected
 };
 
 // ---------- helpers ----------
@@ -216,7 +218,9 @@ function applyState(data){
     }
     state.loaded = true;
     state.lastStateLoad = Date.now();
+    state.realtime = data.realtime || null;
     renderHome();
+    connect();
 
     if(state.convo && state.friends[state.convo]){
         updateConvoHeader();
@@ -337,6 +341,7 @@ function openConvo(id, name){
     document.getElementById("chatMenu").hidden = false;
     document.getElementById("chatMenu").open = false;
     tray.messages.replaceChildren(el("p", "chatEmpty", "Loading..."));
+    document.getElementById("chatSub").classList.remove("typing");
     updateConvoHeader();
     clearAttachment();
     remember();
@@ -772,9 +777,210 @@ document.querySelectorAll("[data-convo-act]").forEach(function(item) {
     });
 });
 
-// ---------- polling ----------
+// ---------- incoming messages (shared by the websocket and polling) ----------
+
+function resort(){
+    state.order.sort((a, b) =>
+        (state.friends[b].lastMessage || 0) - (state.friends[a].lastMessage || 0)
+        || (state.friends[b].online - state.friends[a].online)
+        || state.friends[a].username.localeCompare(state.friends[b].username)
+    );
+}
+
+function refreshLists(){
+    if(!tray.home.hidden){
+        renderHome();
+    } else {
+        updateBadge();
+    }
+}
+
+function viewingConvo(){
+    return state.convo && !tray.panel.hidden && !document.hidden;
+}
+
+// new messages: add the ones for the open chat, bump unread counts for the rest.
+// countUnread is for the websocket, where nothing else tells us the counts
+function receive(messages, countUnread){
+    if(!messages.length){
+        return;
+    }
+
+    let stick = nearBottom();
+    let forConvo = [];
+
+    messages.forEach(function(message) {
+        let fresh = message.id > state.lastId;
+        state.lastId = Math.max(state.lastId, message.id);
+
+        let other = message.from === state.me.id ? message.to : message.from;
+        let friend = state.friends[other];
+        if(friend){
+            friend.lastMessage = message.id;
+        }
+
+        if(state.convo === other){
+            forConvo.push(message);
+            if(message.from === other){
+                hideTyping();
+            }
+        }
+
+        if(countUnread && fresh && friend && message.from === other && !(viewingConvo() && state.convo === other)){
+            friend.unread = (friend.unread || 0) + 1;
+        }
+    });
+
+    if(forConvo.length){
+        addMessages(forConvo, false);
+        if(stick){
+            scrollToEnd();
+        }
+    }
+
+    // reading it now counts as read
+    if(viewingConvo() && forConvo.some(m => m.from === state.convo)){
+        if(state.friends[state.convo]){
+            state.friends[state.convo].unread = 0;
+        }
+        api("POST", "/api/v1/social/read/" + state.convo).catch(() => {});
+    }
+
+    resort();
+    refreshLists();
+}
+
+// ---------- realtime (websocket) ----------
+
+let socket = null;
+let socketTries = 0;
+let typingTimer = null;
+let lastTypingSent = 0;
+
+function connect(){
+    if(!state.realtime || socket){
+        return;
+    }
+
+    let url = state.realtime.url + (state.realtime.url.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(state.realtime.token);
+
+    try {
+        socket = new WebSocket(url);
+    } catch (e) {
+        socket = null;
+        return;
+    }
+
+    socket.addEventListener("open", function() {
+        socketTries = 0;
+        state.live = true;
+        // catch anything sent while we were connecting, then relax the polling
+        schedulePoll(0);
+    });
+
+    socket.addEventListener("message", function(event) {
+        let data;
+        try { data = JSON.parse(event.data); } catch (e) { return; }
+        handleLive(data);
+    });
+
+    socket.addEventListener("close", function() {
+        socket = null;
+        state.live = false;
+        schedulePoll(0);
+
+        // back off: 1s, 2s, 4s ... up to 30s. after a few failures the token may have expired, get a new one
+        socketTries++;
+        let wait = Math.min(30000, 1000 * Math.pow(2, socketTries - 1));
+        setTimeout(function() {
+            if(socketTries >= 3){
+                loadState().then(connect).catch(() => {});
+            } else {
+                connect();
+            }
+        }, wait);
+    });
+
+    socket.addEventListener("error", () => {});
+}
+
+function handleLive(data){
+    switch(data.type){
+        case "message":
+            receive([data.message], true);
+            break;
+
+        case "read":
+            if(data.of === state.me.id){
+                // they read what you sent
+                state.seen[data.by] = Math.max(state.seen[data.by] || 0, data.lastId);
+                if(state.convo === data.by){
+                    updateSeen();
+                }
+            } else if(data.by === state.me.id && state.friends[data.of]){
+                // you read it in another tab
+                state.friends[data.of].unread = 0;
+                refreshLists();
+            }
+            break;
+
+        case "friends":
+            loadState();
+            break;
+
+        case "deleted":
+            let row = tray.messages.querySelector('.chatMsg[data-id="' + Number(data.id) + '"]');
+            if(row){
+                let bubble = row.querySelector(".chatBubble");
+                bubble.className = "chatBubble removed";
+                bubble.textContent = "Removed by a moderator";
+                let flag = row.querySelector(".chatFlag");
+                if(flag){
+                    flag.remove();
+                }
+            }
+            break;
+
+        case "typing":
+            if(state.convo === data.from && state.friends[data.from]){
+                showTyping();
+            }
+            break;
+    }
+}
+
+function showTyping(){
+    document.getElementById("chatSub").textContent = "typing...";
+    document.getElementById("chatSub").classList.add("typing");
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(hideTyping, 4000);
+}
+
+function hideTyping(){
+    clearTimeout(typingTimer);
+    let sub = document.getElementById("chatSub");
+    if(sub.classList.contains("typing")){
+        sub.classList.remove("typing");
+        updateConvoHeader();
+    }
+}
+
+tray.input.addEventListener("input", function() {
+    if(!socket || socket.readyState !== WebSocket.OPEN || !state.convo || !tray.input.value.trim()){
+        return;
+    }
+    let now = Date.now();
+    if(now - lastTypingSent > 2000){
+        lastTypingSent = now;
+        socket.send(JSON.stringify({ type: "typing", to: state.convo }));
+    }
+});
+
+// ---------- polling (the fallback, and presence) ----------
 
 function pollDelay(){
+    // with the websocket up, polling only keeps online dots and counts fresh
+    if(state.live) return document.hidden ? 120000 : 60000;
     if(document.hidden) return 45000;
     if(tray.panel.hidden) return 15000;
     if(state.convo) return 3000;
@@ -792,65 +998,28 @@ function poll(){
     }
 
     api("GET", "/api/v1/social/poll?since=" + state.lastId).then(function(data) {
-        let stick = nearBottom();
-        let forConvo = [];
-
-        data.messages.forEach(function(message) {
-            state.lastId = Math.max(state.lastId, message.id);
-            let other = message.from === state.me.id ? message.to : message.from;
-            if(state.friends[other]){
-                state.friends[other].lastMessage = message.id;
-            }
-            if(state.convo === other){
-                forConvo.push(message);
-            }
-        });
-
         state.seen = data.seen || {};
         let online = new Set(data.online);
-        let changedOrder = data.messages.length > 0;
 
         Object.values(state.friends).forEach(function(friend) {
             friend.online = online.has(friend.id);
             friend.unread = data.unread[friend.id] || 0;
         });
 
-        let viewing = state.convo && !tray.panel.hidden && !document.hidden;
-
-        if(forConvo.length){
-            addMessages(forConvo, false);
-            if(stick){
-                scrollToEnd();
-            }
-        }
-
-        // reading it now counts as read
-        if(viewing && state.friends[state.convo] && state.friends[state.convo].unread){
-            state.friends[state.convo].unread = 0;
-            api("POST", "/api/v1/social/read/" + state.convo).catch(() => {});
-        }
+        receive(data.messages, false);
 
         if(state.convo){
             updateSeen();
-            updateConvoHeader();
+            if(!document.getElementById("chatSub").classList.contains("typing")){
+                updateConvoHeader();
+            }
         }
 
         // new friend requests (or friends accepting yours) need the full lists, so does a stale list
         if(data.requests !== state.lastRequests || Date.now() - state.lastStateLoad > 60000){
             loadState();
         } else {
-            if(changedOrder){
-                state.order.sort((a, b) =>
-                    (state.friends[b].lastMessage || 0) - (state.friends[a].lastMessage || 0)
-                    || (state.friends[b].online - state.friends[a].online)
-                    || state.friends[a].username.localeCompare(state.friends[b].username)
-                );
-            }
-            if(!tray.home.hidden){
-                renderHome();
-            } else {
-                updateBadge();
-            }
+            refreshLists();
         }
     }).catch(function() {}).finally(function() {
         schedulePoll();
@@ -859,7 +1028,7 @@ function poll(){
 
 document.addEventListener("visibilitychange", function() {
     if(!document.hidden){
-        schedulePoll(0);
+        schedulePoll(state.live ? undefined : 0);
     }
 });
 
@@ -910,33 +1079,33 @@ document.addEventListener("keydown", function(event) {
     }
 });
 
-// profile pages: add friend / accept / message buttons
-let profileActions = document.getElementById("friendActions");
-if(profileActions){
-    profileActions.addEventListener("click", function(event) {
-        let target = event.target.closest("[data-act], [data-chat]");
-        if(!target){
-            return;
-        }
+// profile pages: add friend / accept / message buttons. delegated, since profiles can arrive by in-page navigation
+document.addEventListener("click", function(event) {
+    let target = event.target.closest("#friendActions [data-act], #friendActions [data-chat]");
+    if(!target){
+        return;
+    }
 
-        if(target.hasAttribute("data-chat")){
-            openConvo(profileActions.dataset.id, profileActions.dataset.username);
-            return;
-        }
+    let box = target.closest("#friendActions");
 
-        if(target.dataset.confirm && !confirm(target.dataset.confirm)){
-            return;
-        }
+    if(target.hasAttribute("data-chat")){
+        openConvo(box.dataset.id, box.dataset.username);
+        return;
+    }
 
-        target.disabled = true;
-        api("POST", "/api/v1/social/friends/" + profileActions.dataset.id + "/" + target.dataset.act).then(function() {
-            location.reload();
-        }).catch(function(error) {
-            alert(error.message);
-            target.disabled = false;
-        });
+    if(target.dataset.confirm && !confirm(target.dataset.confirm)){
+        return;
+    }
+
+    target.disabled = true;
+    api("POST", "/api/v1/social/friends/" + box.dataset.id + "/" + target.dataset.act).then(function() {
+        loadState();
+        window.watrNav ? window.watrNav.reload() : location.reload();
+    }).catch(function(error) {
+        alert(error.message);
+        target.disabled = false;
     });
-}
+});
 
 // pick up where the last page left off
 window.watrChat = { open: openConvo };

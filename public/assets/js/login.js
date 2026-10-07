@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 let usernameInput = $("#username");
 let passwordInput = $("#password");
 let submitBtn = $("#loginButton");
@@ -29,3 +32,5 @@ $("#loginForm").on("submit", function(event) {
         submitBtn.prop("disabled", false).text("Sign in");
     });
 });
+
+})();

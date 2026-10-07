@@ -1261,3 +1261,16 @@ section + section {
   width: auto;
   accent-color: var(--link);
 }
+
+/* ---------- in-page navigation ---------- */
+
+/* only kicks in if a page takes more than a moment to arrive */
+body.navigating #main {
+  opacity: 0.55;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+#main:focus {
+  outline: none;
+}

@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 // track list on /music: clicking a row plays from there, the rest of the list becomes the queue
 
 function pageTracks(){
@@ -43,5 +46,8 @@ $("#shuffleAll").on("click", function() {
     window.watrMusic.playQueue(tracks, 0);
 });
 
-$(document).on("music:change music:state", markCurrent);
+// namespaced so coming back to this page replaces the listener instead of adding another
+$(document).off(".musicpage").on("music:change.musicpage music:state.musicpage", markCurrent);
 markCurrent();
+
+})();

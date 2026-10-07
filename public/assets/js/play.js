@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 let favoriteButton = $("#favoriteButton");
 let playError = $("#playError");
 
@@ -31,3 +34,5 @@ favoriteButton.on("click", function() {
         favoriteButton.prop("disabled", false);
     });
 });
+
+})();

@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 let blurbInput = $("#blurb");
 let blurbMsg = $("#blurbMsg");
 let passwordMsg = $("#passwordMsg");
@@ -61,3 +64,5 @@ $("#themeForm").on("submit", function(event) {
         showNotice($("#themeMsg"), apiMessage(xhr));
     });
 });
+
+})();

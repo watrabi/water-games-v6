@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 // small helpers for the admin panel. every form still works without this
 
 // "are you sure" on deletes, bans and the like
@@ -154,3 +157,5 @@ if(fetchButton){
         });
     });
 }
+
+})();

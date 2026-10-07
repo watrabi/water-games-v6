@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 // the /ai chat page
 
 const aiData = JSON.parse(document.getElementById("aiData").textContent);
@@ -917,6 +920,13 @@ modelSelect.addEventListener("change", function() {
 
 // ---------- start ----------
 
+// leaving the page mid answer: stop reading the stream (the server still saves what it has)
+document.addEventListener("watr:leave", function() {
+    if(ai.controller){
+        ai.controller.abort();
+    }
+}, { once: true });
+
 // deferred scripts run in order, so marked / dompurify / hljs are loaded by now
 if(aiData.messages.length){
     renderSaved(aiData.messages);
@@ -928,3 +938,5 @@ updateSendState();
 if(!touchInput){
     input.focus();
 }
+
+})();

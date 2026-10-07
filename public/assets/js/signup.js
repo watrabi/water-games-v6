@@ -1,3 +1,6 @@
+// runs again on every visit (pages load in place), so everything stays inside this function
+(function(){
+
 let usernameInput = $("#username");
 let emailInput = $("#email");
 let passwordInput = $("#password");
@@ -55,3 +58,5 @@ $("#signupForm").on("submit", function(event) {
         resetButton();
     });
 });
+
+})();

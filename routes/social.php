@@ -56,6 +56,7 @@ $router->group('/api/v1/social', function($router){
             "blocked"=>$friends->blockedList($me->id),
             "lastId"=>(int) ($last[0]->lastid ?? 0),
             "reasons"=>chat::REPORT_REASONS,
+            "realtime"=>\watrlabs\social\realtime::clientConfig((int) $me->id),
         ];
     });
 

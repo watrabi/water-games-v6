@@ -49,7 +49,42 @@ between pages.
 - **filter**: admin panel → Site & themes → Chat filter. listed words get replaced with #### when a message is sent
 - **limits**: 20 messages a minute, 40 images a day, 200 friends
 - chat images are stored in `storage/private/chat/` and only shown to the two people in the chat (and admins)
-- there's no websocket server, the tray polls: every 3s with a chat open, slower otherwise, 45s in a background tab
+- with the realtime server running (below) messages, "seen", "typing..." and removals show up instantly. without it
+  the tray polls instead: every 3s with a chat open, slower otherwise, 45s in a background tab
+
+# realtime server
+`realtime/` is a small node websocket server. PHP still saves everything and checks who's allowed to message who;
+after saving, it tells node "send this to user 12" and node pushes it to that person's open tabs. node never touches
+the database. browsers sign in to it with a token PHP signs, so pick a long random secret:
+
+```bash
+cd realtime
+npm install --omit=dev
+REALTIME_SECRET="same-as-.env" ALLOWED_ORIGINS="https://watr.lol" node server.js
+```
+then in the site's `.env`: `REALTIME_URL="wss://watr.lol/ws"`, `REALTIME_SECRET="same-as-node"`
+(and `REALTIME_INTERNAL_URL` if node isn't on `http://127.0.0.1:3001`).
+
+it listens on 127.0.0.1:3001 by default, so put it behind the web server for `wss://`. nginx:
+```nginx
+location /ws {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 120s;
+}
+```
+apache (mod_proxy_wstunnel): `ProxyPass /ws ws://127.0.0.1:3001/`
+
+keep it running with systemd, pm2, or whatever you like (`pm2 start server.js --name watr-realtime`). `GET /health`
+answers without the secret if you want to monitor it. if node goes down, chat quietly falls back to polling.
+
+# page loading
+links and search forms load the next page in place (fetch + swap the main area), so the music player and chat
+tray never reload. anything unusual (a file link, a different site build after a deploy, an error) falls back to a
+normal page load. put `data-reload` on a link or form to always do a full load. page scripts run again each time
+their page is shown, so new ones should keep their variables inside a function like the existing ones do.
 
 # themes
 four themes people can pick (Deep, Abyss, Reef, Foam) plus seasonal ones that switch on by date:

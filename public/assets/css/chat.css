@@ -750,3 +750,8 @@ a.chatName {
     from { transform: translateY(8px); opacity: 0; }
     to { transform: none; opacity: 1; }
 }
+
+.chatSub.typing {
+    color: var(--link);
+    font-style: italic;
+}

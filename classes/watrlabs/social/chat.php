@@ -65,7 +65,12 @@ class chat {
             "created"=>time(),
         ]);
 
-        return $this->shape($db->table("chat_messages")->where("id", $id)->first());
+        $message = $this->shape($db->table("chat_messages")->where("id", $id)->first());
+
+        // both sides: the other person, and your own other tabs
+        realtime::publish([$me, $other], ["type"=>"message", "message"=>$message]);
+
+        return $message;
     }
 
     // swaps blocked words for #### (whole words, any case). the list is set in the admin panel
@@ -101,11 +106,20 @@ class chat {
     public function markRead(int $me, int $other){
         global $db;
 
+        $unread = $db->table("chat_messages")->where("sender_id", $other)->where("recipient_id", $me)->whereNull("read_at")->count();
+        if(!$unread){
+            return;
+        }
+
         $db->table("chat_messages")
             ->where("sender_id", $other)
             ->where("recipient_id", $me)
             ->whereNull("read_at")
             ->update(["read_at"=>time()]);
+
+        // lets the sender's chat show "Seen" right away, and clears your unread count in other tabs
+        $last = $db->query("SELECT MAX(id) AS lastid FROM chat_messages WHERE sender_id = ? AND recipient_id = ?", [$other, $me])->get();
+        realtime::publish([$other, $me], ["type"=>"read", "by"=>$me, "of"=>$other, "lastId"=>(int) ($last[0]->lastid ?? 0)]);
     }
 
     // everything new since the last check, plus who's online. also marks you as online

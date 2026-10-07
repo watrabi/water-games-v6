@@ -539,6 +539,7 @@ $router->group('/admin', function($router){
 
         if(($action === "remove" || $action === "ban") && $message){
             $db->table("chat_messages")->where("id", $message->id)->update(["deleted"=>1]);
+            \watrlabs\social\realtime::publish([$message->sender_id, $message->recipient_id], ["type"=>"deleted", "id"=>(int) $message->id]);
 
             // every open report on this message is settled by the same decision
             $db->table("chat_reports")->where("message_id", $message->id)->where("status", "open")

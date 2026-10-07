@@ -71,8 +71,15 @@ class friends {
         })->count();
     }
 
-    // runs one of the friend actions, returns the new relation or throws with a message for the person
+    // runs one of the friend actions, returns the new relation or throws with a message for the person.
+    // both people's trays get told to refresh their lists
     public function act(int $me, int $other, string $action){
+        $relation = $this->apply($me, $other, $action);
+        realtime::publish([$me, $other], ["type"=>"friends"]);
+        return $relation;
+    }
+
+    private function apply(int $me, int $other, string $action){
         global $db;
 
         $target = $db->table("users")->select(["id", "banned"])->where("id", $other)->first();
@@ -94,7 +101,7 @@ class friends {
                     return $relation;
                 }
                 if($relation === "incoming"){
-                    return $this->act($me, $other, "accept");
+                    return $this->apply($me, $other, "accept");
                 }
                 if($this->countFriends($me) >= self::MAX_FRIENDS){
                     throw new \InvalidArgumentException("You've hit the limit of " . self::MAX_FRIENDS . " friends.");
@@ -163,10 +170,12 @@ class friends {
             $last[(int) $row->other] = (int) $row->lastid;
         }
 
+        $connected = realtime::onlineIds();
+
         $friends = array_map(fn($row) => [
             "id"=>(int) $row->id,
             "username"=>$row->username,
-            "online"=>self::isOnline($row->last_seen),
+            "online"=>self::isOnline($row->last_seen) || in_array((int) $row->id, $connected, true),
             "lastSeen"=>$row->last_seen ? (int) $row->last_seen : null,
             "unread"=>$unread[(int) $row->id] ?? 0,
             "lastMessage"=>$last[(int) $row->id] ?? 0,

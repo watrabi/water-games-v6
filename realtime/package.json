@@ -1,0 +1,16 @@
+{
+  "name": "watr-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Websocket push for Water Games chat. PHP saves everything; this only delivers it.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
