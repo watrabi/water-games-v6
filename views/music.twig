@@ -1,0 +1,61 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Music{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=12">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>{% if search %}Music matching “{{ search }}”{% else %}Music{% endif %}</h1>
+            <p>Keeps playing while you browse. {{ tracks|length }} {{ tracks|length == 1 ? 'track' : 'tracks' }}{% if search %} · <a href="/music?sort={{ sort }}">clear search</a>{% endif %}</p>
+        </div>
+        <div class="musicTools">
+            <form class="inlineSearch" action="/music" method="get" role="search">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <label class="sr-only" for="musicSearch">Search music</label>
+                <input id="musicSearch" type="search" name="q" placeholder="Song or artist" value="{{ search }}">
+            </form>
+            <nav class="sortTabs" aria-label="Sort tracks">
+                {% for key, label in {popular: 'Popular', newest: 'Newest', title: 'A–Z'} %}
+                    <a href="/music?sort={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"{% if sort == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+                {% endfor %}
+            </nav>
+        </div>
+    </div>
+
+    {% if tracks is empty %}
+        {% if search %}
+            {{ g.empty('blobthinkingeyes', 'Nothing matched that.', 'Try the artist name, or <a href="/music">see everything</a>.') }}
+        {% else %}
+            {{ g.empty('blobsleeping', 'No music yet.', 'Tracks are on the way.') }}
+        {% endif %}
+    {% else %}
+        <div class="trackActions">
+            <button class="button" id="playAll"><i class="fa-solid fa-play"></i>Play all</button>
+            <button class="button quiet" id="shuffleAll"><i class="fa-solid fa-shuffle"></i>Shuffle</button>
+        </div>
+        <ol class="trackList" id="trackList">
+            {% for track in tracks %}
+            <li>
+                <button class="track" data-track="{{ {id: track.id, title: track.title, artist: track.artist, src: track.filePath, cover: track.coverPath}|json_encode|e('html_attr') }}">
+                    <span class="trackNumber">{{ loop.index }}</span>
+                    <span class="trackCover">
+                        {% if track.coverPath %}<img src="{{ track.coverPath }}" alt="" loading="lazy">{% else %}<i class="fa-solid fa-music"></i>{% endif %}
+                    </span>
+                    <span class="trackInfo">
+                        <span class="trackTitle">{{ track.title }}</span>
+                        <span class="trackArtist">{{ track.artist ?: 'Unknown artist' }}</span>
+                    </span>
+                    <span class="trackPlays">{{ track.plays|compact }} {{ track.plays == 1 ? 'play' : 'plays' }}</span>
+                    <span class="trackDuration">{% if track.duration %}{{ (track.duration // 60) }}:{{ '%02d'|format(track.duration % 60) }}{% endif %}</span>
+                </button>
+            </li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+</div>
+<script src="/assets/js/musicpage.js?t=1" defer></script>
+{% endblock %}

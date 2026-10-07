@@ -3,6 +3,7 @@ use watrlabs\encryption;
 use watrlabs\authentication\sessions;
 use watrlabs\games\games;
 use watrlabs\users\users;
+use watrlabs\music\music;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -67,6 +68,8 @@ $router->get("/", function() {
     echo $twig->render('default.twig', [
         "popular"=>$games->list("popular", null, 9),
         "gameCount"=>$games->count(),
+        "appCount"=>$games->count("app"),
+        "trackCount"=>(new music())->count(),
     ]);
 });
 
@@ -105,13 +108,14 @@ $router->get("/games", function(){
 
 });
 
-$router->get("/games/{id}", function($id){
+// games and apps share the player page, only the type + wording changes
+function renderPlayer($id, $type){
     global $twig;
     global $router;
     global $currentuser;
 
     $games = new games();
-    $game = ctype_digit($id) ? $games->get((int) $id) : null;
+    $game = ctype_digit($id) ? $games->get((int) $id, $type) : null;
 
     if(!$game){
         return $router->return_status(404);
@@ -123,7 +127,46 @@ $router->get("/games/{id}", function($id){
     echo $twig->render('play.twig', [
         "game"=>$game,
         "favorited"=>$currentuser ? $games->isFavorited($currentuser->id, $game->id) : false,
-        "related"=>$games->related($game->id),
+        "related"=>$games->related($game->id, $type),
+    ]);
+}
+
+$router->get("/games/{id}", function($id){
+    return renderPlayer($id, "game");
+});
+
+$router->get("/apps", function(){
+    global $twig;
+
+    $games = new games();
+    $search = trim($_GET["q"] ?? "");
+
+    echo $twig->render('apps.twig', [
+        "apps"=>$games->list("popular", $search, 200, "app"),
+        "search"=>$search,
+    ]);
+});
+
+$router->get("/apps/{id}", function($id){
+    return renderPlayer($id, "app");
+});
+
+$router->get("/music", function(){
+    global $twig;
+
+    $music = new music();
+
+    $sort = $_GET["sort"] ?? "popular";
+    if(!in_array($sort, music::sortOptions())){
+        $sort = "popular";
+    }
+
+    $search = trim($_GET["q"] ?? "");
+
+    echo $twig->render('music.twig', [
+        "tracks"=>$music->list($sort, $search),
+        "sort"=>$sort,
+        "search"=>$search,
     ]);
 });
 
@@ -198,8 +241,6 @@ $router->get("/auth/logout", function(){
 // sidebar stuff that isn't built yet
 $comingSoon = [
     "/proxy"=>"Proxy",
-    "/apps"=>"Apps",
-    "/music"=>"Music",
 ];
 
 foreach($comingSoon as $path => $name){

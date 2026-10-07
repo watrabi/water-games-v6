@@ -10,12 +10,12 @@
     {{ nav.item('/', 'fa-solid fa-house', 'Home', here) }}
   {% endif %}
   {{ nav.item('/games', 'fa-solid fa-gamepad', 'Games', here, '/games/') }}
+  {{ nav.item('/apps', 'fa-solid fa-table-cells-large', 'Apps', here, '/apps/') }}
+  {{ nav.item('/music', 'fa-solid fa-music', 'Music', here) }}
   {% if currentuser %}
     {{ nav.item('/favorites', 'fa-solid fa-heart', 'Favorites', here) }}
   {% endif %}
 
   <p class="sidebarHeading">Coming later</p>
   <a class="sidebarItem later{{ here == '/proxy' ? ' active' : '' }}" href="/proxy"><i class="fa-brands fa-chrome"></i>Proxy<span class="tag">soon</span></a>
-  <a class="sidebarItem later{{ here == '/apps' ? ' active' : '' }}" href="/apps"><i class="fa-brands fa-windows"></i>Apps<span class="tag">soon</span></a>
-  <a class="sidebarItem later{{ here == '/music' ? ' active' : '' }}" href="/music"><i class="fa-solid fa-music"></i>Music<span class="tag">soon</span></a>
 </nav>

@@ -5,7 +5,7 @@ namespace watrlabs\games;
 class games {
 
     // every list query goes through this so cards always have a favorites count
-    private const SELECT = "SELECT g.id, g.name, g.description, g.gamePath, g.gameIcon, g.plays,
+    private const SELECT = "SELECT g.id, g.type, g.name, g.description, g.gamePath, g.gameIcon, g.plays,
         (SELECT COUNT(*) FROM favorites f WHERE f.gameid = g.id) AS favorites
         FROM games g";
 
@@ -19,15 +19,16 @@ class games {
         return array_keys(self::SORTS);
     }
 
-    public function list(string $sort = "popular", ?string $search = null, int $limit = 200){
+    // type is 'game' or 'app'
+    public function list(string $sort = "popular", ?string $search = null, int $limit = 200, string $type = "game"){
         global $db;
 
         $order = self::SORTS[$sort] ?? self::SORTS["popular"];
-        $sql = self::SELECT;
-        $bindings = [];
+        $sql = self::SELECT . " WHERE g.type = ?";
+        $bindings = [$type];
 
         if($search !== null && $search !== ""){
-            $sql .= " WHERE g.name LIKE ?";
+            $sql .= " AND g.name LIKE ?";
             $bindings[] = "%" . addcslashes($search, "%_\\") . "%";
         }
 
@@ -36,19 +37,27 @@ class games {
         return $db->query($sql, $bindings)->get();
     }
 
-    public function get(int $id){
+    public function get(int $id, ?string $type = null){
         global $db;
 
-        $result = $db->query(self::SELECT . " WHERE g.id = ?", [$id])->get();
+        $sql = self::SELECT . " WHERE g.id = ?";
+        $bindings = [$id];
+
+        if($type){
+            $sql .= " AND g.type = ?";
+            $bindings[] = $type;
+        }
+
+        $result = $db->query($sql, $bindings)->get();
 
         return $result[0] ?? null;
     }
 
-    // a few other games to show next to the one being played
-    public function related(int $excludeId, int $limit = 6){
+    // a few others of the same type to show next to the one being played
+    public function related(int $excludeId, string $type = "game", int $limit = 6){
         global $db;
 
-        return $db->query(self::SELECT . " WHERE g.id <> ? ORDER BY g.plays DESC LIMIT " . max(1, $limit), [$excludeId])->get();
+        return $db->query(self::SELECT . " WHERE g.id <> ? AND g.type = ? ORDER BY g.plays DESC LIMIT " . max(1, $limit), [$excludeId, $type])->get();
     }
 
     public function favoritesFor(int $userId, int $limit = 200){
@@ -61,10 +70,10 @@ class games {
         )->get();
     }
 
-    public function count(){
+    public function count(string $type = "game"){
         global $db;
 
-        return $db->table("games")->count();
+        return $db->table("games")->where("type", $type)->count();
     }
 
     public function addPlay(int $id){

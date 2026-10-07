@@ -4,6 +4,7 @@ use watrlabs\authentication\registration;
 use watrlabs\authentication\security;
 use watrlabs\games\games;
 use watrlabs\users\users;
+use watrlabs\music\music;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -84,6 +85,24 @@ $router->group('/api/v1/games', function($router) {
             "favorited"=>$favorited,
             "favorites"=>$games->favoriteCount((int) $gameId),
         ];
+    });
+
+});
+
+$router->group('/api/v1/music', function($router) {
+
+    // the player calls this once each time a track starts
+    $router->post("/play", function(){
+        $trackId = $_POST["id"] ?? "";
+        $music = new music();
+
+        if(!ctype_digit((string) $trackId) || !$music->get((int) $trackId)){
+            return apiError("That track doesn't exist.", 404);
+        }
+
+        $music->addPlay((int) $trackId);
+
+        return ["status"=>"okay"];
     });
 
 });

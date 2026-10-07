@@ -7,8 +7,8 @@
 }
 
 .landingText h1 {
-    font-size: 52px;
-    max-width: 12ch;
+    font-size: 46px;
+    max-width: 13ch;
 }
 
 .landingText p {
@@ -49,7 +49,7 @@
     }
 
     .landingText h1 {
-        font-size: 40px;
+        font-size: 30px;
     }
 
     .mosaic {

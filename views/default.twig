@@ -2,7 +2,7 @@
 {% import "components/games.twig" as g %}
 {% block pageName %}Free games{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/index.css?t=10">
+<link rel="stylesheet" href="/assets/css/index.css?t=11">
 {% endblock %}
 
 {% block body %}
@@ -10,7 +10,10 @@
     <div class="landing">
         <div class="landingText">
             <h1>The games were <span class="italicized">meant</span> to be played.</h1>
-            <p>{{ gameCount }} browser games, no downloads, nothing to install. Make an account if you want to keep favorites, or just start playing.</p>
+            {% set extras = [] %}
+            {% if appCount %}{% set extras = extras|merge([appCount ~ (appCount == 1 ? ' app' : ' apps')]) %}{% endif %}
+            {% if trackCount %}{% set extras = extras|merge([trackCount ~ (trackCount == 1 ? ' song' : ' songs')]) %}{% endif %}
+            <p>{{ gameCount }} browser games{% if extras %}, plus {{ extras|join(' and ') }}{% endif %}. No downloads, nothing to install. Make an account if you want to keep favorites, or just start playing.</p>
             <div class="landingActions">
                 <a href="/games" class="button">Browse games</a>
                 <a href="/auth/sign-up" class="button quiet">Sign up</a>

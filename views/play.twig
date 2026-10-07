@@ -1,8 +1,9 @@
 {% extends "models/base.twig" %}
 {% import "components/games.twig" as g %}
+{% set isApp = game.type == 'app' %}
 {% block pageName %}{{ game.name }}{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=10">
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=12">
     <meta content="{{ game.name }} on {{ env("APP_NAME") }}" property="og:title"/>
 {% endblock %}
 {% block body %}
@@ -18,7 +19,7 @@
             </span>
             <div>
                 <h1>{{ game.name }}</h1>
-                <p class="muted">{{ game.plays|number_format }} {{ game.plays == 1 ? 'play' : 'plays' }} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span></p>
+                <p class="muted">{{ game.plays|number_format }} {% if isApp %}{{ game.plays == 1 ? 'open' : 'opens' }}{% else %}{{ game.plays == 1 ? 'play' : 'plays' }}{% endif %} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span></p>
             </div>
         </div>
         <div class="playActions">
@@ -29,6 +30,7 @@
             {% else %}
                 <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="fa-regular fa-heart"></i>Favorite</a>
             {% endif %}
+            <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span class="sr-only">Open in a new tab</span></a>
             <button class="button" id="fullscreenButton"><i class="fa-solid fa-expand"></i>Fullscreen</button>
         </div>
     </div>
@@ -44,8 +46,8 @@
     {% if related is not empty %}
     <section>
         <div class="sectionHeader">
-            <h2>Play something else</h2>
-            <a href="/games">All games</a>
+            <h2>{{ isApp ? 'More apps' : 'Play something else' }}</h2>
+            <a href="/{{ isApp ? 'apps' : 'games' }}">{{ isApp ? 'All apps' : 'All games' }}</a>
         </div>
         {{ g.grid(related) }}
     </section>
