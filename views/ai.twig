@@ -1,0 +1,102 @@
+{% extends "models/base.twig" %}
+{% block pageName %}{{ chat ? chat.title : 'AI' }}{% endblock %}
+{% block bodyClass %}{{ state == 'ready' ? 'aiBody' : '' }}{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/ai.css?t=3">
+{% if state == 'ready' %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" integrity="sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.12/marked.min.js" integrity="sha512-rCQgmUulW6f6QegOvTntKKb5IAoxTpGVCdWqYjkXEpzAns6XUFs8NKVqWe+KQpctp/EoRSFSuykVputqknLYMg==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js" integrity="sha512-YlctBG9PGZIhh9keoqI3eZkQM9T8QUbiBi7qNYAO/TUEo8jqWX5pLp5+x1cKRQDRzJ/lyGyJ9WUVNIRduxIIFw==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block footer %}{% if state != 'ready' %}{{ parent() }}{% endif %}{% endblock %}
+
+{% block body %}
+{% if state == 'disabled' %}
+<div class="page">
+    <div class="statusPage">
+        <img src="/assets/images/BlobEmoji/blobsleeping.png" alt="">
+        <div>
+            <p class="code">Not set up</p>
+            <h1>The AI is switched off.</h1>
+            <p class="muted">Check back later.</p>
+            <a class="button" href="/games">Go play something</a>
+        </div>
+    </div>
+</div>
+{% elseif state == 'guest' %}
+<div class="page">
+    <div class="statusPage">
+        <img src="/assets/images/BlobEmoji/blobwizard.png" alt="">
+        <div>
+            <p class="code">AI</p>
+            <h1>Sign in to chat.</h1>
+            <p class="muted">Chats get saved to your account so you can pick them back up later.</p>
+            <a class="button" href="/auth/sign-in">Sign in</a>
+            <a class="button quiet" href="/auth/sign-up">Make an account</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="aiPage">
+    <aside class="aiChats" id="aiChats" aria-label="Saved chats">
+        <a class="button" href="/ai"><i class="fa-solid fa-plus"></i>New chat</a>
+        <nav class="aiChatList" id="aiChatList">
+            {% for item in chatList %}
+                <a href="/ai/{{ item.id }}" data-id="{{ item.id }}"{% if chat and chat.id == item.id %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a>
+            {% else %}
+                <p class="muted aiNoChats" id="aiNoChats">Your chats will show up here.</p>
+            {% endfor %}
+        </nav>
+    </aside>
+    <div class="aiChatsScrim" id="aiChatsScrim"></div>
+
+    <section class="aiMain">
+        <header class="aiHeader">
+            <button class="aiIconButton" id="aiChatsToggle" aria-label="Show saved chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
+            <h1 id="aiTitle">{{ chat ? chat.title : 'New chat' }}</h1>
+            <input id="aiTitleInput" maxlength="120" aria-label="Chat title" hidden>
+            <div class="aiHeaderActions" id="aiHeaderActions"{% if not chat %} hidden{% endif %}>
+                <button class="aiIconButton" id="aiRename" aria-label="Rename chat" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                <button class="aiIconButton" id="aiDelete" aria-label="Delete chat" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </header>
+
+        <div class="aiLog" id="aiLog" aria-live="polite">
+            <div class="aiIntro" id="aiIntro"{% if chat %} hidden{% endif %}>
+                <img src="/assets/images/BlobEmoji/blobwizard.png" alt="" width="64" height="64">
+                <h2>What do you want to know?</h2>
+                <p class="muted">It can search the site for games, do math, check the weather and look at pictures you attach.</p>
+                <div class="aiSuggestions">
+                    <button type="button" data-prompt="Find me a good racing game on here">Find me a good racing game on here</button>
+                    <button type="button" data-prompt="What's the weather in Tokyo right now?">What's the weather in Tokyo right now?</button>
+                    <button type="button" data-prompt="What's 18% of 2,450, rounded to 2 decimals?">What's 18% of 2,450?</button>
+                </div>
+            </div>
+        </div>
+
+        <form class="aiComposer" id="aiComposer">
+            <div class="aiAttachments" id="aiAttachments" hidden></div>
+            <label class="sr-only" for="aiInput">Message</label>
+            <textarea id="aiInput" rows="1" placeholder="Message the AI" maxlength="20000"></textarea>
+            <div class="aiComposerBar">
+                <button type="button" class="aiIconButton" id="aiAttach" aria-label="Attach images" title="Attach images"><i class="fa-solid fa-image"></i></button>
+                <input type="file" id="aiFile" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+                <label class="sr-only" for="aiModel">Model</label>
+                <select id="aiModel">
+                    {% for model in models %}
+                        <option value="{{ model.id }}">{{ model.label }}</option>
+                    {% endfor %}
+                </select>
+                <span class="aiHint" id="aiHint"></span>
+                <button type="submit" class="button" id="aiSend"><i class="fa-solid fa-arrow-up"></i><span>Send</span></button>
+            </div>
+        </form>
+    </section>
+</div>
+<script id="aiData" type="application/json">{{ aiData|raw }}</script>
+<script src="/assets/js/ai.js?t=3" defer></script>
+{% endif %}
+{% endblock %}

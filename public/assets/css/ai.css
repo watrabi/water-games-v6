@@ -1,0 +1,698 @@
+/* the /ai page. fills the main column instead of scrolling it */
+
+body.aiBody #main {
+    overflow: hidden;
+}
+
+.aiPage {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
+/* ---------- saved chats ---------- */
+
+.aiChats {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 16px 10px;
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+}
+
+.aiChats > .button {
+    justify-content: flex-start;
+}
+
+.aiChatList a {
+    display: block;
+    padding: 7px 10px;
+    color: var(--foam);
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aiChatList a:hover {
+    background-color: var(--raised);
+    text-decoration: none;
+}
+
+.aiChatList a.active {
+    background-color: var(--raised);
+    box-shadow: inset 3px 0 0 var(--shallows);
+}
+
+.aiNoChats {
+    padding: 0 10px;
+    font-size: 13px;
+}
+
+.aiChatsScrim {
+    display: none;
+}
+
+/* ---------- header ---------- */
+
+.aiMain {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.aiHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--line);
+}
+
+.aiHeader h1 {
+    flex: 1;
+    min-width: 0;
+    font-size: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#aiTitleInput {
+    flex: 1;
+    padding: 6px 10px;
+}
+
+.aiHeaderActions {
+    display: flex;
+    gap: 2px;
+}
+
+#aiChatsToggle {
+    display: none;
+}
+
+.aiIconButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--sand);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.aiIconButton:hover {
+    background-color: var(--raised);
+    color: var(--foam);
+}
+
+.aiIconButton.small {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+}
+
+/* ---------- conversation ---------- */
+
+.aiLog {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 28px 24px 12px;
+}
+
+.aiMsg,
+.aiIntro {
+    max-width: 760px;
+    margin: 0 auto 22px;
+}
+
+.aiMsg.user {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.aiBubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    background-color: var(--raised);
+    border: 1px solid var(--line);
+}
+
+.aiUserText {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.aiImages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.aiImages img {
+    display: block;
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+}
+
+.aiTurn > * + * {
+    margin-top: 12px;
+}
+
+/* ---------- markdown ---------- */
+
+.aiText {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.aiText > :first-child {
+    margin-top: 0;
+}
+
+.aiText > :last-child {
+    margin-bottom: 0;
+}
+
+.aiText p,
+.aiText ul,
+.aiText ol,
+.aiText table,
+.aiText blockquote,
+.aiText .aiCode {
+    margin: 0 0 0.8em;
+}
+
+.aiText ul,
+.aiText ol {
+    padding-left: 1.4em;
+}
+
+.aiText li + li {
+    margin-top: 0.25em;
+}
+
+.aiText h1,
+.aiText h2,
+.aiText h3,
+.aiText h4 {
+    margin: 1.2em 0 0.5em;
+    font-family: var(--body);
+    font-stretch: normal;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.3;
+}
+
+.aiText h1 { font-size: 21px; }
+.aiText h2 { font-size: 18px; }
+.aiText h3,
+.aiText h4 { font-size: 16px; }
+
+.aiText code {
+    padding: 1px 5px;
+    background-color: var(--raised);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+}
+
+.aiText blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--sand);
+    color: var(--sand);
+}
+
+.aiText hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 1.2em 0;
+}
+
+.aiText table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.aiText th,
+.aiText td {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    text-align: left;
+}
+
+.aiText th {
+    background-color: var(--shelf);
+}
+
+.aiText img {
+    max-width: 100%;
+}
+
+.aiCode {
+    border: 1px solid var(--line);
+    background-color: #0b1620;
+}
+
+.aiCodeBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px 4px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--sand);
+}
+
+.aiCopy {
+    padding: 3px 8px;
+    border: none;
+    background: none;
+    color: var(--sand);
+    font: inherit;
+    cursor: pointer;
+}
+
+.aiCopy:hover {
+    background-color: var(--raised);
+    color: var(--foam);
+}
+
+.aiCode pre {
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.aiCode pre code,
+.aiCode .hljs {
+    padding: 0;
+    background: none;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ---------- thinking, tools, notices ---------- */
+
+.aiThinking summary,
+.aiTool summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    color: var(--sand);
+}
+
+.aiThinking summary::-webkit-details-marker,
+.aiTool summary::-webkit-details-marker {
+    display: none;
+}
+
+.aiThinking summary::before {
+    content: "\f0da";
+    font-family: "Font Awesome 7 Free", "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 11px;
+    transition: transform 0.15s;
+}
+
+.aiThinking[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.aiThinking.blank summary {
+    cursor: default;
+}
+
+.aiThinking.blank summary::before {
+    content: "\f111";
+    font-size: 6px;
+}
+
+.aiThinking.live summary {
+    color: var(--foam);
+    animation: aiPulse 1.4s ease-in-out infinite;
+}
+
+.aiThinkingText {
+    margin-top: 6px;
+    padding-left: 12px;
+    border-left: 2px solid var(--line);
+    font-size: 13px;
+    color: var(--sand);
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.aiThinking.blank .aiThinkingText {
+    display: none;
+}
+
+.aiTool {
+    border: 1px solid var(--line);
+    background-color: var(--shelf);
+}
+
+.aiTool summary {
+    padding: 7px 10px;
+}
+
+.aiTool summary i {
+    width: 14px;
+    text-align: center;
+}
+
+.aiTool.running summary {
+    color: var(--foam);
+}
+
+.aiTool.running summary i {
+    color: var(--shallows);
+}
+
+.aiTool.failed summary i {
+    color: var(--coral);
+}
+
+.aiToolBody pre {
+    margin: 0;
+    padding: 8px 10px;
+    border-top: 1px solid var(--line);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 240px;
+    overflow-y: auto;
+    color: var(--sand);
+}
+
+.aiNotice {
+    font-size: 13px;
+    color: var(--sand);
+}
+
+.aiNotice.error {
+    color: var(--coral);
+}
+
+.aiRetry {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--shallows);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.aiActions {
+    display: flex;
+    gap: 2px;
+    margin-top: 6px;
+    margin-left: -6px;
+}
+
+.aiWaiting {
+    display: flex;
+    gap: 5px;
+    padding: 8px 0;
+}
+
+.aiWaiting span {
+    width: 7px;
+    height: 7px;
+    background-color: var(--sand);
+    animation: aiPulse 1.2s ease-in-out infinite;
+}
+
+.aiWaiting span:nth-child(2) { animation-delay: 0.15s; }
+.aiWaiting span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes aiPulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+/* ---------- empty chat ---------- */
+
+.aiIntro {
+    padding-top: 6vh;
+}
+
+.aiIntro h2 {
+    margin-top: 14px;
+    font-family: var(--display);
+    font-stretch: 125%;
+    font-weight: 900;
+    font-size: 24px;
+}
+
+.aiIntro > p {
+    margin-top: 6px;
+    max-width: 48ch;
+}
+
+.aiSuggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 20px;
+    max-width: 420px;
+}
+
+.aiSuggestions button {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    background: none;
+    color: var(--foam);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.aiSuggestions button:hover {
+    background-color: var(--raised);
+    border-color: rgba(245, 241, 237, 0.2);
+}
+
+/* ---------- composer ---------- */
+
+.aiComposer {
+    width: calc(100% - 48px);
+    max-width: 760px;
+    margin: 0 auto 18px;
+    border: 1px solid var(--line);
+    background-color: var(--shelf);
+}
+
+.aiComposer:focus-within {
+    border-color: rgba(124, 196, 228, 0.6);
+}
+
+.aiComposer.dragging {
+    border-color: var(--shallows);
+    border-style: dashed;
+}
+
+.aiComposer textarea {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    max-height: 220px;
+    padding: 12px 14px 6px;
+    border: none;
+    background: none;
+    resize: none;
+    line-height: 1.5;
+}
+
+.aiComposer textarea:focus {
+    outline: none;
+}
+
+.aiComposerBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 8px;
+}
+
+#aiModel {
+    max-width: 200px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    background-color: var(--raised);
+    color: var(--foam);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.aiHint {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--sand);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aiHint.warn {
+    color: var(--coral);
+}
+
+#aiSend {
+    padding: 7px 14px;
+}
+
+#aiSend.stop {
+    background-color: var(--raised);
+    border-color: var(--line);
+}
+
+#aiSend:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.aiAttachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 10px 0;
+}
+
+.aiThumb {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--line);
+}
+
+.aiThumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.aiThumb.uploading img {
+    opacity: 0.4;
+}
+
+.aiThumbRemove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background-color: rgba(0, 16, 24, 0.85);
+    color: var(--foam);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 800px) {
+    .aiPage {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aiChats {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 12;
+        width: 270px;
+        display: none;
+        background-color: var(--deep);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .aiChats.open {
+        display: flex;
+    }
+
+    .aiChats.open + .aiChatsScrim {
+        display: block;
+        position: absolute;
+        inset: 0;
+        z-index: 11;
+        background-color: rgba(0, 16, 24, 0.6);
+    }
+
+    #aiChatsToggle {
+        display: inline-flex;
+    }
+
+    .aiHeader {
+        padding: 6px 10px;
+    }
+
+    .aiLog {
+        padding: 18px 14px 8px;
+    }
+
+    .aiComposer {
+        width: calc(100% - 20px);
+        margin-bottom: 10px;
+    }
+
+    .aiBubble {
+        max-width: 90%;
+    }
+
+    .aiImages img {
+        width: 96px;
+        height: 96px;
+    }
+}
+
+@media (max-width: 560px) {
+    .aiHint {
+        display: none;
+    }
+
+    #aiModel {
+        flex: 1;
+        max-width: none;
+    }
+
+    #aiSend span {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aiThinking.live summary,
+    .aiWaiting span {
+        animation: none;
+    }
+}

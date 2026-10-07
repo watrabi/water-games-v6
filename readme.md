@@ -20,6 +20,7 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/terms`, `/privacy`, `/credits`
 - `/apps`, `/apps/{id}` same as games but for non-game stuff (rows in `games` with `type = 'app'`)
 - `/music` track list, with a player bar that follows you between pages
+- `/ai` chat with saved conversations, tools and image input (see below)
 - `/proxy` is a "coming later" placeholder
 
 # adding games
@@ -45,8 +46,28 @@ VALUES ('Low Tide', 'watrlabs', '/music-files/low-tide.mp3', '/music-files/cover
 `artist`, `coverPath` and `duration` (seconds) are optional. the web server needs to support range requests
 for seeking to work (apache and nginx do by default, `php -S` doesn't)
 
+# AI chat
+set `AI_ENABLED=true` in `.env` and list models for at least one provider (`OLLAMA_MODELS`, `ANTHROPIC_MODELS`,
+`OPENAI_MODELS`). `.env.example` has every setting. people need an account to use it, chats are saved per user.
+
+- **ollama** uses ollama's own api. the site asks ollama what each model supports, so text-only models
+  don't get sent images or tools
+- **anthropic** works with api.anthropic.com or anything compatible. on api.anthropic.com it also turns on prompt
+  caching and server-side fallbacks (a declined request gets retried on anthropic's recommended fallback model)
+- **openai** works with anything that speaks `/chat/completions`: openai, openrouter, lm studio, vllm, groq...
+
+tools the model can use: current time, a calculator, searching the site's games/apps/music, weather (open-meteo,
+no key needed) and, if you add `fetch` to `AI_TOOLS`, reading web pages. the page fetcher only talks to public
+addresses so it can't be pointed at your own network.
+
+images people attach are stored in `storage/private/ai/` (outside the web root) and only shown to whoever uploaded them.
+
+answers stream over server-sent events. if you're behind nginx that's handled with `X-Accel-Buffering: no`;
+if something else buffers responses (gzip on `text/event-stream`, some proxies) answers will show up all at once
+at the end instead of streaming.
+
 # notes
-- run migrations after pulling, there are new `favorites` and `tracks` tables and a `type` column on `games`
+- run migrations after pulling, there are new `favorites`, `tracks` and `ai_*` tables and a `type` column on `games`
 - the turnstile captcha on sign up only turns on when `CONFIG_CaptchaEnabled=true` AND both turnstile keys are set
 - signup/login IPs are stored encrypted with `encryptionKey`/`encryptionIv` so the alt limit can match them
 - `/randTest` and `/auth/isAuthed` only exist when `APP_DEBUG=true`

@@ -12,6 +12,9 @@
   {{ nav.item('/games', 'fa-solid fa-gamepad', 'Games', here, '/games/') }}
   {{ nav.item('/apps', 'fa-solid fa-table-cells-large', 'Apps', here, '/apps/') }}
   {{ nav.item('/music', 'fa-solid fa-music', 'Music', here) }}
+  {% if aiEnabled %}
+    {{ nav.item('/ai', 'fa-regular fa-comments', 'AI', here, '/ai/') }}
+  {% endif %}
   {% if currentuser %}
     {{ nav.item('/favorites', 'fa-solid fa-heart', 'Favorites', here) }}
   {% endif %}

@@ -80,6 +80,8 @@ $twig->addGlobal('currentuser', $currentuser);
 // used by the sidebar to highlight where you are
 $twig->addGlobal('path', strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/')) ?: '/');
 
+$twig->addGlobal('aiEnabled', \watrlabs\ai\config::enabled());
+
 $twig->addGlobal('captcha', [
     "enabled"=>\watrlabs\authentication\security::captchaActive(),
     "siteKey"=>$_ENV["TurnstileSiteKey"] ?? "",

@@ -27,7 +27,7 @@
       <div id="sidebarScrim"></div>
       <main id="main">
         {% block body %}{% endblock %}
-        {% include "components/footer.twig" %}
+        {% block footer %}{% include "components/footer.twig" %}{% endblock %}
       </main>
     </div>
     {% include "components/player.twig" %}

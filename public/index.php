@@ -51,7 +51,8 @@ $router = new routing();
 
 $routers = [
     "web",
-    "authapi"
+    "authapi",
+    "ai"
 ];
 
 foreach ($routers as $r) {
