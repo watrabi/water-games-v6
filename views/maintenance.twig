@@ -1,9 +1,14 @@
 {% extends "models/base.twig" %}
 {% block pageName %}Maintenance{% endblock %}
-{% block headerIncludes %}
-{% endblock %}
-
 {% block body %}
-<h1>We're currently undergoing maintenance.</h1>
-<p>Please check back later.</p>
+<div class="page">
+    <div class="statusPage">
+        <img src="/assets/images/BlobEmoji/blobdoctor.png" alt="">
+        <div>
+            <p class="code">Maintenance</p>
+            <h1>We're working on the site.</h1>
+            <p class="muted">Please check back later.</p>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -9,13 +9,21 @@ class errors {
     function __construct(){
 
         set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+            // deprecations (pixie has a bunch on php 8.2+) shouldn't take the whole site down,
+            // returning false hands them to php's normal logging instead
+            if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED) {
+                return false;
+            }
+
             throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
         });
 
         register_shutdown_function(function () {
             $error = error_get_last();
+            $fatal = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
 
-            if ($error !== null) {
+            // error_get_last also has warnings/deprecations that got logged, only fatals matter here
+            if ($error !== null && in_array($error["type"], $fatal, true)) {
                 try {
                     $this->showFriendlyError($error["message"]);
                 } catch (ErrorException $e){

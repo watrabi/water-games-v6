@@ -1,26 +1,33 @@
 <!doctype html>
-<html lang="en" >
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/base.css?t=172">
-    <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/assets/css/base.css?t=200">
+    <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="/assets/js/jquery-3.0.0.min.js" defer></script>
-    <script src="/assets/js/watrgames.js?t=103" defer></script>
+    <script src="/assets/js/watrgames.js?t=200" defer></script>
     <meta content="{{ env("APP_NAME") }}" property="og:title"/>
     <meta content="{{ env("APP_DESC") }}" property="og:description"/>
+    <meta name="description" content="{{ env("APP_DESC") }}">
     <!--
     <meta content="" property="og:url"/>
     <meta content="" property="og:image"/>
     -->
-    <meta content="#01537a" data-react-helmet="true" name="theme-color"/>
+    <meta content="#01537a" name="theme-color"/>
     {% block headerIncludes %}{% endblock %}
-    <title>{% block pageName %}{% endblock %}</title>
+    <title>{% block pageName %}{% endblock %} - {{ env("APP_NAME") }}</title>
   </head>
-  <body>
+  <body class="{% block bodyClass %}{% endblock %}">
     {% include "components/header.twig" %}
-    {% block body %}{% endblock %}
-    {% include "components/footer.twig" %}
+    <div id="content">
+      {% include "components/sidebar.twig" %}
+      <div id="sidebarScrim"></div>
+      <main id="main">
+        {% block body %}{% endblock %}
+        {% include "components/footer.twig" %}
+      </main>
+    </div>
   </body>
 </html>

@@ -1,12 +1,8 @@
-
-  </div>
-</div>
-
-<div class="footer">
-  <p id="footerText">
-    <span>© watr.lol - {{ eotd() }} - Lucky Number: {{ rand(1, 12345678)|number_format }}</span>
-    <span><a href="">Terms of Service</a> - <a href="">Credit</a> - <a href="#">Privacy Policy</a></span>
-
-  </p>
-
-</div>
+<footer class="footer">
+  <span>© watr.lol · {{ eotd() }} · Lucky number: {{ rand(1, 12345678)|number_format }}</span>
+  <nav aria-label="Footer">
+    <a href="/terms">Terms of Service</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/credits">Credits</a>
+  </nav>
+</footer>

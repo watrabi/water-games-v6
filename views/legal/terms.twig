@@ -1,0 +1,28 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Terms of Service{% endblock %}
+{% block body %}
+<div class="page narrow prose">
+    <h1>Terms of Service</h1>
+    <p class="muted">The short version: be decent, don't break stuff.</p>
+
+    <h2>Using the site</h2>
+    <p>{{ env("APP_NAME") }} is a free site for playing browser games. You can use it without an account. If you make one, you're responsible for what happens on it, so pick a password you don't use anywhere else.</p>
+
+    <h2>Don't</h2>
+    <ul>
+        <li>pick a username that's hateful, harassing, or pretending to be someone else</li>
+        <li>try to break, overload, or get into parts of the site you shouldn't</li>
+        <li>make piles of accounts or automate sign-ups</li>
+    </ul>
+    <p>Accounts that do these things can be removed without warning.</p>
+
+    <h2>The games</h2>
+    <p>The games here belong to the people who made them. If you made one and want it taken down or credited differently, get in touch and it'll be handled.</p>
+
+    <h2>No guarantees</h2>
+    <p>The site is provided as-is. It might go down, games might stop working, and features might change or disappear. We're not liable for anything that happens because of that.</p>
+
+    <h2>Changes</h2>
+    <p>These terms can change. If you keep using the site after they do, you're agreeing to the new version.</p>
+</div>
+{% endblock %}

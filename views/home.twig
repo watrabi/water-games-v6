@@ -1,11 +1,52 @@
 {% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
 {% block pageName %}Home{% endblock %}
-{% block headerIncludes %}
-{% endblock %}
 
 {% block body %}
-<div style="margin-top: 20px; margin-left: 20px;">
-    <h1 style="margin-left: 0px;">Welcome, {{ currentuser.username }}</h1>
-    <img src="/assets/images/BlobEmoji/blobcool.png">
+<div class="page">
+    <div class="pageHeader">
+        <div class="welcome">
+            <img src="/assets/images/BlobEmoji/blobcool.png" alt="" width="56" height="56">
+            <div>
+                <h1>Welcome back, {{ currentuser.username }}</h1>
+                <p>Today's emoji is {{ eotd() }}. Make of that what you will.</p>
+            </div>
+        </div>
+        <a class="button quiet" href="/games">All games</a>
+    </div>
+
+    <section>
+        <div class="sectionHeader">
+            <h2>Your favorites</h2>
+            {% if favorites is not empty %}<a href="/favorites">See all</a>{% endif %}
+        </div>
+        {% if favorites is empty %}
+            {{ g.empty('blobheart', 'Nothing here yet.', 'Hit the heart on any game and it\'ll show up here.') }}
+        {% else %}
+            {{ g.grid(favorites) }}
+        {% endif %}
+    </section>
+
+    <section>
+        <div class="sectionHeader">
+            <h2>Popular</h2>
+            <a href="/games?sort=popular">See all</a>
+        </div>
+        {% if popular is empty %}
+            {{ g.empty('blobsleeping', 'No games yet.', 'Check back soon, they\'re on the way.') }}
+        {% else %}
+            {{ g.grid(popular) }}
+        {% endif %}
+    </section>
+
+    {% if newest is not empty %}
+    <section>
+        <div class="sectionHeader">
+            <h2>Recently added</h2>
+            <a href="/games?sort=newest">See all</a>
+        </div>
+        {{ g.grid(newest) }}
+    </section>
+    {% endif %}
 </div>
 {% endblock %}

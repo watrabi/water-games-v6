@@ -1,25 +1,36 @@
 {% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
 {% block pageName %}Games{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=1">
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=10">
 {% endblock %}
 {% block body %}
-<div style="margin-top: 30px; margin-left: 20px; margin-right: 30px;">
-    <h1>Games, for you.</h1>
-    <br>
-    <div id="gameholder">
-
-        {% for game in games %}
-            <div class="gamecard">
-                <img src="/game-files/icons/Slope.png" style="min-width: 100%;">
-                <p>{{ game.name }}<br>{{ game.plays }} plays - 0 favorites</p>
-            </div>
-        {% else %}
-            <h1>Nothing Yet.</h1>
-        {% endfor %}
-
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>{% if search %}Results for “{{ search }}”{% else %}Games, for you.{% endif %}</h1>
+            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search %} · <a href="/games?sort={{ sort }}">clear search</a>{% endif %}</p>
+        </div>
+        <form class="pageSearch" action="/games" method="get" role="search">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <label class="sr-only" for="pageSearchInput">Search games</label>
+            <input id="pageSearchInput" type="search" name="q" placeholder="Search games" value="{{ search }}">
+        </form>
+        <nav class="sortTabs" aria-label="Sort games">
+            {% for key, label in {popular: 'Popular', newest: 'Newest', name: 'A–Z'} %}
+                <a href="/games?sort={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"{% if sort == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+            {% endfor %}
+        </nav>
     </div>
-</div>
 
+    {% if games is empty %}
+        {% if search %}
+            {{ g.empty('blobthinkingeyes', 'Nothing matched that.', 'Try a shorter search, or <a href="/games">browse everything</a>.') }}
+        {% else %}
+            {{ g.empty('blobsleeping', 'Nothing yet.', 'Games are on the way.') }}
+        {% endif %}
+    {% else %}
+        {{ g.grid(games) }}
+    {% endif %}
 </div>
 {% endblock %}

@@ -7,25 +7,48 @@ use watrlabs\encryption;
 use watrlabs\authentication\security;
 use watrlabs\authentication\sessions;
 class registration {
-    private static function hasSpecialCharacters($text){
 
-        $isSpecial = preg_match('/^[a-zA-Z0-9]+$/',$text);
+    const USERNAME_MIN = 3;
+    const USERNAME_MAX = 20;
+    const PASSWORD_MIN = 8;
 
-        return $isSpecial;
+    private static function isAlphanumeric($text){
+        return (bool) preg_match('/^[a-zA-Z0-9_]+$/', $text);
     }
 
-
-    private static function isValidUsername($username){
+    // returns an error message, or null if the username is fine
+    public static function validateUsername($username){
 
         $users = new users();
 
-        $usernameOkay = true;
+        $length = strlen($username);
+        if($length < self::USERNAME_MIN || $length > self::USERNAME_MAX){
+            return "Usernames have to be between " . self::USERNAME_MIN . " and " . self::USERNAME_MAX . " characters.";
+        }
 
-        $usernameOkay = self::hasSpecialCharacters($username);
-        //$usernameOkay = $users->getUserInfo($username);
+        if(!self::isAlphanumeric($username)){
+            return "Usernames can only have letters, numbers and underscores.";
+        }
 
-        return $usernameOkay;
-        
+        if($users->getUserByUsername($username)){
+            return "That username is taken.";
+        }
+
+        return null;
+
+    }
+
+    public static function validatePassword($password){
+        if(strlen($password) < self::PASSWORD_MIN){
+            return "Passwords need to be at least " . self::PASSWORD_MIN . " characters.";
+        }
+
+        // bcrypt ignores anything past 72 bytes
+        if(strlen($password) > 72){
+            return "Passwords can't be longer than 72 characters.";
+        }
+
+        return null;
     }
 
     public static function createUser($username, $password, $email = null){
@@ -36,30 +59,43 @@ class registration {
         $encryption = new encryption();
         $sessions = new sessions();
 
-        $isValidUsername = self::isValidUsername($username);
+        $username = trim($username);
+        $email = $email ? trim($email) : null;
 
-        if(!$isValidUsername){
-            return ["status"=>"error", "message"=>"This username is taken or contains special characters."];
+        $usernameError = self::validateUsername($username);
+        if($usernameError){
+            http_response_code(400);
+            return ["status"=>"error", "message"=>$usernameError];
         }
 
-        if($security->hasTooManyAlts($security->getRequestIp())){
-            return ["status"=>"error", "message"=>"Too many accounts on this IP Address."];
+        $passwordError = self::validatePassword($password);
+        if($passwordError){
+            http_response_code(400);
+            return ["status"=>"error", "message"=>$passwordError];
         }
 
         if($email){
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                http_response_code(400);
                 return ["status"=>"error", "message"=>"Email is not valid."];
             }
         }
-        
+
+        $ip = $security::getRequestIp();
+
+        if($security->hasTooManyAlts($ip)){
+            http_response_code(429);
+            return ["status"=>"error", "message"=>"Too many accounts on this IP Address."];
+        }
+
         $insert = [
             "accountid"=>$encryption->genRandString(30),
             "username"=>$username,
             "email"=>$email,
             "password"=>password_hash($password, PASSWORD_BCRYPT),
             "blurb"=>"My name is $username",
-            "RegisterIP"=>$security::getRequestIp(),
-            "LastIP"=>$security::getRequestIp(),
+            "RegisterIP"=>$security->encryptIp($ip),
+            "LastIP"=>$security->encryptIp($ip),
             "registered"=>time()
         ];
 
@@ -70,6 +106,9 @@ class registration {
             $sessions->authenticateUser($insertId);
             return ["status"=>"okay", "message"=>"user created."];
         }
+
+        http_response_code(500);
+        return ["status"=>"error", "message"=>"Something went wrong creating your account."];
 
     }
 

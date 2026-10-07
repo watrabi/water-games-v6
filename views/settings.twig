@@ -1,0 +1,52 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Settings{% endblock %}
+{% block body %}
+<div class="page narrow">
+    <div class="pageHeader">
+        <div>
+            <h1>Settings</h1>
+            <p>Signed in as {{ currentuser.username }}. <a href="/users/{{ currentuser.username|lower|url_encode }}">View your profile</a></p>
+        </div>
+    </div>
+
+    <form class="panel" id="blurbForm">
+        <h2>Profile</h2>
+        <p class="muted">Shows up on your profile page.</p>
+        <div class="notice" id="blurbMsg" role="status" hidden></div>
+        <div class="field">
+            <label for="blurb">Blurb</label>
+            <textarea id="blurb" name="blurb" maxlength="255">{{ currentuser.blurb }}</textarea>
+            <p class="hint"><span id="blurbCount">{{ currentuser.blurb|length }}</span>/255</p>
+        </div>
+        <button class="button" type="submit">Save blurb</button>
+    </form>
+
+    <form class="panel" id="passwordForm">
+        <h2>Password</h2>
+        <p class="muted">Changing it signs you out everywhere else.</p>
+        <div class="notice" id="passwordMsg" role="status" hidden></div>
+        <input type="text" name="username" value="{{ currentuser.username }}" autocomplete="username" hidden>
+        <div class="field">
+            <label for="currentPassword">Current password</label>
+            <input id="currentPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+            <label for="newPassword">New password</label>
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+            <p class="hint">At least 8 characters.</p>
+        </div>
+        <div class="field">
+            <label for="newPasswordConf">Confirm new password</label>
+            <input id="newPasswordConf" type="password" autocomplete="new-password" required>
+        </div>
+        <button class="button" type="submit">Change password</button>
+    </form>
+
+    <div class="panel">
+        <h2>Sign out</h2>
+        <p class="muted">Ends your session on this device.</p>
+        <a class="button quiet" href="/auth/logout">Sign out</a>
+    </div>
+</div>
+<script src="/assets/js/settings.js?t=1" defer></script>
+{% endblock %}

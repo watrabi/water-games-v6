@@ -1,28 +1,33 @@
 {% extends "models/base.twig" %}
-{% block pageName %}Landing{% endblock %}
+{% block pageName %}Sign in{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/authpage.css?t=18">
+<link rel="stylesheet" href="/assets/css/authpage.css?t=30">
 {% endblock %}
 
 {% block body %}
-<div id="parentForm">
-    <div id="authText">
-        <h1>Login</h1>
-        <p>You signed a contract with them.</p>
-        <iframe id="video" src="https://www.youtube.com/embed/fKD7IsY_ir4?si=P4bA0um1H9W-XWhU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share autoplay" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-    </div>
-    <div class="center" id="authForm">
-        <div id="error-area">
-            <div style="display: none;" class="danger" id="dangermsg">
-                An error occured
-            </div>
+<div class="page authPage">
+    <div class="authText">
+        <h1>Sign in</h1>
+        <p class="muted">You signed a contract with them.</p>
+        <div class="authVideo">
+            <iframe src="https://www.youtube.com/embed/fKD7IsY_ir4?si=P4bA0um1H9W-XWhU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" loading="lazy" allowfullscreen></iframe>
         </div>
-        <form id="form">
-            <input id="username" name="username" placeholder="username" required>
-            <input id="password" name="password" placeholder="password" type="password" required>
-            <a class="button" type="submit" value="Sign In" id="loginButton" onclick="login()">Sign In</a>
+    </div>
+    <div class="panel authForm">
+        <form id="loginForm" novalidate>
+            <div class="notice danger" id="dangermsg" role="alert" hidden></div>
+            <div class="field">
+                <label for="username">Username</label>
+                <input id="username" name="username" autocomplete="username" required autofocus>
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="button" type="submit" id="loginButton">Sign in</button>
         </form>
+        <p class="authSwitch muted">New here? <a href="/auth/sign-up">Make an account</a></p>
     </div>
 </div>
-<script src="/assets/js/login.js?t=4" defer></script>
+<script src="/assets/js/login.js?t=10" defer></script>
 {% endblock %}

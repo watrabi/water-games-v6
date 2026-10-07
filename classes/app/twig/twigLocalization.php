@@ -4,7 +4,7 @@ namespace app\twig;
 
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
-use \localization\localization;
+use \watrlabs\watrkit\localization;
 
 class twigLocalization extends AbstractExtension
 {
