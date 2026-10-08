@@ -232,7 +232,8 @@ PROXY_SECRET="same-as-.env" ALLOWED_ORIGINS="https://games.watr.lol" node server
 then `PROXY_SECRET="same-as-node"` in the site's `.env`. other settings (`PROXY_DNS`, `PROXY_PORTS`,
 `PROXY_BLOCKED_HOSTS`, `PROXY_MAX_PER_USER`, `PORT`) are explained at the top of `proxy/server.js`.
 
-it listens on 127.0.0.1:3002, so send `/proxy/` to it (with the slash: `/proxy` itself is the PHP page and stays with PHP). nginx:
+it listens on 127.0.0.1:3002, so send `/proxy/` to it (with the slash: `/proxy` itself is the PHP page and stays with PHP). use `^~`, or
+a `.js`/`.wasm` static file rule takes the proxy's files. nginx:
 ```nginx
 location ^~ /proxy/wisp/ {
     proxy_pass http://127.0.0.1:3002;
@@ -243,6 +244,10 @@ location ^~ /proxy/wisp/ {
     proxy_read_timeout 1h;
     proxy_send_timeout 1h;
     proxy_buffering off;
+}
+# /proxy itself is the PHP page. without this nginx 301s it to /proxy/ because of the location below
+location = /proxy {
+    rewrite ^ /index.php last;
 }
 location ^~ /proxy/ {
     proxy_pass http://127.0.0.1:3002;

@@ -276,3 +276,10 @@ Routes / pages:
   the SW must not open Scramjet's IndexedDB before the page has made it. Tested headless: wikipedia 1.5s, iana 0.6s,
   youtube search, discord login, github, scratch; reddit blocks proxies. **To ship:** nginx locations + systemd unit
   from the readme, `npm ci` in proxy/, PROXY_SECRET in .env and the unit.
+- 2026-10-08: **web proxy deployed** (b637841). On the server: `npm ci` in proxy/, systemd unit `watr-proxy` (User=www,
+  EnvironmentFile=/root/watrgames/proxy.env, root only, like realtime), PROXY_SECRET + PROXY_INTERNAL_URL appended to
+  the site's .env (backup next to it), and three nginx locations in the vhost (backups *.ai_bak). nginx 301s `/proxy`
+  to `/proxy/` when a `proxy_pass` location ends in a slash, so `location = /proxy` rewrites to index.php. Cloudflare
+  cached the 404s from a check made before nginx reloaded; purged those URLs. Checked: every file 200 through
+  Cloudflare, a wisp websocket with a PHP-minted token upgrades (101), /proxy sends signed out people to sign in.
+  Not yet tried signed in in a real browser on prod.
