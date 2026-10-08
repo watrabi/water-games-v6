@@ -2,7 +2,7 @@
 {% block pageName %}{{ chat ? chat.title : aiName }}{% endblock %}
 {% block bodyClass %}{{ state == 'ready' ? 'aiBody' : '' }}{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/ai.css?t=7">
+<link rel="stylesheet" href="/assets/css/ai.css?t=8">
 <script src="/assets/js/bloop.js?t=1"></script>
 {% if state == 'ready' %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" integrity="sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -130,7 +130,7 @@
     </aside>
 </div>
 <script id="aiData" type="application/json">{{ aiData|raw }}</script>
-<script src="/assets/js/ai.js?t=10" defer></script>
+<script src="/assets/js/ai.js?t=11" defer></script>
 {% endif %}
 {% if state != 'ready' %}<script>Bloop.scan();</script>{% endif %}
 {% endblock %}

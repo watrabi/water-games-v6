@@ -746,6 +746,87 @@ body.aiBody #main {
     color: var(--muted);
 }
 
+.aiArtifact.failed {
+    border-style: dashed;
+}
+
+.aiArtifact.failed .aiArtifactIcon {
+    color: var(--danger);
+}
+
+/* ---------- plans ---------- */
+
+.aiPlan {
+    max-width: 560px;
+    margin: 0 0 0.8em;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--link);
+    background-color: var(--surface);
+}
+
+.aiPlan summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.aiPlan summary::-webkit-details-marker {
+    display: none;
+}
+
+.aiPlan summary i {
+    color: var(--link);
+}
+
+.aiPlanLabel {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.aiPlanTitle {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.aiPlan.writing .aiPlanLabel {
+    color: var(--muted);
+}
+
+.aiPlanBody {
+    padding: 0 12px 10px;
+    font-size: 14px;
+}
+
+.aiPlanBody ul {
+    padding-left: 4px;
+    list-style: none;
+}
+
+.aiPlanBody li + li {
+    margin-top: 3px;
+}
+
+.aiPlanBody input[type="checkbox"] {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin: 0 8px 0 0;
+    vertical-align: -2px;
+    accent-color: var(--link);
+}
+
+.aiPlan.done .aiPlanBody li {
+    color: var(--muted);
+}
+
 .aiPage.artifactOpen {
     grid-template-columns: 240px minmax(0, 1fr) minmax(380px, 1.1fr);
 }

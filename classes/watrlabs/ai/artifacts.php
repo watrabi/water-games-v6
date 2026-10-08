@@ -6,7 +6,17 @@ namespace watrlabs\ai;
 // the model writes them inline in its answer as
 //   <artifact id="snake-game" type="html" title="Snake">...the whole file...</artifact>
 // so they stream in like any other text and work with models that can't call tools.
-// once an answer is done we save each one, and writing the same id again makes a new version
+// once an answer is done we save each one, and writing the same id again makes a new version.
+// a change to one can be sent as just the edits, which saves rewriting (and paying for) the whole thing:
+//   <artifact id="snake-game" mode="edit">
+//   <<<<<<< SEARCH
+//   lines copied from the current version
+//   =======
+//   what they become
+//   >>>>>>> REPLACE
+//   </artifact>
+// the edits are applied here to the latest version and saved as a new full version. if any of them don't
+// line up, none are applied and the model gets told (with the current version) so it can try again
 class artifacts {
 
     const TYPES = ["html", "svg", "markdown", "code"];
@@ -14,6 +24,14 @@ class artifacts {
     const MAX_PER_CHAT = 60;
 
     const PATTERN = '/<artifact\b([^>]*)>(.*?)<\/artifact>/s';
+    const EDIT_PATTERN = '/^<<<<<<< SEARCH[ \t]*\n(.*?)\n?^=======[ \t]*\n(.*?)\n?^>>>>>>> REPLACE[ \t]*$/ms';
+
+    // the current version goes back to the model when an edit misses, cut down if it's huge
+    const FEEDBACK_MAX_CHARS = 60000;
+
+    // edits that didn't apply in the last prepare(): [ref, title, message, version, content, at]
+    public array $errors = [];
+    private int $at = 0;
 
     // the instructions that go in the system prompt
     static function prompt(){
@@ -37,9 +55,143 @@ class artifacts {
             . "- type=\"html\" is one self-contained page: inline CSS and JS. Libraries can come from cdnjs.cloudflare.com or cdn.jsdelivr.net. "
             . "It runs in a sandboxed preview with no access to this site, and localStorage, cookies and top-level navigation don't work there.\n"
             . "- language is only for type=\"code\".\n"
-            . "- To change an artifact, write it again in full with the same id. Never send only the changed part.\n"
+            . "- To change an artifact you already made, send only the changes: the same id with mode=\"edit\", and one or more SEARCH/REPLACE blocks:\n"
+            . "<artifact id=\"counter\" mode=\"edit\">\n"
+            . "<<<<<<< SEARCH\n<button id=\"b\">Clicked 0 times</button>\n=======\n<button id=\"b\" style=\"font-size: 2em\">Clicked 0 times</button>\n>>>>>>> REPLACE\n"
+            . "</artifact>\n"
+            . "  Each SEARCH is copied exactly from the latest version (same spaces, indentation and line breaks) and has to match exactly one place, "
+            . "so add a neighbouring line if it could match more than one. Keep them small: the lines that change plus just enough to be unique. "
+            . "Blocks are applied in order; an empty REPLACE deletes the lines. To add something new, SEARCH for the line it goes after and REPLACE it with that line plus the new lines. "
+            . "Edits are much cheaper and faster than rewriting, so use them for any change that leaves most of the artifact as it was. "
+            . "Only write the whole artifact again (without mode=\"edit\") when you're changing most of it. If an edit doesn't line up you'll be told and shown the current version, so you can send it again.\n"
             . "- One artifact per thing. Keep the text around it short, the user can see the result in the preview.\n"
-            . "- Short snippets and examples still go in normal Markdown code blocks.";
+            . "- Short snippets and examples still go in normal Markdown code blocks.\n\n"
+            . "# Plan before you build\n"
+            . "Before you make a new artifact, or make a big change to one (a new feature, a redesign, a rewrite), plan it out first, in the same reply, inside plan tags, "
+            . "then build it straight after following that plan:\n"
+            . "<plan title=\"Snake game\">\n"
+            . "Goal: one line on what it is and who it's for.\n"
+            . "- [ ] each piece you'll build, in the order you'll build it (layout, controls, game loop, scoring, game over, ...)\n"
+            . "- [ ] how it fits together: the main parts of the code and the data they share\n"
+            . "- [ ] the details that are easy to get wrong (edge cases, mobile and touch, saving state, performance)\n"
+            . "</plan>\n"
+            . "Make the plan complete enough that someone else could build it from the plan alone, but keep each item to a line. "
+            . "Then build the whole thing so it matches the plan; don't leave anything in the plan out. "
+            . "If the request is too vague to plan without guessing at what they want, ask one or two quick questions instead of planning. "
+            . "Skip the plan for small tweaks, quick fixes and anything that isn't an artifact.";
+    }
+
+    // the SEARCH/REPLACE pairs in an edit
+    static function parseEdits(string $body){
+        $body = str_replace("\r\n", "\n", $body);
+        preg_match_all(self::EDIT_PATTERN, $body, $found, PREG_SET_ORDER);
+        return array_map(fn($m) => [$m[1], $m[2]], $found);
+    }
+
+    // applies the edits in order. returns [new content, null] or [null, what went wrong]; all or nothing
+    static function applyEdits(string $content, array $edits){
+        $content = str_replace("\r\n", "\n", $content);
+
+        if(!$edits){
+            return [null, "there were no SEARCH/REPLACE blocks in it (each one needs the <<<<<<< SEARCH, ======= and >>>>>>> REPLACE lines)."];
+        }
+
+        foreach($edits as $i => [$search, $replace]){
+            $n = $i + 1;
+
+            if(trim($search) === ""){
+                return [null, "edit $n has an empty SEARCH. Search for the line the new part goes after instead."];
+            }
+
+            $count = substr_count($content, $search);
+            if($count === 1){
+                $at = strpos($content, $search);
+                $content = substr_replace($content, $replace, $at, strlen($search));
+                continue;
+            }
+            if($count > 1){
+                return [null, "edit $n's SEARCH matches $count places. Add a neighbouring line or two so it only matches one."];
+            }
+
+            // close enough: the same lines apart from trailing spaces, then apart from indentation
+            $lines = explode("\n", $content);
+            $want = explode("\n", $search);
+            $at = null;
+
+            foreach(["rtrim", "trim"] as $clean){
+                $starts = self::findLines($lines, $want, $clean);
+                if(count($starts) === 1){
+                    $at = $starts[0];
+                    break;
+                }
+                if(count($starts) > 1){
+                    return [null, "edit $n's SEARCH matches " . count($starts) . " places. Add a neighbouring line or two so it only matches one."];
+                }
+            }
+
+            if($at === null){
+                $first = trim(strtok($search, "\n"));
+                return [null, "edit $n's SEARCH wasn't found" . ($first !== "" ? " (it starts with \"" . mb_substr($first, 0, 80) . "\")" : "")
+                    . ". It has to be copied exactly from the current version."];
+            }
+
+            array_splice($lines, $at, count($want), $replace === "" ? [] : explode("\n", $replace));
+            $content = implode("\n", $lines);
+        }
+
+        return [$content, null];
+    }
+
+    // where $want appears in $lines, comparing each line after $clean
+    private static function findLines(array $lines, array $want, string $clean){
+        $want = array_map($clean, $want);
+        // a blank line at either end of the search doesn't have to match
+        while(count($want) > 1 && end($want) === ""){
+            array_pop($want);
+        }
+        while(count($want) > 1 && $want[0] === ""){
+            array_shift($want);
+        }
+
+        $starts = [];
+        $size = count($want);
+        for($i = 0; $i + $size <= count($lines); $i++){
+            for($j = 0; $j < $size; $j++){
+                if($clean($lines[$i + $j]) !== $want[$j]){
+                    continue 2;
+                }
+            }
+            $starts[] = $i;
+        }
+        return $starts;
+    }
+
+    // the hidden message that tells the model its edits missed, so it can send them again
+    static function feedback(array $errors){
+        $text = "[Automatic message from the chat page, not from the user.] Some artifact edits in your last reply didn't apply, "
+            . "so those artifacts weren't changed:\n";
+        foreach($errors as $error){
+            $text .= "- \"" . $error["ref"] . "\": " . $error["message"] . "\n";
+        }
+
+        $shown = [];
+        foreach($errors as $error){
+            if($error["content"] === null || isset($shown[$error["ref"]])){
+                continue;
+            }
+            $shown[$error["ref"]] = true;
+            $content = $error["content"];
+            $cut = mb_strlen($content) > self::FEEDBACK_MAX_CHARS;
+            if($cut){
+                $content = mb_substr($content, 0, self::FEEDBACK_MAX_CHARS);
+            }
+            $text .= "\nHere's the current version of \"" . $error["ref"] . "\" (v" . $error["version"] . ")" . ($cut ? ", cut off because it's long" : "")
+                . ". Copy SEARCH text from this exactly:\n<current_version id=\"" . $error["ref"] . "\">\n" . $content . "\n</current_version>\n";
+        }
+
+        $text .= "\nSend the edit again with mode=\"edit\" (all of its blocks, since none of them were applied), or write the artifact in full if that's simpler. "
+            . "Don't repeat your earlier explanation; at most say in a few words that you're fixing it.";
+        return $text;
     }
 
     // same rules as the browser's copy in ai.js so the two agree on ids
@@ -88,46 +240,149 @@ class artifacts {
     }
 
     // finds the finished artifacts in an answer's text blocks, gives each one its version number and writes
-    // that back into the tag. returns [blocks, saves]; the saves get written once the message has an id
+    // that back into the tag. edits get applied to the latest version here. returns [blocks, saves]; the saves
+    // get written once the message has an id, and edits that didn't apply end up in $this->errors
     public function prepare(int $chatId, array $blocks){
-        global $db;
-
         $saves = [];
-        $next = [];
+        $current = []; // ref -> the latest version so far, including ones earlier in this answer
+        $this->errors = [];
+        // where each tag is in the answer, so the browser hears about them in order (saves and misses alike)
+        $this->at = 0;
 
         foreach($blocks as $i => $block){
             if($block["type"] !== "text" || stripos($block["text"], "<artifact") === false){
                 continue;
             }
 
-            $blocks[$i]["text"] = preg_replace_callback(self::PATTERN, function($match) use ($chatId, &$saves, &$next, $db){
+            $blocks[$i]["text"] = preg_replace_callback(self::PATTERN, function($match) use ($chatId, &$saves, &$current){
                 $attrs = self::attributes($match[1]);
+                $this->at++;
+
+                if(strtolower($attrs["mode"] ?? "") === "edit"){
+                    return $this->prepareEdit($chatId, $attrs, $match[2], $current, $saves);
+                }
+
                 $content = self::cleanContent($match[2]);
-                $title = trim($attrs["title"] ?? "") ?: "Untitled";
-                $title = mb_substr(preg_replace('/\s+/', ' ', $title), 0, 120);
+                $title = self::title($attrs["title"] ?? "");
                 $ref = self::slug(($attrs["id"] ?? "") !== "" ? $attrs["id"] : $title);
                 $type = self::type($attrs, $content);
                 $language = $type === "code" ? mb_substr(strtolower(trim($attrs["language"] ?? "")), 0, 30) : null;
 
-                if(!isset($next[$ref])){
-                    $existing = $db->table("ai_artifacts")->where("chatid", $chatId)->where("ref", $ref)->first();
-                    $next[$ref] = $existing ? (int) $existing->latest + 1 : 1;
-                }
-                $version = $next[$ref]++;
+                $version = $this->latest($chatId, $ref, $current)["version"] + 1;
+                $current[$ref] = compact("version", "content", "title", "type", "language");
 
                 if(strlen($content) <= self::MAX_BYTES){
-                    $saves[] = compact("ref", "title", "type", "language", "content", "version");
+                    $saves[] = compact("ref", "title", "type", "language", "content", "version") + ["at"=>$this->at];
                 }
 
-                $tag = '<artifact id="' . $ref . '" type="' . $type . '" title="' . htmlspecialchars($title, ENT_QUOTES) . '"'
-                    . ($language ? ' language="' . htmlspecialchars($language, ENT_QUOTES) . '"' : "")
-                    . ' version="' . $version . '">';
-
-                return $tag . "\n" . $content . "\n</artifact>";
+                return self::tag($ref, $type, $title, $language, ["version"=>$version]) . "\n" . $content . "\n</artifact>";
             }, $block["text"]);
         }
 
         return [$blocks, $saves];
+    }
+
+    private function prepareEdit(int $chatId, array $attrs, string $body, array &$current, array &$saves){
+        $ref = self::slug($attrs["id"] ?? "");
+        $body = trim(str_replace("\r\n", "\n", $body), "\n");
+        $base = $this->latest($chatId, $ref, $current);
+        $title = trim($attrs["title"] ?? "") !== "" ? self::title($attrs["title"]) : ($base["title"] ?? "Untitled");
+
+        $fail = function(string $message) use ($ref, $title, $base, $body){
+            $this->errors[] = ["ref"=>$ref, "title"=>$title, "message"=>$message, "version"=>$base["version"], "content"=>$base["content"], "at"=>$this->at];
+            return self::tag($ref, $base["type"] ?? "code", $title, $base["language"] ?? null, ["mode"=>"edit", "failed"=>"1"]) . "\n" . $body . "\n</artifact>";
+        };
+
+        if($base["content"] === null){
+            return $fail("there's no artifact with that id in this chat, so there's nothing to edit. Write it in full instead.");
+        }
+
+        $edits = self::parseEdits($body);
+        [$content, $error] = self::applyEdits($base["content"], $edits);
+        if($error !== null){
+            return $fail($error);
+        }
+        if(strlen($content) > self::MAX_BYTES){
+            return $fail("the result would be over " . (self::MAX_BYTES / 1024) . " KB.");
+        }
+
+        $type = $base["type"];
+        $language = $base["language"];
+        $version = $base["version"] + 1;
+        $current[$ref] = compact("version", "content", "title", "type", "language");
+        $saves[] = compact("ref", "title", "type", "language", "content", "version") + ["edited"=>true, "at"=>$this->at];
+
+        return self::tag($ref, $type, $title, $language, ["mode"=>"edit", "version"=>$version, "edits"=>count($edits)]) . "\n" . $body . "\n</artifact>";
+    }
+
+    // the newest version of an artifact in this chat: what's been written so far in this answer, else the saved one
+    private function latest(int $chatId, string $ref, array &$current){
+        global $db;
+
+        if(!isset($current[$ref])){
+            $current[$ref] = ["version"=>0, "content"=>null, "title"=>null, "type"=>null, "language"=>null];
+
+            $artifact = $db->table("ai_artifacts")->where("chatid", $chatId)->where("ref", $ref)->first();
+            if($artifact){
+                $row = $db->table("ai_artifact_versions")->where("artifactid", $artifact->id)->where("version", (int) $artifact->latest)->first();
+                $current[$ref] = [
+                    "version"=>(int) $artifact->latest,
+                    "content"=>$row ? $row->content : null,
+                    "title"=>$artifact->title,
+                    "type"=>$artifact->type,
+                    "language"=>$artifact->language,
+                ];
+            }
+        }
+
+        return $current[$ref];
+    }
+
+    static function title(string $title){
+        $title = trim($title) ?: "Untitled";
+        return mb_substr(preg_replace('/\s+/', ' ', $title), 0, 120);
+    }
+
+    static function tag(string $ref, string $type, string $title, ?string $language, array $extra = []){
+        $tag = '<artifact id="' . $ref . '"';
+        if(isset($extra["mode"])){
+            $tag .= ' mode="' . $extra["mode"] . '"';
+            unset($extra["mode"]);
+        }
+        $tag .= ' type="' . $type . '" title="' . htmlspecialchars($title, ENT_QUOTES) . '"'
+            . ($language ? ' language="' . htmlspecialchars($language, ENT_QUOTES) . '"' : "");
+        foreach($extra as $name => $value){
+            $tag .= ' ' . $name . '="' . htmlspecialchars((string) $value, ENT_QUOTES) . '"';
+        }
+        return $tag . ">";
+    }
+
+    // the saved text with each applied edit swapped for the full version it made, for showing in the browser
+    public function expandEdits(int $chatId, string $text){
+        global $db;
+
+        if(stripos($text, 'mode="edit"') === false){
+            return $text;
+        }
+
+        return preg_replace_callback(self::PATTERN, function($match) use ($chatId, $db){
+            $attrs = self::attributes($match[1]);
+            if(strtolower($attrs["mode"] ?? "") !== "edit" || !empty($attrs["failed"]) || empty($attrs["version"])){
+                return $match[0];
+            }
+
+            $row = $db->query(
+                "SELECT v.content, a.type, a.language FROM ai_artifacts a INNER JOIN ai_artifact_versions v ON v.artifactid = a.id
+                 WHERE a.chatid = ? AND a.ref = ? AND v.version = ? LIMIT 1",
+                [$chatId, self::slug($attrs["id"] ?? ""), (int) $attrs["version"]]
+            )->first();
+            if(!$row){
+                return $match[0];
+            }
+
+            return self::tag(self::slug($attrs["id"] ?? ""), $attrs["type"] ?? $row->type, $attrs["title"] ?? "Untitled", $attrs["language"] ?? $row->language,
+                ["version"=>(int) $attrs["version"], "edits"=>(int) ($attrs["edits"] ?? 0)]) . "\n" . $row->content . "\n</artifact>";
+        }, $text);
     }
 
     public function save(int $userId, int $chatId, int $messageId, array $saves){
@@ -160,7 +415,9 @@ class artifacts {
                 "messageid"=>$messageId, "created"=>time(),
             ]);
 
-            $saved[] = ["ref"=>$item["ref"], "version"=>$item["version"], "title"=>$item["title"], "type"=>$item["type"]];
+            // the browser only has the edits for one of these, so it gets the full result
+            $saved[] = ["ref"=>$item["ref"], "version"=>$item["version"], "title"=>$item["title"], "type"=>$item["type"], "at"=>$item["at"] ?? 0]
+                + (!empty($item["edited"]) ? ["content"=>$item["content"], "language"=>$item["language"]] : []);
         }
 
         return $saved;

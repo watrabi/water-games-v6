@@ -11,11 +11,14 @@ class assistant {
     const MAX_TOOL_ROUNDS = 8;
     const MAX_PROMPT_CHARS = 20000;
     const MAX_TOOL_RESULT_CHARS = 30000;
+    // goes back to the model when artifact edits miss, at most this many times an answer
+    const MAX_EDIT_RETRIES = 2;
 
     private chats $chats;
     private $emit;
     private array $imageCache = [];
     private bool $regenerate = false;
+    private array $editErrors = [];
 
     function __construct(callable $emit){
         $this->chats = new chats();
@@ -115,6 +118,7 @@ class assistant {
         $useThemes = themetools::enabled() && $caps["tools"];
         $tools = $caps["tools"] ? array_merge(tools::definitions(), $useMemory ? memories::definitions() : [], $useThemes ? themetools::definitions() : []) : [];
         $system = $this->systemPrompt($user, $useMemory, $caps["tools"], $useThemes);
+        $editRetries = 0;
 
         for($round = 0; $round < self::MAX_TOOL_ROUNDS; $round++){
             $provider = provider::for($model, $this->emit);
@@ -153,8 +157,21 @@ class assistant {
             $blocks = $this->saveMessage($user, $chatId, $blocks, $model["id"]);
             $history[] = ["role"=>"assistant", "content"=>$this->forModel($blocks, $model)];
 
+            // edits that didn't line up go back to the model with the current version, in a message only it sees
+            $retryEdits = $this->editErrors && $editRetries < self::MAX_EDIT_RETRIES && $round < self::MAX_TOOL_ROUNDS - 1
+                && $stop !== "max_tokens" && !connection_aborted();
+            $feedback = $retryEdits ? ["type"=>"text", "text"=>artifacts::feedback($this->editErrors), "auto"=>true] : null;
+            if($retryEdits){
+                $editRetries++;
+            }
+
             if($stop !== "tool_use"){
-                break;
+                if(!$feedback){
+                    break;
+                }
+                $this->chats->addMessage($chatId, "user", [$feedback], null, false);
+                $history[] = ["role"=>"user", "content"=>[$feedback]];
+                continue;
             }
 
             // run every tool call from this answer, then send all the results back in one message
@@ -190,6 +207,10 @@ class assistant {
                 $this->emit(["type"=>"tool_result", "id"=>$block["id"], "content"=>mb_substr($output, 0, 2000), "is_error"=>$isError]);
             }
 
+            if($feedback){
+                $results[] = $feedback;
+            }
+
             $this->chats->addMessage($chatId, "user", $results, null, false);
             $history[] = ["role"=>"user", "content"=>$results];
 
@@ -211,13 +232,23 @@ class assistant {
     private function saveMessage($user, int $chatId, array $blocks, string $modelId){
         $artifacts = new artifacts();
         [$blocks, $saves] = $artifacts->prepare($chatId, $blocks);
+        $this->editErrors = $artifacts->errors;
 
         $messageId = (int) $this->chats->addMessage($chatId, "assistant", $blocks, $modelId);
 
+        // in the order they were written, so the browser can match each one to its card
+        $events = [];
+        foreach($artifacts->errors as $error){
+            $events[] = ["type"=>"artifact_failed", "ref"=>$error["ref"], "message"=>$error["message"], "at"=>$error["at"]];
+        }
         if($saves){
             foreach($artifacts->save((int) $user->id, $chatId, $messageId, $saves) as $saved){
-                $this->emit(["type"=>"artifact"] + $saved);
+                $events[] = ["type"=>"artifact"] + $saved;
             }
+        }
+        usort($events, fn($a, $b) => $a["at"] <=> $b["at"]);
+        foreach($events as $event){
+            $this->emit($event);
         }
 
         return $blocks;

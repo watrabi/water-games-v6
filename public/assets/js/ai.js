@@ -244,9 +244,80 @@ function holdBack(text, token){
     return text;
 }
 
+// the start of a tag we don't know the end of yet, so it isn't shown as text while it streams
+function cutPartialTag(rest){
+    let partial = Math.max(rest.lastIndexOf("<artifact"), rest.lastIndexOf("<plan"));
+    if(partial !== -1 && rest.indexOf(">", partial) === -1){
+        return rest.slice(0, partial);
+    }
+    return holdBack(holdBack(rest, "<artifact"), "<plan");
+}
+
+// same format as artifacts::EDIT_PATTERN on the server
+const editPattern = /^<<<<<<< SEARCH[ \t]*\n([\s\S]*?)\n?^=======[ \t]*\n([\s\S]*?)\n?^>>>>>>> REPLACE[ \t]*$/gm;
+
+function parseEdits(body){
+    let edits = [];
+    body.replace(/\r\n/g, "\n").replace(editPattern, function(_, search, replace) {
+        edits.push([search, replace]);
+    });
+    return edits;
+}
+
+// the browser's copy of artifacts::applyEdits, so an edit can be previewed while it streams in.
+// the server's result is the one that's kept
+function applyEdits(content, edits){
+    content = content.replace(/\r\n/g, "\n");
+
+    for(let i = 0; i < edits.length; i++){
+        let [search, replace] = edits[i];
+        if(!search.trim()){
+            return { content: null, error: "empty SEARCH" };
+        }
+
+        let at = content.indexOf(search);
+        if(at !== -1){
+            if(content.indexOf(search, at + 1) !== -1){
+                return { content: null, error: "matches more than one place" };
+            }
+            content = content.slice(0, at) + replace + content.slice(at + search.length);
+            continue;
+        }
+
+        let lines = content.split("\n");
+        let found = null;
+        for(let clean of [l => l.replace(/\s+$/, ""), l => l.trim()]){
+            let want = search.split("\n").map(clean);
+            while(want.length > 1 && want[want.length - 1] === ""){ want.pop(); }
+            while(want.length > 1 && want[0] === ""){ want.shift(); }
+
+            let starts = [];
+            for(let a = 0; a + want.length <= lines.length; a++){
+                if(want.every((w, j) => clean(lines[a + j]) === w)){
+                    starts.push(a);
+                }
+            }
+            if(starts.length > 1){
+                return { content: null, error: "matches more than one place" };
+            }
+            if(starts.length === 1){
+                found = { at: starts[0], size: want.length };
+                break;
+            }
+        }
+        if(!found){
+            return { content: null, error: "not found" };
+        }
+        lines.splice(found.at, found.size, ...(replace === "" ? [] : replace.split("\n")));
+        content = lines.join("\n");
+    }
+
+    return { content: content, error: null };
+}
+
 function splitArtifacts(raw, live){
     let parts = [];
-    let pattern = /<artifact\b([^>]*)>/g;
+    let pattern = /<(artifact|plan)\b([^>]*)>/g;
     let pos = 0;
 
     while(true){
@@ -255,55 +326,130 @@ function splitArtifacts(raw, live){
 
         if(!match){
             let rest = raw.slice(pos);
-            if(live){
-                let partial = rest.lastIndexOf("<artifact");
-                rest = partial !== -1 && rest.indexOf(">", partial) === -1 ? rest.slice(0, partial) : holdBack(rest, "<artifact");
-            }
-            parts.push({ kind: "md", text: rest });
+            parts.push({ kind: "md", text: live ? cutPartialTag(rest) : rest });
             break;
         }
 
         parts.push({ kind: "md", text: raw.slice(pos, match.index) });
 
+        let closeTag = "</" + match[1] + ">";
         let bodyStart = match.index + match[0].length;
-        let close = raw.indexOf("</artifact>", bodyStart);
+        let close = raw.indexOf(closeTag, bodyStart);
         let complete = close !== -1;
         let content = complete ? raw.slice(bodyStart, close) : raw.slice(bodyStart);
         if(!complete && live){
-            content = holdBack(content, "</artifact>");
+            content = holdBack(content, closeTag);
         }
+        let attrs = artifactAttrs(match[2]);
 
-        let attrs = artifactAttrs(match[1]);
-        content = artifactContent(content, complete);
-        let title = (attrs.title || "").trim() || "Untitled";
-        let type = artifactType(attrs, content);
+        if(match[1] === "plan"){
+            parts.push({
+                kind: "plan",
+                title: (attrs.title || "").trim(),
+                text: content.replace(/^\r?\n/, ""),
+                complete: complete,
+                writing: !complete && live
+            });
+        } else {
+            let edit = (attrs.mode || "").toLowerCase() === "edit";
+            if(!edit){
+                content = artifactContent(content, complete);
+            }
+            let title = (attrs.title || "").trim();
+            let type = edit ? (attrs.type || "") : artifactType(attrs, content);
 
-        parts.push({
-            kind: "artifact",
-            ref: artifactSlug(attrs.id || title),
-            title: title,
-            type: type,
-            language: type === "code" ? (attrs.language || "").toLowerCase() : "",
-            version: attrs.version ? parseInt(attrs.version, 10) : null,
-            content: content,
-            complete: complete,
-            writing: !complete && live
-        });
+            parts.push({
+                kind: "artifact",
+                ref: artifactSlug(attrs.id || title || "Untitled"),
+                title: title || "Untitled",
+                titleGiven: !!title,
+                type: type,
+                language: type === "code" || edit ? (attrs.language || "").toLowerCase() : "",
+                version: attrs.version ? parseInt(attrs.version, 10) : null,
+                content: edit ? "" : content,
+                edit: edit,
+                editBody: edit ? content : "",
+                edits: attrs.edits ? parseInt(attrs.edits, 10) : 0,
+                failed: !!attrs.failed,
+                complete: complete,
+                writing: !complete && live
+            });
+        }
 
         if(!complete){
             break;
         }
-        pos = close + "</artifact>".length;
+        pos = close + closeTag.length;
     }
 
     return parts;
 }
 
+// an edit's content is the latest version before it with the edits applied: the server's copy once it's
+// saved, a preview from the edits that have finished streaming before that
+function resolveEdit(part, own){
+    if(own && own.finalContent !== undefined){
+        part.content = own.finalContent;
+        part.edits = own.finalEdits || part.edits;
+    }
+    if(own && own.editFailed){
+        part.failed = true;
+    }
+
+    let base = null;
+    for(let card of log.querySelectorAll(".aiArtifact")){
+        if(card === own){
+            break;
+        }
+        if(card.artifact && card.artifact.ref === part.ref && !card.artifact.failed && !card.artifact.writing && card.artifact.content){
+            base = card.artifact;
+        }
+    }
+
+    if(base){
+        part.type = part.type || base.type;
+        part.language = part.language || base.language;
+        if(!part.titleGiven){
+            part.title = base.title;
+        }
+    }
+    part.type = artifactIcons[part.type] ? part.type : "code";
+
+    let edits = parseEdits(part.editBody);
+    part.edits = part.edits || edits.length;
+    if(own && own.finalContent !== undefined){
+        return;
+    }
+    if(!base){
+        part.content = "";
+        return;
+    }
+
+    // the last block may still be streaming in, those wait until they're whole
+    let result = applyEdits(base.content, edits);
+    part.content = result.content !== null ? result.content : base.content;
+    if(result.error && !part.writing && !part.version){
+        part.previewMissed = true;
+    }
+}
+
 function artifactMeta(part){
     let kind = part.type === "code" && part.language ? part.language : artifactNames[part.type];
     let lines = part.content ? part.content.split("\n").length : 0;
+    let changes = part.edits + " change" + (part.edits === 1 ? "" : "s");
+    if(part.edit){
+        if(part.failed){
+            return "Edit didn't line up, nothing changed";
+        }
+        if(part.writing){
+            return "Editing… " + changes;
+        }
+    }
     if(part.writing){
         return "Writing… " + lines + " line" + (lines === 1 ? "" : "s");
+    }
+    if(part.edits && part.version){
+        return kind + " · v" + part.version + " · " + changes;
     }
     if(!part.complete && !part.transient){
         return kind + " · unfinished";
@@ -342,8 +488,10 @@ function artifactCard(part, existing){
     card.artifact = part;
     card.dataset.ref = part.ref;
     card.classList.toggle("writing", part.writing);
+    card.classList.toggle("edit", !!part.edit);
+    card.classList.toggle("failed", !!part.failed);
     setIfChanged(card.querySelector(".aiArtifactIcon"), "className", "aiArtifactIcon " + part.type);
-    setIfChanged(card.querySelector(".aiArtifactIcon i"), "className", part.writing ? "ph-bold ph-circle-notch spin" : "ph-bold " + artifactIcons[part.type]);
+    setIfChanged(card.querySelector(".aiArtifactIcon i"), "className", part.writing ? "ph-bold ph-circle-notch spin" : part.failed ? "ph-bold ph-warning" : "ph-bold " + (part.edit ? "ph-pencil-simple" : artifactIcons[part.type]));
     setIfChanged(card.querySelector(".aiArtifactTitle"), "textContent", part.title);
     setIfChanged(card.querySelector(".aiArtifactMeta"), "textContent", artifactMeta(part));
     card.setAttribute("aria-label", "Open " + part.title);
@@ -352,6 +500,41 @@ function artifactCard(part, existing){
         showArtifact(part, card, true);
     }
     return card;
+}
+
+// a plan the model wrote before building: a checklist that gets ticked off once what it planned is built
+function planCard(part, existing){
+    let card = existing;
+    if(!card){
+        card = el("details", "aiPlan");
+        card.open = true;
+        let summary = el("summary");
+        summary.append(el("i", "ph-bold ph-list-checks"), el("span", "aiPlanLabel"), el("span", "aiPlanTitle"));
+        card.append(summary, el("div", "aiText aiPlanBody"));
+    }
+
+    card.classList.toggle("writing", part.writing);
+    setIfChanged(card.querySelector(".aiPlanLabel"), "textContent", part.writing ? "Planning…" : "Plan");
+    setIfChanged(card.querySelector(".aiPlanTitle"), "textContent", part.title);
+    if(card.planText !== part.text){
+        card.planText = part.text;
+        renderMarkdown(card.querySelector(".aiPlanBody"), part.text);
+        if(card.classList.contains("done")){
+            tickPlans(card.parentElement);
+        }
+    }
+    return card;
+}
+
+// once a turn has built something, its plans are done
+function tickPlans(scope){
+    if(!scope || !scope.querySelector(".aiArtifact:not(.failed):not(.writing)")){
+        return;
+    }
+    scope.querySelectorAll(".aiPlan").forEach(function(plan) {
+        plan.classList.add("done");
+        plan.querySelectorAll("input[type=checkbox]").forEach(box => box.checked = true);
+    });
 }
 
 // markdown and artifact cards for one text segment. once there's an artifact in it, each part gets its
@@ -380,13 +563,24 @@ function renderSegment(segment, live){
             slot = null;
         }
 
+        if(part.kind === "artifact" && part.edit){
+            resolveEdit(part, slot ? slot.el : null);
+        }
+
         if(!slot){
             slot = { kind: part.kind, el: part.kind === "md" ? el("div", "aiMdPart") : null, text: null, final: false };
             if(part.kind === "artifact"){
                 slot.el = artifactCard(part, null);
+            } else if(part.kind === "plan"){
+                slot.el = planCard(part, null);
             }
             segment.el.append(slot.el);
             segment.slots[i] = slot;
+        }
+
+        if(part.kind === "plan"){
+            planCard(part, slot.el);
+            return;
         }
 
         if(part.kind === "md"){
@@ -417,6 +611,10 @@ function renderSegment(segment, live){
 
 // "copy answer" gets the artifacts as normal code blocks
 function plainAnswer(raw){
+    raw = raw.replace(/<plan\b([^>]*)>([\s\S]*?)(<\/plan>|$)/g, function(_, attrs, content) {
+        let title = artifactAttrs(attrs).title;
+        return "**Plan" + (title ? ": " + title : "") + "**\n" + content.trim();
+    });
     return raw.replace(/<artifact\b([^>]*)>([\s\S]*?)(<\/artifact>|$)/g, function(_, attrs, content) {
         let parsed = artifactAttrs(attrs);
         let type = artifactType(parsed, content);
@@ -447,7 +645,7 @@ function canPreview(part){
 
 // other cards in this chat with the same id are the other versions
 function artifactVersions(part){
-    return Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === part.ref && !part.transient);
+    return Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === part.ref && !c.artifact.failed && !part.transient);
 }
 
 function openArtifact(part, card, automatic){
@@ -639,16 +837,35 @@ document.getElementById("aiArtifactDownload").addEventListener("click", function
 
 // the server saved one: give the newest card with that id and no version its number
 function artifactSaved(event){
-    let cards = Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === event.ref && !c.artifact.version);
+    let cards = Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === event.ref && !c.artifact.version && !c.artifact.failed);
     let card = cards[0];
     if(!card){
         return;
     }
     card.artifact.version = event.version;
+    if(event.content !== undefined){
+        // an edit: the server's result is what was saved
+        card.finalContent = event.content;
+        card.artifact.content = event.content;
+        card.artifact.previewMissed = false;
+        artifactPanel.previewed = null;
+    }
     card.querySelector(".aiArtifactMeta").textContent = artifactMeta(card.artifact);
     if(artifactPanel.card === card){
         showArtifact(card.artifact, card, true);
     }
+}
+
+// an edit that didn't line up: nothing was changed, and the model's been asked to try again
+function artifactFailed(event){
+    let card = Array.from(log.querySelectorAll(".aiArtifact.edit")).filter(c => c.artifact && c.artifact.ref === event.ref && !c.artifact.version && !c.artifact.failed)[0];
+    if(!card){
+        return;
+    }
+    card.editFailed = true;
+    card.artifact.failed = true;
+    card.title = "Didn't apply: " + event.message;
+    artifactCard(card.artifact, card);
 }
 
 // ---------- building messages ----------
@@ -800,6 +1017,13 @@ function addText(turn, text, live){
                 }
             });
         }, wait);
+    }
+}
+
+// draws text that's still waiting for its frame, so the cards an event talks about exist
+function flushText(turn){
+    if(turn.text && turn.text.queued){
+        renderSegment(turn.text, true);
     }
 }
 
@@ -989,6 +1213,7 @@ function renderSaved(messages){
     let lastIsAnswer = messages.length && !(messages[messages.length - 1].role === "user" && messages[messages.length - 1].visible);
     turns.forEach(function(t, i) {
         closeText(t);
+        tickPlans(t.body);
         turnActions(t, lastIsAnswer && i === turns.length - 1);
     });
 }
@@ -1075,9 +1300,12 @@ function send(options){
             case "text":
                 endThinking(turn);
                 addText(turn, event.text, true);
-                let writing = turn.body.querySelector(".aiArtifact.writing");
-                if(writing){
-                    bloopDoing(turn, "write", "Writing " + (writing.artifact ? writing.artifact.title : "it") + "...");
+                let writing = turn.body.querySelector(".aiPlan.writing, .aiArtifact.writing");
+                let made = writing && writing.artifact;
+                if(writing && !made){
+                    bloopDoing(turn, "write", aiName + " is planning it out...");
+                } else if(made){
+                    bloopDoing(turn, made.edit ? "think2" : "think", (made.edit ? "Editing " : "Building ") + made.title + "...");
                 } else {
                     bloopDoing(turn, null);
                 }
@@ -1109,7 +1337,13 @@ function send(options){
                 addNotice(turn, event.text);
                 break;
             case "artifact":
+                flushText(turn);
                 artifactSaved(event);
+                break;
+            case "artifact_failed":
+                flushText(turn);
+                artifactFailed(event);
+                bloopDoing(turn, "ponder", aiName + " is fixing that edit...");
                 break;
             case "theme":
                 applyTheme(event);
@@ -1200,6 +1434,7 @@ function send(options){
     }).finally(function() {
         turn.status.el.remove();
         let failed = !!turn.body.querySelector(".aiNotice.error, .aiNotice.refused");
+        tickPlans(turn.body);
         endThinking(turn);
         closeText(turn);
 

@@ -8,15 +8,26 @@ use watrlabs\ai\memories;
 global $router; // IMPORTANT: KEEP THIS HERE!
 
 // the saved messages, shaped for the browser (no raw image data, no thinking signatures)
-function aiDisplayMessages(array $messages){
+function aiDisplayMessages(array $messages, int $chatId){
     $out = [];
+    $artifacts = new artifacts();
 
     foreach($messages as $message){
         $content = [];
 
         foreach($message["content"] as $block){
+            // the note that sends missed artifact edits back to the model
+            if(!empty($block["auto"])){
+                $content[] = ["type"=>"notice", "kind"=>"retry", "text"=>"An edit didn't line up with the latest version, so it had another go."];
+                continue;
+            }
+
             switch($block["type"]){
                 case "text":
+                    // applied edits show as the full version they made
+                    $block["text"] = $artifacts->expandEdits($chatId, $block["text"]);
+                    $content[] = $block;
+                    break;
                 case "notice":
                     $content[] = $block;
                     break;
@@ -76,7 +87,7 @@ function aiPage(?int $chatId){
         if(!$chat){
             return $router->return_status(404);
         }
-        $messages = aiDisplayMessages($chats->messages($chat->id));
+        $messages = aiDisplayMessages($chats->messages($chat->id), (int) $chat->id);
     }
 
     $limit = config::dailyLimit();
