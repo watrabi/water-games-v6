@@ -283,3 +283,8 @@ Routes / pages:
   cached the 404s from a check made before nginx reloaded; purged those URLs. Checked: every file 200 through
   Cloudflare, a wisp websocket with a PHP-minted token upgrades (101), /proxy sends signed out people to sign in.
   Not yet tried signed in in a real browser on prod.
+- 2026-10-08: proxy fix deployed (32f5b2a). On a Chromebook /proxy failed with "One of the specified object stores was
+  not found": ScramjetServiceWorker's constructor opens `$scramjet` v1 with no upgrade handler, so when the worker
+  started before the page's controller.init() the database was created empty and init() could never add the tables.
+  sw.js now wraps indexedDB.open to make the tables (and close on versionchange), and proxy.js deletes a database
+  left without them before init(). Not reproduced locally (fast machine wins the race); confirm on the Chromebook.
