@@ -3,6 +3,29 @@
 // __VERSION__ is filled in by server.js, so the big script below can be cached forever
 importScripts("/proxy/s/scram/scramjet.all.js?v=__VERSION__");
 
+// Scramjet's worker opens its database the moment it starts, without making the tables (only the page's
+// controller.init() makes them). when the worker gets there first (a slow chromebook does) the database is left
+// empty at version 1, and init() then fails with "One of the specified object stores was not found" forever.
+// so whoever opens it here makes the tables, and lets go when the page needs to delete a broken one
+const STORES = ["config", "cookies", "redirectTrackers", "referrerPolicies", "publicSuffixList"];
+const openDb = indexedDB.open.bind(indexedDB);
+indexedDB.open = function(name, version) {
+    let request = version === undefined ? openDb(name) : openDb(name, version);
+    if(name === "$scramjet"){
+        request.addEventListener("upgradeneeded", function() {
+            for(const store of STORES){
+                if(!request.result.objectStoreNames.contains(store)){
+                    request.result.createObjectStore(store);
+                }
+            }
+        });
+        request.addEventListener("success", function() {
+            request.result.addEventListener("versionchange", () => request.result.close());
+        });
+    }
+    return request;
+};
+
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 

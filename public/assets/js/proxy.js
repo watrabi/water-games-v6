@@ -123,6 +123,7 @@ async function setup(){
                 sync: "/proxy/s/scram/scramjet.sync.js" + V,
             },
         });
+        await repairDb();
         await state.controller.init();
         state.connection = new BareMux.BareMuxConnection("/proxy/s/baremux/worker.js" + V);
     }
@@ -136,6 +137,33 @@ async function setup(){
         await new Promise(function(resolve) {
             let worker = registration.installing || registration.waiting;
             worker.addEventListener("statechange", () => worker.state === "activated" && resolve());
+        });
+    }
+}
+
+// an older proxy service worker could leave Scramjet's database without its tables (see proxy/public/sw.js), and
+// init() can't fix that. delete it so init() makes it again. the new worker lets go of it when asked, the old one
+// when it's replaced, so give it a few seconds
+const STORES = ["config", "cookies", "redirectTrackers", "referrerPolicies", "publicSuffixList"];
+async function repairDb(){
+    if(!indexedDB.databases || !(await indexedDB.databases()).some(db => db.name === "$scramjet")){
+        return;
+    }
+    let broken = await new Promise(function(resolve) {
+        let request = indexedDB.open("$scramjet");
+        request.onsuccess = function() {
+            let db = request.result;
+            let missing = STORES.some(store => !db.objectStoreNames.contains(store));
+            db.close();
+            resolve(missing);
+        };
+        request.onerror = () => resolve(false);
+    });
+    if(broken){
+        await new Promise(function(resolve) {
+            let request = indexedDB.deleteDatabase("$scramjet");
+            request.onsuccess = request.onerror = resolve;
+            setTimeout(resolve, 10000);
         });
     }
 }
