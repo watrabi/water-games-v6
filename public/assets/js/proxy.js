@@ -1,4 +1,4 @@
-// /proxy. runs again on every visit (pages load in place), so everything stays inside this function. the expensive
+// /network. runs again on every visit (pages load in place), so everything stays inside this function. the expensive
 // parts (scripts, service worker, transport) live on window.watrProxy and are only set up once per tab.
 //
 // how it's fast:
@@ -24,7 +24,7 @@ try {
 } catch (e) {}
 
 const V = "?v=" + encodeURIComponent(config.version || "");
-const PREFIX = "/proxy/~/";
+const PREFIX = "/network/~/";
 
 const engines = {
     ddg: "https://duckduckgo.com/?q=%s",
@@ -34,8 +34,8 @@ const engines = {
 };
 
 const transports = {
-    epoxy: "/proxy/s/epoxy/index.mjs" + V,
-    libcurl: "/proxy/s/libcurl/index.mjs" + V,
+    epoxy: "/network/s/epoxy/index.mjs" + V,
+    libcurl: "/network/s/libcurl/index.mjs" + V,
 };
 
 let page = document.getElementById("proxyPage");
@@ -109,8 +109,8 @@ async function setup(){
     }
 
     // all at once: the two scripts download while the service worker installs
-    let registering = navigator.serviceWorker.register("/proxy/sw.js", { scope: "/proxy/", updateViaCache: "none" });
-    await Promise.all([loadScript("/proxy/s/baremux/index.js" + V), loadScript("/proxy/s/scram/scramjet.all.js" + V)]);
+    let registering = navigator.serviceWorker.register("/network/sw.js", { scope: "/network/", updateViaCache: "none" });
+    await Promise.all([loadScript("/network/s/baremux/index.js" + V), loadScript("/network/s/scram/scramjet.all.js" + V)]);
 
     if(!state.controller){
         const { ScramjetController } = $scramjetLoadController();
@@ -118,14 +118,14 @@ async function setup(){
             prefix: PREFIX,
             files: {
                 // no ?v= on this one: Scramjet compares it to the bare path
-                wasm: "/proxy/s/scram/scramjet.wasm.wasm",
-                all: "/proxy/s/scram/scramjet.all.js" + V,
-                sync: "/proxy/s/scram/scramjet.sync.js" + V,
+                wasm: "/network/s/scram/scramjet.wasm.wasm",
+                all: "/network/s/scram/scramjet.all.js" + V,
+                sync: "/network/s/scram/scramjet.sync.js" + V,
             },
         });
         await repairDb();
         await state.controller.init();
-        state.connection = new BareMux.BareMuxConnection("/proxy/s/baremux/worker.js" + V);
+        state.connection = new BareMux.BareMuxConnection("/network/s/baremux/worker.js" + V);
     }
 
     // a fresh token each visit (they last 12 hours), and whichever transport is picked

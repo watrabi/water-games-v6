@@ -1,6 +1,6 @@
 {% extends "models/base.twig" %}
 {% import "components/games.twig" as g %}
-{% block pageName %}Games{% endblock %}
+{% block pageName %}Discover{% endblock %}
 {% block headerIncludes %}
     <link rel="stylesheet" href="/assets/css/gamepage.css?t=16">
 {% endblock %}
@@ -9,7 +9,7 @@
     <div class="pageHeader">
         <div>
             <h1>{% if search %}Results for “{{ search }}”{% elseif tag %}{{ tag.name }} games{% else %}Games, for you.{% endif %}</h1>
-            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search or tag %} · <a href="/discover?sort={{ sort }}">clear {{ search ? 'search' : 'filter' }}</a>{% endif %}{% if currentuser %} · <a href="/discover/request">Can't find one? Request it</a>{% endif %} · <a href="/play/random{{ currentuser ? '?unplayed=1' : '' }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i> Random{{ currentuser ? ' one you haven\'t played' : '' }}</a></p>
+            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search or tag %} · <a href="/discover?sort={{ sort }}">clear {{ search ? 'search' : 'filter' }}</a>{% endif %}{% if currentuser %} · <a href="/discover/request">Can't find one? Request it</a>{% endif %} · <a href="/item/random{{ currentuser ? '?unplayed=1' : '' }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i> Random{{ currentuser ? ' one you haven\'t played' : '' }}</a></p>
         </div>
         <form class="pageSearch" action="/discover" method="get" role="search">
             <input type="hidden" name="sort" value="{{ sort }}">

@@ -33,7 +33,7 @@
         </div>
         <div class="continueRow">
             {% for game in recent %}
-            <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'play' }}/{{ game.id }}">
+            <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'item' }}/{{ game.id }}">
                 <span class="gameIcon">
                     {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}
                 </span>
@@ -113,7 +113,7 @@
                     {% for friend in playingNow %}
                     <li>
                         <a href="/users/{{ friend.username|lower|url_encode }}">{{ a.avatar(friend) }}</a>
-                        <span><a href="/users/{{ friend.username|lower|url_encode }}">{{ friend.username }}</a> is playing <a href="/{{ friend.playing.type == 'app' ? 'apps' : 'play' }}/{{ friend.playing.id }}">{{ friend.playing.name }}</a></span>
+                        <span><a href="/users/{{ friend.username|lower|url_encode }}">{{ friend.username }}</a> is playing <a href="/{{ friend.playing.type == 'app' ? 'apps' : 'item' }}/{{ friend.playing.id }}">{{ friend.playing.name }}</a></span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -134,7 +134,7 @@
                             <span class="feedIcon"><i class="ph-bold {{ item.icon }}"></i></span>
                             <p>
                                 {% if item.user %}<a href="/users/{{ item.user.username|lower|url_encode }}">{{ item.user.username }}</a> {{ item.text }}{% else %}{{ item.text }}:{% endif %}
-                                {% if item.game %}<a href="/{{ item.game.type == 'app' ? 'apps' : 'play' }}/{{ item.game.id }}">{{ item.game.name }}</a>{% endif %}
+                                {% if item.game %}<a href="/{{ item.game.type == 'app' ? 'apps' : 'item' }}/{{ item.game.id }}">{{ item.game.name }}</a>{% endif %}
                                 <span class="muted feedTime">{{ item.created|ago }}</span>
                             </p>
                         </li>

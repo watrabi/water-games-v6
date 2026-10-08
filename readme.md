@@ -15,7 +15,7 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 
 # pages
 - `/` landing, `/home` (signed in), `/discover` (search with `?q=`, sort with `?sort=popular|newest|name`)
-- `/play/{id}` plays a game: the iframe loads `gamePath`, the tile uses `gameIcon` (falls back to the first letter if it's empty)
+- `/item/{id}` plays a game: the iframe loads `gamePath`, the tile uses `gameIcon` (falls back to the first letter if it's empty)
 - `/favorites`, `/users/{username}`, `/settings`, `/auth/logout`
 - `/terms`, `/privacy`, `/credits`
 - the old `/games`, `/games/{id}`, `/games/random` and `/games/request` addresses 301 to the new ones (query string kept)
@@ -24,8 +24,8 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/music` track list, with a player bar that follows you between pages. `/music/playlists` for your playlists
 - `/ai` chat with saved conversations, tools and image input (see below)
 - `/discover/request` asks for a game to be added, `/notifications` is everything the bell has shown you
-- `/proxy` web proxy (see below)
-- `/collections`, `/recap`, `/play/random`, `/sitemap.xml`, `/robots.txt`, `/health`
+- `/network` web proxy (see below)
+- `/collections`, `/recap`, `/item/random`, `/sitemap.xml`, `/robots.txt`, `/health`
 - `/auth/forgot` and `/auth/reset` for forgotten passwords (needs mail, see below)
 
 # admin panel
@@ -85,7 +85,7 @@ get a notification, and you get one if they do.
 - **game of the day**: picked automatically each day (same for everyone, no repeats within 30 days, skips games
   people mostly dislike), shown on `/`, `/home`, `/discover` and the game itself. admins can pin one for today from the
   game's admin page
-- **random**: `/play/random` (and `/play/random?unplayed=1` for one you haven't tried), `g` then `r` anywhere
+- **random**: `/item/random` (and `/item/random?unplayed=1` for one you haven't tried), `g` then `r` anywhere
 - **collections**: `/collections`. anyone can make lists of games with the folder button on a game page, public or
   private. collections an admin marks as staff picks show on `/discover` and `/home`
 - **game pages** can have "How to play" (controls) and up to 6 screenshots, from the admin form. games added in the
@@ -201,15 +201,15 @@ keep it running with systemd, pm2, or whatever you like (`pm2 start server.js --
 answers without the secret if you want to monitor it. if node goes down, chat quietly falls back to polling.
 
 # proxy
-`/proxy` is a web proxy: search or type an address and the site opens inside the page, with back / forward / reload,
-fullscreen and "open in a new tab". `/proxy?url=wikipedia.org` opens a site straight away. only signed in people can
+`/network` is a web proxy: search or type an address and the site opens inside the page, with back / forward / reload,
+fullscreen and "open in a new tab". `/network?url=wikipedia.org` opens a site straight away. only signed in people can
 use it, and it only shows up in the sidebar once it's set up.
 
 it's [Scramjet](https://github.com/MercuryWorkshop/scramjet). the rewriting and even the TLS happen in the browser
 (a service worker plus a wasm transport), and `proxy/` is a small node service that serves those files and runs a
 [Wisp](https://github.com/MercuryWorkshop/wisp-protocol) server: one websocket per browser, many TCP connections out.
 the server never sees inside https, it only knows which sites people open. what makes it fast:
-- everything starts loading when `/proxy` opens, not when you press Go, and the connection to your search engine is
+- everything starts loading when `/network` opens, not when you press Go, and the connection to your search engine is
   opened early. while you type an address (or hover a quick link) that site's connection is opened too
 - the browser-side files are served as brotli (the wasm transports go from ~1.7MB to ~600KB) with a versioned url, so
   after the first visit they come from the browser's cache. the compressed copies are kept on disk, so restarts are
@@ -232,10 +232,10 @@ PROXY_SECRET="same-as-.env" ALLOWED_ORIGINS="https://games.watr.lol" node server
 then `PROXY_SECRET="same-as-node"` in the site's `.env`. other settings (`PROXY_DNS`, `PROXY_PORTS`,
 `PROXY_BLOCKED_HOSTS`, `PROXY_MAX_PER_USER`, `PORT`) are explained at the top of `proxy/server.js`.
 
-it listens on 127.0.0.1:3002, so send `/proxy/` to it (with the slash: `/proxy` itself is the PHP page and stays with PHP). use `^~`, or
+it listens on 127.0.0.1:3002, so send `/network/` to it (with the slash: `/network` itself is the PHP page and stays with PHP). use `^~`, or
 a `.js`/`.wasm` static file rule takes the proxy's files. nginx:
 ```nginx
-location ^~ /proxy/wisp/ {
+location ^~ /network/wisp/ {
     proxy_pass http://127.0.0.1:3002;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -245,11 +245,11 @@ location ^~ /proxy/wisp/ {
     proxy_send_timeout 1h;
     proxy_buffering off;
 }
-# /proxy itself is the PHP page. without this nginx 301s it to /proxy/ because of the location below
-location = /proxy {
+# /network itself is the PHP page. without this nginx 301s it to /network/ because of the location below
+location = /network {
     rewrite ^ /index.php last;
 }
-location ^~ /proxy/ {
+location ^~ /network/ {
     proxy_pass http://127.0.0.1:3002;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
@@ -273,10 +273,10 @@ User=www
 [Install]
 WantedBy=multi-user.target
 ```
-`GET /proxy/health` answers without the secret, and the admin health checks (and `bin/cron.php` alerts) include it.
+`GET /network/health` answers without the secret, and the admin health checks (and `bin/cron.php` alerts) include it.
 to try it locally without nginx: run `php -S 127.0.0.1:8000 -t public dev-router.php`, then
 `DEV_UPSTREAM=http://127.0.0.1:8000 PORT=3002 PROXY_SECRET=... node server.js` in `proxy/` and open
-`http://localhost:3002/proxy` (node passes everything else on to PHP).
+`http://localhost:3002/network` (node passes everything else on to PHP).
 
 # page loading
 links and search forms load the next page in place (fetch + swap the main area), so the music player and chat

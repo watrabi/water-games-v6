@@ -6,7 +6,7 @@
 <div class="pageHeader">
     <div>
         <h1>{{ game.id ? game.name : 'New ' ~ noun }}</h1>
-        <p><a href="/admin/games?type={{ game.type }}">Back to {{ noun }}s</a>{% if game.id %} · <a href="/{{ game.type == 'app' ? 'apps' : 'play' }}/{{ game.id }}" target="_blank" rel="noopener">Open on the site</a> · {{ game.plays|number_format }} plays{% endif %}</p>
+        <p><a href="/admin/games?type={{ game.type }}">Back to {{ noun }}s</a>{% if game.id %} · <a href="/{{ game.type == 'app' ? 'apps' : 'item' }}/{{ game.id }}" target="_blank" rel="noopener">Open on the site</a> · {{ game.plays|number_format }} plays{% endif %}</p>
     </div>
     {% if game.id %}{{ m.deleteButton('/admin/games/' ~ game.id ~ '/delete', 'this ' ~ noun) }}{% endif %}
 </div>

@@ -103,7 +103,7 @@ final class SmallHelpersTest extends TestCase
 
         [, $text, $link] = notifications::describe("mention", ["game"=>"Slope", "gameid"=>3, "type"=>"game"], "alex");
         $this->assertSame("alex mentioned you in a comment on Slope.", $text);
-        $this->assertSame("/play/3#comments", $link);
+        $this->assertSame("/item/3#comments", $link);
 
         [, , $link] = notifications::describe("request_added", ["name"=>"Calc", "gameid"=>9, "type"=>"app"], null);
         $this->assertSame("/apps/9", $link);

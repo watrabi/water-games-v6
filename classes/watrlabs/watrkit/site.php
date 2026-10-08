@@ -18,7 +18,7 @@ class site {
         return ($local ? "http" : "https") . "://" . $host;
     }
 
-    // "/play/3" -> "https://games.watr.lol/play/3"
+    // "/item/3" -> "https://games.watr.lol/item/3"
     static function absolute(?string $path): ?string {
         if($path === null || $path === ""){
             return null;

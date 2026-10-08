@@ -288,3 +288,8 @@ Routes / pages:
   started before the page's controller.init() the database was created empty and init() could never add the tables.
   sw.js now wraps indexedDB.open to make the tables (and close on versionchange), and proxy.js deletes a database
   left without them before init(). Not reproduced locally (fast machine wins the race); confirm on the Chromebook.
+- 2026-10-08: renamed URLs: /proxy -> /network (the page and everything the node service serves: /network/s/...,
+  /network/sw.js, /network/~/, /network/wisp/), /play/{id} -> /item/{id}, /play/random -> /item/random. Old /proxy,
+  /play/{id}, /play/random and /games/{id} 301 to the new ones. /api/v1/play/... is unchanged. The games list's tab
+  title and sidebar label are "Discover", and the game "Play" buttons say "Open". The vhost's /proxy locations were
+  renamed to /network.

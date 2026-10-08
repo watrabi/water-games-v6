@@ -3,8 +3,8 @@
 {% block headerIncludes %}
     <link rel="stylesheet" href="/assets/css/proxy.css?t=2">
     {# fetched while the page settles, so the first site opens without waiting on them #}
-    <link rel="prefetch" href="/proxy/s/scram/scramjet.wasm.wasm">
-    <link rel="prefetch" href="/proxy/s/epoxy/index.mjs?v={{ proxyVersion }}">
+    <link rel="prefetch" href="/network/s/scram/scramjet.wasm.wasm">
+    <link rel="prefetch" href="/network/s/epoxy/index.mjs?v={{ proxyVersion }}">
 {% endblock %}
 {% block body %}
 <div class="page proxyPage" id="proxyPage">

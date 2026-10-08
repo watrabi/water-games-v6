@@ -16,12 +16,12 @@ function randomRedirect(string $type){
     $id = featured::randomId($type, $unplayed, $not) ?? featured::randomId($type, null, $not);
 
     header("Cache-Control: no-store");
-    header("Location: " . ($type === "app" ? ($id ? "/apps/" . $id : "/apps") : ($id ? "/play/" . $id : "/discover")));
+    header("Location: " . ($type === "app" ? ($id ? "/apps/" . $id : "/apps") : ($id ? "/item/" . $id : "/discover")));
     exit;
 }
 
-$router->get("/play/random", fn() => randomRedirect("game"));
-$router->get("/games/random", fn() => movedTo("/play/random"));
+$router->get("/item/random", fn() => randomRedirect("game"));
+$router->get("/games/random", fn() => movedTo("/item/random"));
 $router->get("/apps/random", fn() => randomRedirect("app"));
 
 // ---------- for search engines ----------
@@ -37,7 +37,7 @@ $router->get("/robots.txt", function(){
         "Disallow: /settings",
         "Disallow: /notifications",
         "Disallow: /auth/reset",
-        "Disallow: /play/random",
+        "Disallow: /item/random",
         "Disallow: /games/random",
         "Disallow: /apps/random",
         "Disallow: /chat/",
@@ -66,7 +66,7 @@ $router->get("/sitemap.xml", function(){
     }
 
     foreach($db->table("games")->select(["id", "type", "created"])->orderBy("id")->get() as $game){
-        $add("/" . ($game->type === "app" ? "apps" : "play") . "/" . (int) $game->id, $game->created ? (int) $game->created : null, $game->type === "app" ? "0.6" : "0.8");
+        $add("/" . ($game->type === "app" ? "apps" : "item") . "/" . (int) $game->id, $game->created ? (int) $game->created : null, $game->type === "app" ? "0.6" : "0.8");
     }
 
     try {

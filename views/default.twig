@@ -23,7 +23,7 @@
         {% if popular|length >= 4 %}
         <div class="mosaic" aria-hidden="true">
             {% for game in popular|slice(0, 9) %}
-                <a href="/play/{{ game.id }}" tabindex="-1" class="gameIcon">
+                <a href="/item/{{ game.id }}" tabindex="-1" class="gameIcon">
                     {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
                 </a>
             {% endfor %}

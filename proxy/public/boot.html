@@ -14,11 +14,11 @@
 <p id="msg">Loading…</p>
 <script>
 // a proxied address reached the server, so the service worker didn't catch it: it isn't installed yet, or a hard
-// refresh (ctrl+shift+r) skipped it. install it and try once more; if that doesn't work, send them to /proxy
+// refresh (ctrl+shift+r) skipped it. install it and try once more; if that doesn't work, send them to /network
 (function(){
     var msg = document.getElementById("msg");
     function giveUp(){
-        msg.innerHTML = 'This page needs the proxy to be running. <a href="/proxy" target="_top">Open the proxy</a> and try again.';
+        msg.innerHTML = 'This page needs the proxy to be running. <a href="/network" target="_top">Open the proxy</a> and try again.';
     }
     if(!navigator.serviceWorker){
         return giveUp();
@@ -32,7 +32,7 @@
     if(tried){
         return giveUp();
     }
-    navigator.serviceWorker.register("/proxy/sw.js", { scope: "/proxy/" })
+    navigator.serviceWorker.register("/network/sw.js", { scope: "/network/" })
         .then(function() { return navigator.serviceWorker.ready; })
         .then(function() { location.reload(); }, giveUp);
 })();

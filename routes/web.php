@@ -126,7 +126,7 @@ $router->get("/games/{id}", function($id){
     if(!ctype_digit($id)){
         return $router->return_status(404);
     }
-    movedTo("/play/" . $id);
+    movedTo("/item/" . $id);
 });
 
 $router->get("/discover", function(){
@@ -232,8 +232,18 @@ function renderPlayer($id, $type){
     ]);
 }
 
-$router->get("/play/{id}", function($id){
+$router->get("/item/{id}", function($id){
     return renderPlayer($id, "game");
+});
+
+// /play/{id} and /play/random were the addresses until 2026-10-08
+$router->get("/play/{id}", function($id){
+    global $router;
+
+    if(!ctype_digit($id) && $id !== "random"){
+        return $router->return_status(404);
+    }
+    movedTo("/item/" . $id);
 });
 
 $router->get("/apps", function(){

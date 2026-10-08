@@ -162,7 +162,7 @@ class tools {
 
         if($kind === "all" || $kind === "games"){
             foreach($games->list("popular", $query, 8, "game") as $game){
-                $lines[] = "- Game: {$game->name} ({$game->plays} plays) /play/{$game->id}";
+                $lines[] = "- Game: {$game->name} ({$game->plays} plays) /item/{$game->id}";
             }
         }
 

@@ -1,11 +1,11 @@
-// web proxy for Water Games (/proxy on the site).
+// web proxy for Water Games (/network on the site).
 //
 // the proxying itself happens in the browser: Scramjet's service worker rewrites every page, script and request a
 // proxied site makes, and the transport (epoxy or libcurl, compiled to wasm) does the TLS itself. all this server
 // does is hand out those files and run a Wisp server, which turns one websocket per browser into many plain TCP
 // connections. so it never sees inside https traffic and has very little work per request, which is why it's fast.
 //
-// browsers connect to /proxy/wisp/<token>/ with a token PHP signs with PROXY_SECRET (same format as realtime/), so
+// browsers connect to /network/wisp/<token>/ with a token PHP signs with PROXY_SECRET (same format as realtime/), so
 // only signed in people can use it, and never to private or loopback addresses (no reaching the database or
 // aaPanel through it).
 //
@@ -20,7 +20,7 @@
 //                         other services out
 //   PROXY_BLOCKED_HOSTS   comma separated domains to refuse (subdomains too), e.g. "example.com,example.org"
 //   PROXY_MAX_PER_USER    websockets one account can have open, default 8
-//   DEV_UPSTREAM          local dev only: send everything outside /proxy/ here (e.g. http://127.0.0.1:8000), so
+//   DEV_UPSTREAM          local dev only: send everything outside /network/ here (e.g. http://127.0.0.1:8000), so
 //                         the site and the proxy share an origin without nginx
 
 const http = require("http");
@@ -86,13 +86,13 @@ function pkg(name, file){
 }
 
 const sources = {
-    "/proxy/s/scram/scramjet.all.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.all.js"),
-    "/proxy/s/scram/scramjet.sync.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.sync.js"),
-    "/proxy/s/scram/scramjet.wasm.wasm": pkg("@mercuryworkshop/scramjet", "dist/scramjet.wasm.wasm"),
-    "/proxy/s/baremux/index.js": pkg("@mercuryworkshop/bare-mux", "dist/index.js"),
-    "/proxy/s/baremux/worker.js": pkg("@mercuryworkshop/bare-mux", "dist/worker.js"),
-    "/proxy/s/epoxy/index.mjs": pkg("@mercuryworkshop/epoxy-transport", "dist/index.mjs"),
-    "/proxy/s/libcurl/index.mjs": pkg("@mercuryworkshop/libcurl-transport", "dist/index.mjs"),
+    "/network/s/scram/scramjet.all.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.all.js"),
+    "/network/s/scram/scramjet.sync.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.sync.js"),
+    "/network/s/scram/scramjet.wasm.wasm": pkg("@mercuryworkshop/scramjet", "dist/scramjet.wasm.wasm"),
+    "/network/s/baremux/index.js": pkg("@mercuryworkshop/bare-mux", "dist/index.js"),
+    "/network/s/baremux/worker.js": pkg("@mercuryworkshop/bare-mux", "dist/worker.js"),
+    "/network/s/epoxy/index.mjs": pkg("@mercuryworkshop/epoxy-transport", "dist/index.mjs"),
+    "/network/s/libcurl/index.mjs": pkg("@mercuryworkshop/libcurl-transport", "dist/index.mjs"),
 };
 
 const types = { ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".wasm": "application/wasm", ".html": "text/html; charset=utf-8" };
@@ -129,10 +129,10 @@ async function loadFiles(){
 
     // the service worker, with this build's version on the script it imports, so that can be cached for good
     let sw = fs.readFileSync(path.join(__dirname, "public", "sw.js"), "utf8").replace(/__VERSION__/g, VERSION);
-    jobs.push(prepare(Buffer.from(sw), types[".js"], { sw: true }).then(f => files.set("/proxy/sw.js", f)));
+    jobs.push(prepare(Buffer.from(sw), types[".js"], { sw: true }).then(f => files.set("/network/sw.js", f)));
 
     // what a proxied address shows when the service worker didn't catch it (first visit, or a hard refresh skipped it)
-    jobs.push(prepare(fs.readFileSync(path.join(__dirname, "public", "boot.html")), types[".html"], { page: true }).then(f => files.set("/proxy/~/", f)));
+    jobs.push(prepare(fs.readFileSync(path.join(__dirname, "public", "boot.html")), types[".html"], { page: true }).then(f => files.set("/network/~/", f)));
 
     await Promise.all(jobs);
 }
@@ -147,7 +147,7 @@ function sendFile(req, res, file, versioned){
 
     if(file.sw){
         headers["Cache-Control"] = "no-cache";
-        headers["Service-Worker-Allowed"] = "/proxy/";
+        headers["Service-Worker-Allowed"] = "/network/";
     } else if(file.page){
         headers["Cache-Control"] = "no-store";
     } else {
@@ -215,7 +215,7 @@ function devForward(req, res){
 const server = http.createServer(function(req, res) {
     let url = new URL(req.url, "http://localhost");
 
-    if(url.pathname === "/proxy/health" || url.pathname === "/health"){
+    if(url.pathname === "/network/health" || url.pathname === "/health"){
         res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
         return res.end(JSON.stringify({ ok: true, connections: total, users: open.size, version: VERSION }));
     }
@@ -225,12 +225,12 @@ const server = http.createServer(function(req, res) {
         if(file){
             return sendFile(req, res, file, url.searchParams.get("v") === VERSION);
         }
-        if(url.pathname.startsWith("/proxy/~/")){
-            return sendFile(req, res, files.get("/proxy/~/"), false);
+        if(url.pathname.startsWith("/network/~/")){
+            return sendFile(req, res, files.get("/network/~/"), false);
         }
     }
 
-    if(DEV_UPSTREAM && !url.pathname.startsWith("/proxy/")){
+    if(DEV_UPSTREAM && !url.pathname.startsWith("/network/")){
         return devForward(req, res);
     }
 
@@ -239,7 +239,7 @@ const server = http.createServer(function(req, res) {
 });
 
 server.on("upgrade", function(req, socket, head) {
-    let match = /^\/proxy\/wisp\/([^/?]+)\/$/.exec(req.url.split("?")[0]);
+    let match = /^\/network\/wisp\/([^/?]+)\/$/.exec(req.url.split("?")[0]);
     let userId = match ? verifyToken(decodeURIComponent(match[1])) : null;
     let origin = req.headers.origin || "";
 

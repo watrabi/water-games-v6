@@ -45,7 +45,7 @@ class notifications {
     }
 
     private static function gameLink(array $data){
-        return "/" . (($data["type"] ?? "game") === "app" ? "apps" : "play") . "/" . (int) $data["gameid"];
+        return "/" . (($data["type"] ?? "game") === "app" ? "apps" : "item") . "/" . (int) $data["gameid"];
     }
 
     static function send(int $userId, string $type, ?int $actorId = null, array $data = []){

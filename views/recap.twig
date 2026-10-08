@@ -16,7 +16,7 @@
     </div>
 
     {% if not recap %}
-        {{ g.empty('blobsleeping', 'Nothing played that week.', 'Playtime only counts while a game\'s tab is in front. <a href="/play/random">Try something random</a>?') }}
+        {{ g.empty('blobsleeping', 'Nothing played that week.', 'Playtime only counts while a game\'s tab is in front. <a href="/item/random">Try something random</a>?') }}
     {% else %}
         <dl class="profileFigures recapFigures">
             <div><dt>Played</dt><dd>{{ recap.total|playtime }}</dd></div>
@@ -56,7 +56,7 @@
                 <ol class="recapGames">
                     {% for game in recap.games %}
                     <li>
-                        <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'play' }}/{{ game.id }}">
+                        <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'item' }}/{{ game.id }}">
                             <span class="gameIcon">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}</span>
                             <span class="continueText">
                                 <span class="gameName">{{ game.name }}</span>

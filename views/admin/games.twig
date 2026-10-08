@@ -35,7 +35,7 @@
             <td class="muted mono ellipsis">{{ row.gamePath }}</td>
             <td class="right">{{ row.plays|number_format }}</td>
             <td class="rowActions">
-                <a class="button quiet" href="/{{ type == 'app' ? 'apps' : 'play' }}/{{ row.id }}" target="_blank" rel="noopener">Open</a>
+                <a class="button quiet" href="/{{ type == 'app' ? 'apps' : 'item' }}/{{ row.id }}" target="_blank" rel="noopener">Open</a>
                 {{ m.deleteButton('/admin/games/' ~ row.id ~ '/delete', '“' ~ row.name ~ '”') }}
             </td>
         </tr>

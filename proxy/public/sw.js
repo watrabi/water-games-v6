@@ -1,7 +1,7 @@
-// the proxy's service worker, scoped to /proxy/ (the site's own /sw.js keeps everything else).
+// the proxy's service worker, scoped to /network/ (the site's own /sw.js keeps everything else).
 // every request a proxied page makes comes through here, and Scramjet rewrites it.
 // __VERSION__ is filled in by server.js, so the big script below can be cached forever
-importScripts("/proxy/s/scram/scramjet.all.js?v=__VERSION__");
+importScripts("/network/s/scram/scramjet.all.js?v=__VERSION__");
 
 // Scramjet's worker opens its database the moment it starts, without making the tables (only the page's
 // controller.init() makes them). when the worker gets there first (a slow chromebook does) the database is left
@@ -61,14 +61,14 @@ async function handle(event){
             return scramjet.fetch(event);
         }
     }
-    // no config yet means /proxy hasn't been opened in this browser: the boot page explains
+    // no config yet means /network hasn't been opened in this browser: the boot page explains
     return fetch(event.request);
 }
 
 // every proxied page loads the rewriter with <script src="...wasm">, and gets back a script that sets
 // self.WASM to the wasm as base64. Scramjet builds that ~700KB string again for every page, one character at a
 // time. it never changes, so build it once and hand out the same text
-const WASM = "/proxy/s/scram/scramjet.wasm.wasm";
+const WASM = "/network/s/scram/scramjet.wasm.wasm";
 let wasmScript = null;
 function rewriterScript(){
     if(!wasmScript){
@@ -87,9 +87,9 @@ function rewriterScript(){
 
 self.addEventListener("fetch", function(event) {
     // only proxied addresses and the rewriter. the proxy's own files (and the bare-mux worker, which lives under
-    // /proxy/ too) go straight to the network without a detour through here
+    // /network/ too) go straight to the network without a detour through here
     let path = new URL(event.request.url).pathname;
-    if(path.startsWith("/proxy/~/")){
+    if(path.startsWith("/network/~/")){
         event.respondWith(handle(event));
     } else if(path === WASM && event.request.destination === "script"){
         event.respondWith(rewriterScript());

@@ -3,8 +3,8 @@ use watrlabs\proxy\proxy;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 
-// the web proxy. ?url= opens a site straight away (a link to /proxy?url=wikipedia.org works)
-$router->get("/proxy", function(){
+// the web proxy. ?url= opens a site straight away (a link to /network?url=wikipedia.org works)
+$router->get("/network", function(){
     global $twig;
     global $currentuser;
 
@@ -23,3 +23,6 @@ $router->get("/proxy", function(){
         "proxyVersion"=>proxy::version(),
     ]);
 });
+
+// the old address, for bookmarks
+$router->get("/proxy", fn() => movedTo("/network"));

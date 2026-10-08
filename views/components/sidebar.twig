@@ -9,7 +9,7 @@
   {% else %}
     {{ nav.item('/', 'ph-bold ph-house', 'Home', here) }}
   {% endif %}
-  {{ nav.item('/discover', 'ph-bold ph-game-controller', 'Games', here, '/play/') }}
+  {{ nav.item('/discover', 'ph-bold ph-game-controller', 'Discover', here, '/item/') }}
   {{ nav.item('/apps', 'ph-bold ph-squares-four', 'Apps', here, '/apps/') }}
   {{ nav.item('/music', 'ph-bold ph-music-notes', 'Music', here) }}
   {{ nav.item('/collections', 'ph-bold ph-folders', 'Collections', here, '/collections/') }}
@@ -17,7 +17,7 @@
     {{ nav.item('/ai', 'ph-bold ph-chats', 'AI', here, '/ai/') }}
   {% endif %}
   {% if proxyEnabled %}
-    {{ nav.item('/proxy', 'ph-bold ph-globe-hemisphere-west', 'Proxy', here) }}
+    {{ nav.item('/network', 'ph-bold ph-globe-hemisphere-west', 'Proxy', here) }}
   {% endif %}
   {% if currentuser %}
     <p class="sidebarHeading">Yours</p>
