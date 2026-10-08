@@ -4,6 +4,7 @@ use watrlabs\ai\chats;
 use watrlabs\ai\assistant;
 use watrlabs\ai\artifacts;
 use watrlabs\ai\memories;
+use watrlabs\ai\helper;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 
@@ -375,6 +376,62 @@ $router->group('/api/v1/ai', function($router) {
 
         // the router's output buffer is already gone, so stop here
         exit;
+    });
+
+    // the starter prompts on an empty chat, made by the small model every few minutes
+    $router->get("/suggestions", function(){
+        global $currentuser;
+
+        if(!$currentuser || !config::enabled()){
+            return ["status"=>"okay", "prompts"=>helper::FALLBACK_SUGGESTIONS];
+        }
+
+        return ["status"=>"okay", "prompts"=>helper::suggestions()];
+    });
+
+    // gives a new chat a real name. only while it still has the name it started with,
+    // so it never undoes a rename
+    $router->post("/chats/{id}/name", function($id){
+        \watrlabs\watrkit\ratelimit::guard("ai_name", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 30, 600);
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        $chats = new chats();
+        $chat = ctype_digit($id) ? $chats->get((int) $id, $currentuser->id) : null;
+        if(!$chat){
+            return apiError("That chat doesn't exist.", 404);
+        }
+
+        $prompt = null;
+        $answer = "";
+        foreach($chats->messages($chat->id) as $message){
+            if(!$message["visible"]){
+                continue;
+            }
+            $text = implode("\n", array_map(fn($b) => $b["text"], array_filter($message["content"], fn($b) => $b["type"] === "text" && empty($b["auto"]))));
+            if($message["role"] === "user" && $prompt === null){
+                $prompt = $text;
+            } elseif($message["role"] === "assistant" && $prompt !== null && $text !== ""){
+                $answer = $text;
+                break;
+            }
+        }
+
+        if($prompt === null || $chat->title !== helper::draftTitle($prompt)){
+            return ["status"=>"okay", "title"=>$chat->title];
+        }
+
+        $title = helper::titleFor($prompt !== "" ? $prompt : "(sent a picture)", $answer);
+        if($title === null){
+            return ["status"=>"okay", "title"=>$chat->title];
+        }
+
+        $chats->rename($chat->id, $title);
+
+        return ["status"=>"okay", "title"=>$title];
     });
 
     $router->post("/chats/{id}/rename", function($id){

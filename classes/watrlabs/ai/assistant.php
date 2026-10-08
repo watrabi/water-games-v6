@@ -87,11 +87,8 @@ class assistant {
         } elseif($this->regenerate){
             return $this->fail("Nothing to regenerate.");
         } else {
-            $title = $text !== "" ? $text : "Image";
-            $title = preg_replace('/\s+/', ' ', $title);
-            if(mb_strlen($title) > 60){
-                $title = rtrim(mb_substr($title, 0, 57)) . "...";
-            }
+            // the browser asks the small model for a proper name once the first answer is in
+            $title = helper::draftTitle($text);
 
             $chatId = (int) $this->chats->create($user->id, $title, $model["id"]);
             $this->emit(["type"=>"chat", "id"=>$chatId, "title"=>$title]);

@@ -58,6 +58,17 @@
         <p class="hint">What new chats start on. People can switch models from the chat.</p>
     </div>
 
+    <div class="field wideSelect">
+        <label for="small_model">Small model</label>
+        <select id="small_model" name="small_model">
+            <option value="">Pick one automatically</option>
+            {% for model in allModels %}
+                <option value="{{ model.id }}"{% if s.small_model == model.id %} selected{% endif %}>{{ model.label }}</option>
+            {% endfor %}
+        </select>
+        <p class="hint">Names new chats and writes the example prompts on an empty chat (fresh ones about every 5 minutes). Automatic picks a model with haiku, mini, flash, nano, lite or small in its name, otherwise the default model.</p>
+    </div>
+
     <div class="formRow">
         <div class="field">
             <label for="daily_limit">Messages per person per day</label>

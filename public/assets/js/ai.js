@@ -1283,6 +1283,7 @@ function send(options){
 
     let gotAnything = false;
     let unsent = false;
+    let newChat = null;
 
     function handle(event){
         if(!gotAnything && event.type !== "chat"){
@@ -1291,6 +1292,7 @@ function send(options){
 
         switch(event.type){
             case "chat":
+                newChat = event.id;
                 ai.chatId = event.id;
                 history.replaceState(null, "", "/ai/" + event.id);
                 setTitle(event.title);
@@ -1460,6 +1462,11 @@ function send(options){
         ai.controller = null;
         setStreaming(false);
 
+        // the first answer is in, so the small model can give the chat a proper name
+        if(newChat && !failed){
+            nameChat(newChat);
+        }
+
         // a little celebration when it went well, a wobble when it didn't, then he settles down
         let mood = failed ? "jiggle" : turn.body.querySelector(".aiNotice.stopped") ? "idle" : "happy";
         turn.avatar.set(mood, "idle");
@@ -1519,14 +1526,40 @@ input.addEventListener("input", function() {
     updateSendState();
 });
 
-document.querySelectorAll(".aiSuggestions button").forEach(function(button) {
-    button.addEventListener("click", function() {
-        input.value = button.dataset.prompt;
-        autoSize();
-        updateSendState();
-        send();
-    });
+const suggestions = document.getElementById("aiSuggestions");
+
+suggestions.addEventListener("click", function(event) {
+    let button = event.target.closest("button[data-prompt]");
+    if(!button || ai.streaming){
+        return;
+    }
+    input.value = button.dataset.prompt;
+    autoSize();
+    updateSendState();
+    send();
 });
+
+// the small model writes new starter prompts every few minutes, picked up while the empty chat is showing
+function refreshSuggestions(){
+    if(document.getElementById("aiIntro").hidden){
+        return;
+    }
+
+    $.getJSON("/api/v1/ai/suggestions").done(function(data) {
+        if(!data.prompts || !data.prompts.length || document.getElementById("aiIntro").hidden){
+            return;
+        }
+
+        suggestions.replaceChildren(...data.prompts.map(function(prompt) {
+            let button = el("button", null, prompt);
+            button.type = "button";
+            button.dataset.prompt = prompt;
+            return button;
+        }));
+    });
+}
+
+const suggestionTimer = setInterval(refreshSuggestions, 5 * 60 * 1000);
 
 // ---------- images ----------
 
@@ -1685,6 +1718,22 @@ function setTitle(title){
     document.title = title + " - " + document.title.split(" - ").pop();
 }
 
+function nameChat(id){
+    $.post("/api/v1/ai/chats/" + id + "/name").done(function(data) {
+        if(!data.title){
+            return;
+        }
+        let link = document.querySelector("#aiChatList a[data-id='" + id + "']");
+        if(link){
+            link.textContent = data.title;
+        }
+        // only if they're still looking at it and haven't started renaming it themselves
+        if(ai.chatId === id && document.getElementById("aiTitleInput").hidden){
+            setTitle(data.title);
+        }
+    });
+}
+
 function addChatToList(id, title){
     let list = document.getElementById("aiChatList");
     let empty = document.getElementById("aiNoChats");
@@ -1786,6 +1835,7 @@ modelSelect.addEventListener("change", function() {
 
 // leaving the page mid answer: stop reading the stream (the server still saves what it has)
 document.addEventListener("watr:leave", function() {
+    clearInterval(suggestionTimer);
     if(ai.controller){
         ai.controller.abort();
     }
@@ -1799,6 +1849,7 @@ if(aiData.messages.length){
 
 updateHint();
 updateSendState();
+refreshSuggestions();
 if(!touchInput){
     input.focus();
 }

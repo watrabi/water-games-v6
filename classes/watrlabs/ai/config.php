@@ -267,6 +267,25 @@ class config {
         return reset($models) ?: null;
     }
 
+    // the model for little background jobs (chat titles, the starter prompts). picked in the admin panel,
+    // otherwise the first one whose name says it's small, otherwise the default
+    static function smallModel(){
+        $models = self::models();
+        $picked = self::setting("ai_small_model", "AI_SMALL_MODEL");
+
+        if($picked && isset($models[$picked])){
+            return $models[$picked];
+        }
+
+        foreach($models as $model){
+            if(preg_match('/haiku|mini|nano|flash|lite|small|tiny/i', $model["name"])){
+                return $model;
+            }
+        }
+
+        return self::defaultModel();
+    }
+
     // anthropic's own api (not a compatible proxy) gets the extras only it understands
     static function isFirstPartyAnthropic(string $url){
         return parse_url($url, PHP_URL_HOST) === "api.anthropic.com";

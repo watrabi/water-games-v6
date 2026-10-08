@@ -20,6 +20,9 @@ abstract class provider {
     protected $emit;
     protected bool $aborted = false;
     protected int $lastPing = 0;
+    // background calls (titles, suggestions) answer with plain json, so no keepalive pings
+    public bool $quiet = false;
+    public ?int $timeout = null;
 
     // filled in while streaming
     protected array $blocks = [];
@@ -64,7 +67,7 @@ abstract class provider {
             CURLOPT_POSTFIELDS=>json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER=>array_merge(["Content-Type: application/json"], $headers),
             CURLOPT_CONNECTTIMEOUT=>10,
-            CURLOPT_TIMEOUT=>(int) config::env("AI_TIMEOUT", 600),
+            CURLOPT_TIMEOUT=>$this->timeout ?? (int) config::env("AI_TIMEOUT", 600),
             CURLOPT_HEADERFUNCTION=>function($ch, $header) use (&$status){
                 if(preg_match('#^HTTP/\S+\s+(\d+)#', $header, $m)){
                     $status = (int) $m[1];
@@ -126,6 +129,10 @@ abstract class provider {
 
     // keeps the browser connection alive and notices when it's gone
     protected function checkClient(){
+        if($this->quiet){
+            return true;
+        }
+
         if(time() - $this->lastPing >= 10){
             $this->lastPing = time();
             echo ": ping\n\n";

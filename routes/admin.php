@@ -929,6 +929,7 @@ $router->group('/admin', function($router){
                 "exa_key_stored"=>(bool) settings::get("ai_exa_key"),
                 "system_prompt"=>aiconfig::systemExtra(),
                 "default_model"=>$default["id"] ?? null,
+                "small_model"=>(string) aiconfig::setting("ai_small_model", "AI_SMALL_MODEL", ""),
             ],
             "toolNames"=>aiconfig::TOOL_NAMES,
             "aiLive"=>aiconfig::enabled(),
@@ -960,6 +961,12 @@ $router->group('/admin', function($router){
         $default = $_POST["default_model"] ?? "";
         if(aiconfig::model($default)){
             settings::set("ai_default_model", $default);
+        }
+
+        // blank means pick one automatically
+        $small = $_POST["small_model"] ?? "";
+        if($small === "" || aiconfig::model($small)){
+            settings::set("ai_small_model", $small);
         }
 
         adminlog::add("ai.settings");
