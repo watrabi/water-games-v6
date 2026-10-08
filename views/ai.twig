@@ -2,7 +2,8 @@
 {% block pageName %}{{ chat ? chat.title : aiName }}{% endblock %}
 {% block bodyClass %}{{ state == 'ready' ? 'aiBody' : '' }}{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/ai.css?t=5">
+<link rel="stylesheet" href="/assets/css/ai.css?t=7">
+<script src="/assets/js/bloop.js?t=1"></script>
 {% if state == 'ready' %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" integrity="sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.12/marked.min.js" integrity="sha512-rCQgmUulW6f6QegOvTntKKb5IAoxTpGVCdWqYjkXEpzAns6XUFs8NKVqWe+KQpctp/EoRSFSuykVputqknLYMg==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
@@ -17,7 +18,7 @@
 {% if state == 'disabled' %}
 <div class="page">
     <div class="statusPage">
-        <img src="/assets/images/BlobEmoji/blobsleeping.png" alt="">
+        <canvas class="bloopStatus" data-bloop="sleep" data-crop="stage" data-hop role="img" aria-label="{{ aiName }} asleep"></canvas>
         <div>
             <p class="code">Not set up</p>
             <h1>{{ aiName }} is napping.</h1>
@@ -29,7 +30,7 @@
 {% elseif state == 'guest' %}
 <div class="page">
     <div class="statusPage">
-        <img src="/assets/images/BlobEmoji/blobwizard.png" alt="">
+        <canvas class="bloopStatus" data-bloop="idle" data-crop="stage" data-hop role="img" aria-label="{{ aiName }}, a little pixel water blob"></canvas>
         <div>
             <p class="code">{{ aiName }}</p>
             <h1>Sign in to chat with {{ aiName }}.</h1>
@@ -58,6 +59,7 @@
     <section class="aiMain">
         <header class="aiHeader">
             <button class="aiIconButton" id="aiChatsToggle" aria-label="Show saved chats"><i class="ph-bold ph-clock-counter-clockwise"></i></button>
+            <canvas class="aiHeaderBloop" id="aiHeaderBloop" role="img" aria-label="{{ aiName }}" title="{{ aiName }}"></canvas>
             <h1 id="aiTitle">{{ chat ? chat.title : 'New chat' }}</h1>
             <input id="aiTitleInput" maxlength="120" aria-label="Chat title" hidden>
             <div class="aiHeaderActions" id="aiHeaderActions"{% if not chat %} hidden{% endif %}>
@@ -66,9 +68,9 @@
             </div>
         </header>
 
-        <div class="aiLog" id="aiLog" aria-live="polite">
+        <div class="aiLog" id="aiLog" aria-live="polite" data-name="{{ aiName }}">
             <div class="aiIntro" id="aiIntro"{% if chat %} hidden{% endif %}>
-                <img src="/assets/images/BlobEmoji/blobwizard.png" alt="" width="64" height="64">
+                <canvas class="aiIntroBloop" id="aiIntroBloop" role="img" aria-label="{{ aiName }}, a little pixel water blob. Tap him!"></canvas>
                 <h2>Hey, I'm {{ aiName }}!</h2>
                 <p class="muted">I'm the little water blob who lives here. I can find you games on the site, check the weather, look at pictures you attach, and make web pages, games and drawings you can open right here.</p>
                 <div class="aiSuggestions">
@@ -128,6 +130,7 @@
     </aside>
 </div>
 <script id="aiData" type="application/json">{{ aiData|raw }}</script>
-<script src="/assets/js/ai.js?t=9" defer></script>
+<script src="/assets/js/ai.js?t=10" defer></script>
 {% endif %}
+{% if state != 'ready' %}<script>Bloop.scan();</script>{% endif %}
 {% endblock %}

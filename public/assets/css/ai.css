@@ -440,25 +440,61 @@ body.aiBody #main {
     margin-left: -6px;
 }
 
-.aiWaiting {
+/* ---------- bloop ---------- */
+
+/* he's drawn on a pixel grid, so every size here is a whole multiple of his canvas */
+.aiHeaderBloop,
+.aiTurnBloop {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.aiMsg.assistant {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    column-gap: 12px;
+}
+
+.aiTurnBloop {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin-top: -6px;
+}
+
+.aiMsg.assistant > :not(.aiTurnBloop) {
+    grid-column: 2;
+}
+
+/* in place of a loading indicator: him thinking, typing, using tools or writing */
+.aiBloopStatus {
     display: flex;
-    gap: 5px;
-    padding: 8px 0;
+    align-items: flex-end;
+    gap: 10px;
 }
 
-.aiWaiting span {
-    width: 7px;
-    height: 7px;
-    background-color: var(--muted);
-    animation: aiPulse 1.2s ease-in-out infinite;
+.aiBloopStatus canvas,
+.aiIntroBloop,
+.bloopStatus {
+    display: block;
+    width: 96px;
+    height: 104px;
+    flex-shrink: 0;
 }
 
-.aiWaiting span:nth-child(2) { animation-delay: 0.15s; }
-.aiWaiting span:nth-child(3) { animation-delay: 0.3s; }
+.aiBloopLabel {
+    padding-bottom: 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
 
-@keyframes aiPulse {
-    0%, 100% { opacity: 0.35; }
-    50% { opacity: 1; }
+.aiHeaderBloop:focus-visible,
+.aiTurnBloop:focus-visible,
+.aiBloopStatus canvas:focus-visible,
+.aiIntroBloop:focus-visible,
+.bloopStatus:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
 }
 
 /* ---------- empty chat ---------- */
@@ -468,7 +504,7 @@ body.aiBody #main {
 }
 
 .aiIntro h2 {
-    margin-top: 14px;
+    margin-top: 6px;
     font-family: var(--display);
     font-stretch: 125%;
     font-weight: 900;
@@ -1042,8 +1078,7 @@ body.aiBody #main {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .aiThinking.live summary,
-    .aiWaiting span {
+    .aiThinking.live summary {
         animation: none;
     }
 }

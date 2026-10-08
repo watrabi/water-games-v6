@@ -682,15 +682,81 @@ function userBubble(content){
     return row;
 }
 
+// ---------- bloop ----------
+
+const aiName = log.dataset.name || "Bloop";
+const headerBloop = Bloop.mount(document.getElementById("aiHeaderBloop"), { crop: "head", cs: 1, hop: true });
+const introBloop = Bloop.mount(document.getElementById("aiIntroBloop"), { crop: "stage", cs: 2, hop: true });
+if(!ai.chatId){
+    introBloop.set("hop", "idle");
+}
+
+// the header one keeps an eye on you: reads along while you type, dozes off when nothing's happening
+let napTimer = null, watchTimer = null;
+function headerMood(anim, then){
+    clearTimeout(napTimer);
+    headerBloop.set(anim, then);
+    if(!ai.streaming){
+        napTimer = setTimeout(() => headerBloop.set("sleep"), 120000);
+    }
+}
+headerMood("idle");
+
+input.addEventListener("input", function() {
+    if(ai.streaming){
+        return;
+    }
+    clearTimeout(watchTimer);
+    if(headerBloop.anim === "sleep"){
+        headerMood("hop", "watch");
+    } else {
+        headerMood("watch");
+    }
+    watchTimer = setTimeout(() => headerMood("idle"), 1500);
+});
+
+// stands in for a loading indicator while an answer's on its way: him thinking, typing, using tools or writing
+function bloopStatus(){
+    let wrap = el("div", "aiBloopStatus");
+    wrap.setAttribute("aria-hidden", "true");
+    let canvas = el("canvas");
+    let label = el("span", "aiBloopLabel");
+    wrap.append(canvas, label);
+    return { el: wrap, label: label, bloop: Bloop.mount(canvas, { crop: "stage", cs: 2, hop: true }) };
+}
+
+// what he's up to in a live answer. anim null hides the status (he's talking in the avatar instead)
+function bloopDoing(turn, anim, text){
+    let status = turn.status;
+    if(anim){
+        status.bloop.set(anim);
+        status.label.textContent = text;
+        // anything new in the turn goes in above him
+        if(status.el.nextSibling || !status.el.isConnected){
+            turn.body.append(status.el);
+        }
+        turn.avatar.set("ponder");
+        headerBloop.set("ponder");
+    } else {
+        status.el.remove();
+        turn.avatar.set("talk");
+        headerBloop.set("talk");
+    }
+}
+
 // an assistant turn can span several saved messages (text, tool calls, more text)
-function newTurn(){
+function newTurn(live){
     let row = el("div", "aiMsg assistant");
+    let avatar = el("canvas", "aiTurnBloop");
+    avatar.setAttribute("aria-hidden", "true");
     let body = el("div", "aiTurn");
-    row.append(body);
+    row.append(avatar, body);
 
     return {
         row: row,
         body: body,
+        avatar: Bloop.mount(avatar, { crop: "head", cs: 1, hop: true, still: !live }),
+        status: live ? bloopStatus() : null,
         text: null,      // current text segment {el, raw}
         thinking: null,  // current thinking part
         tools: {},       // id -> chip
@@ -980,11 +1046,11 @@ function send(options){
 
     clearLastActions();
 
-    let turn = newTurn();
-    let waiting = el("div", "aiWaiting");
-    waiting.append(el("span"), el("span"), el("span"));
-    turn.body.append(waiting);
+    let turn = newTurn(true);
     log.append(turn.row);
+    bloopDoing(turn, "ponder", aiName + " is thinking...");
+    clearTimeout(watchTimer);
+    clearTimeout(napTimer);
     scrollDown(true);
 
     setStreaming(true);
@@ -996,7 +1062,6 @@ function send(options){
     function handle(event){
         if(!gotAnything && event.type !== "chat"){
             gotAnything = true;
-            waiting.remove();
         }
 
         switch(event.type){
@@ -1010,9 +1075,16 @@ function send(options){
             case "text":
                 endThinking(turn);
                 addText(turn, event.text, true);
+                let writing = turn.body.querySelector(".aiArtifact.writing");
+                if(writing){
+                    bloopDoing(turn, "write", "Writing " + (writing.artifact ? writing.artifact.title : "it") + "...");
+                } else {
+                    bloopDoing(turn, null);
+                }
                 break;
             case "thinking_start":
                 startThinking(turn, true);
+                bloopDoing(turn, "think", aiName + " is thinking...");
                 break;
             case "thinking":
                 addThinking(turn, event.text);
@@ -1023,12 +1095,15 @@ function send(options){
             case "tool_start":
                 endThinking(turn);
                 toolChip(turn, event.id, event.name, true);
-                break;
-            case "tool_input":
-                toolInput(turn, event.id, event.input);
+                let doing = (toolLabels[event.name] || ["Using " + event.name])[0];
+                bloopDoing(turn, /theme/.test(event.name) ? "write" : "think2", aiName + " is " + doing[0].toLowerCase() + doing.slice(1) + "...");
                 break;
             case "tool_result":
                 toolResult(turn, event.id, event.content, event.is_error);
+                bloopDoing(turn, "thinking", aiName + " is thinking...");
+                break;
+            case "tool_input":
+                toolInput(turn, event.id, event.input);
                 break;
             case "notice":
                 addNotice(turn, event.text);
@@ -1123,7 +1198,8 @@ function send(options){
             handle({ type: "error", message: "Lost the connection." });
         }
     }).finally(function() {
-        waiting.remove();
+        turn.status.el.remove();
+        let failed = !!turn.body.querySelector(".aiNotice.error, .aiNotice.refused");
         endThinking(turn);
         closeText(turn);
 
@@ -1148,6 +1224,12 @@ function send(options){
 
         ai.controller = null;
         setStreaming(false);
+
+        // a little celebration when it went well, a wobble when it didn't, then he settles down
+        let mood = failed ? "jiggle" : turn.body.querySelector(".aiNotice.stopped") ? "idle" : "happy";
+        turn.avatar.set(mood, "idle");
+        headerMood(mood, "idle");
+        setTimeout(function() { turn.avatar.still = true; }, 2500);
         if(!touchInput){
             input.focus();
         }
