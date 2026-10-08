@@ -140,8 +140,12 @@ function renderPlayer($id, $type){
         return $router->return_status(404);
     }
 
-    $games->addPlay($game->id);
-    $game->plays++;
+    // refreshing doesn't add plays, see playcounter
+    $counted = \watrlabs\watrkit\playcounter::shouldCount("game", (int) $game->id, \watrlabs\watrkit\playcounter::viewer($currentuser));
+    if($counted){
+        $games->addPlay($game->id);
+        $game->plays++;
+    }
 
     $played = null;
     $myVote = 0;
@@ -151,7 +155,7 @@ function renderPlayer($id, $type){
         if(!$played){
             activity::log((int) $currentuser->id, "first_play", (int) $game->id);
         }
-        $playtime->start($currentuser, (int) $game->id);
+        $playtime->start($currentuser, (int) $game->id, $counted);
         $myVote = $games->voteOf((int) $currentuser->id, (int) $game->id);
     }
 

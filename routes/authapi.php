@@ -178,7 +178,11 @@ $router->group('/api/v1/music', function($router) {
             return apiError("That track doesn't exist.", 404);
         }
 
-        $music->addPlay((int) $trackId);
+        // replaying (or calling this in a loop) only counts once per song every 10 minutes
+        global $currentuser;
+        if(\watrlabs\watrkit\playcounter::shouldCount("track", (int) $trackId, \watrlabs\watrkit\playcounter::viewer($currentuser))){
+            $music->addPlay((int) $trackId);
+        }
 
         return ["status"=>"okay"];
     });

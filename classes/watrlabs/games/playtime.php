@@ -28,14 +28,15 @@ class playtime {
     }
 
     // a game page opened. counts towards "recently played" even before any focused seconds come in
-    public function start($user, int $gameId){
+    // $newSession is false for a refresh inside the play counter's window, which shouldn't count as another session
+    public function start($user, int $gameId, bool $newSession = true){
         global $db;
 
         $now = time();
         $db->query(
             "INSERT INTO playtime (userid, gameid, seconds, sessions, first_played, last_played) VALUES (?, ?, 0, 1, ?, ?)
-             ON DUPLICATE KEY UPDATE sessions = sessions + 1, last_played = VALUES(last_played)",
-            [(int) $user->id, $gameId, $now, $now]
+             ON DUPLICATE KEY UPDATE sessions = sessions + ?, last_played = VALUES(last_played)",
+            [(int) $user->id, $gameId, $now, $now, $newSession ? 1 : 0]
         );
     }
 
