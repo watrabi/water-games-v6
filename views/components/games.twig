@@ -1,6 +1,6 @@
 {# shared game tile, use with {% import "components/games.twig" as g %} #}
 {% macro tile(game) %}
-  <a class="gameTile" href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+  <a class="gameTile" href="/{{ game.type == 'app' ? 'apps' : 'play' }}/{{ game.id }}">
     <span class="gameIcon">
       {% if game.gameIcon %}
         <img src="{{ game.gameIcon }}" alt="" loading="lazy">
@@ -25,17 +25,17 @@
 {# today's pick, a wide card with a play button and a random one next to it #}
 {% macro gotd(game) %}
   <section class="gotdCard panel" aria-labelledby="gotdName">
-    <a class="gameIcon" href="/games/{{ game.id }}" tabindex="-1" aria-hidden="true">
+    <a class="gameIcon" href="/play/{{ game.id }}" tabindex="-1" aria-hidden="true">
       {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
     </a>
     <div class="gotdText">
       <p class="eyebrow"><i class="ph-fill ph-sun"></i> Game of the day</p>
-      <h2 id="gotdName"><a href="/games/{{ game.id }}">{{ game.name }}</a></h2>
+      <h2 id="gotdName"><a href="/play/{{ game.id }}">{{ game.name }}</a></h2>
       {% if game.description %}<p class="muted">{{ game.description|length > 140 ? game.description|slice(0, 139) ~ '…' : game.description }}</p>{% endif %}
     </div>
     <div class="gotdActions">
-      <a class="button" href="/games/{{ game.id }}"><i class="ph-bold ph-play"></i>Play</a>
-      <a class="button quiet" href="/games/random?not={{ game.id }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i>Surprise me</a>
+      <a class="button" href="/play/{{ game.id }}"><i class="ph-bold ph-play"></i>Play</a>
+      <a class="button quiet" href="/play/random?not={{ game.id }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i>Surprise me</a>
     </div>
   </section>
 {% endmacro %}

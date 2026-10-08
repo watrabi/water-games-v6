@@ -60,7 +60,7 @@
         <ol class="mostPlayed">
             {% for game in mostPlayed %}
             <li>
-                <a href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+                <a href="/{{ game.type == 'app' ? 'apps' : 'play' }}/{{ game.id }}">
                     <span class="gameIcon small">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}</span>
                     <span class="mostPlayedName">{{ game.name }}</span>
                 </a>

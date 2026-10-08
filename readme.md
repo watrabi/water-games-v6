@@ -14,16 +14,17 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 
 
 # pages
-- `/` landing, `/home` (signed in), `/games` (search with `?q=`, sort with `?sort=popular|newest|name`)
-- `/games/{id}` plays a game: the iframe loads `gamePath`, the tile uses `gameIcon` (falls back to the first letter if it's empty)
+- `/` landing, `/home` (signed in), `/discover` (search with `?q=`, sort with `?sort=popular|newest|name`)
+- `/play/{id}` plays a game: the iframe loads `gamePath`, the tile uses `gameIcon` (falls back to the first letter if it's empty)
 - `/favorites`, `/users/{username}`, `/settings`, `/auth/logout`
 - `/terms`, `/privacy`, `/credits`
+- the old `/games`, `/games/{id}`, `/games/random` and `/games/request` addresses 301 to the new ones (query string kept)
 - `/apps`, `/apps/{id}` same as games but for non-game stuff (rows in `games` with `type = 'app'`)
-- `/games?tag=puzzle` filters by category, `?sort=trending` is plays over the last week, `?sort=liked` is by votes
+- `/discover?tag=puzzle` filters by category, `?sort=trending` is plays over the last week, `?sort=liked` is by votes
 - `/music` track list, with a player bar that follows you between pages. `/music/playlists` for your playlists
 - `/ai` chat with saved conversations, tools and image input (see below)
-- `/games/request` asks for a game to be added, `/notifications` is everything the bell has shown you
-- `/collections`, `/recap`, `/games/random`, `/sitemap.xml`, `/robots.txt`, `/health`
+- `/discover/request` asks for a game to be added, `/notifications` is everything the bell has shown you
+- `/collections`, `/recap`, `/play/random`, `/sitemap.xml`, `/robots.txt`, `/health`
 - `/auth/forgot` and `/auth/reset` for forgotten passwords (needs mail, see below)
 
 # admin panel
@@ -81,11 +82,11 @@ get a notification, and you get one if they do.
 
 # discovering games
 - **game of the day**: picked automatically each day (same for everyone, no repeats within 30 days, skips games
-  people mostly dislike), shown on `/`, `/home`, `/games` and the game itself. admins can pin one for today from the
+  people mostly dislike), shown on `/`, `/home`, `/discover` and the game itself. admins can pin one for today from the
   game's admin page
-- **random**: `/games/random` (and `/games/random?unplayed=1` for one you haven't tried), `g` then `r` anywhere
+- **random**: `/play/random` (and `/play/random?unplayed=1` for one you haven't tried), `g` then `r` anywhere
 - **collections**: `/collections`. anyone can make lists of games with the folder button on a game page, public or
-  private. collections an admin marks as staff picks show on `/games` and `/home`
+  private. collections an admin marks as staff picks show on `/discover` and `/home`
 - **game pages** can have "How to play" (controls) and up to 6 screenshots, from the admin form. games added in the
   last two weeks get a "New" badge
 - **share previews**: games, profiles, playlists and collections have their own title, description and picture when

@@ -73,14 +73,14 @@
 
     {% if kind == 'games' %}
     <p class="muted reportWho">
-        <a href="/{{ report.game_type == 'app' ? 'apps' : 'games' }}/{{ report.gameid }}" target="_blank" rel="noopener">{{ report.game_name ?: 'A deleted game' }}</a>
+        <a href="/{{ report.game_type == 'app' ? 'apps' : 'play' }}/{{ report.gameid }}" target="_blank" rel="noopener">{{ report.game_name ?: 'A deleted game' }}</a>
         {% if report.gamePath %}· <code>{{ report.gamePath }}</code>{% endif %}
         · <a href="/admin/games/{{ report.gameid }}">Edit</a>
     </p>
     {% elseif kind == 'comments' %}
     <p class="muted reportWho">
         By <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
-        on <a href="/{{ report.game_type == 'app' ? 'apps' : 'games' }}/{{ report.gameid }}">{{ report.game_name ?: 'a deleted game' }}</a>, {{ report.sent|date("M j, g:i A") }}:
+        on <a href="/{{ report.game_type == 'app' ? 'apps' : 'play' }}/{{ report.gameid }}">{{ report.game_name ?: 'a deleted game' }}</a>, {{ report.sent|date("M j, g:i A") }}:
     </p>
     <ol class="reportContext">
         <li class="reported fromSender">

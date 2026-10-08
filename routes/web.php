@@ -111,7 +111,25 @@ $router->get('/home', function(){
     ]);
 });
 
-$router->get("/games", function(){
+// /games and /games/{id} were the old addresses, kept working for bookmarks, shared links and search engines
+function movedTo(string $path){
+    $query = $_SERVER["QUERY_STRING"] ?? "";
+    header("Location: " . $path . ($query !== "" ? "?" . $query : ""), true, 301);
+    exit;
+}
+
+$router->get("/games", fn() => movedTo("/discover"));
+
+$router->get("/games/{id}", function($id){
+    global $router;
+
+    if(!ctype_digit($id)){
+        return $router->return_status(404);
+    }
+    movedTo("/play/" . $id);
+});
+
+$router->get("/discover", function(){
     global $twig;
 
     $games = new games();
@@ -214,7 +232,7 @@ function renderPlayer($id, $type){
     ]);
 }
 
-$router->get("/games/{id}", function($id){
+$router->get("/play/{id}", function($id){
     return renderPlayer($id, "game");
 });
 

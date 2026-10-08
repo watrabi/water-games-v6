@@ -6,7 +6,7 @@ use watrlabs\social\chat;
 use watrlabs\users\moderation;
 
 // lists of games and apps people put together, like playlists for music. public ones show on profiles and
-// /collections. admins can mark theirs as staff picks, which show on /games and /home
+// /collections. admins can mark theirs as staff picks, which show on /discover and /home
 class collections {
 
     const MAX_PER_USER = 30;

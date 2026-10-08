@@ -143,7 +143,9 @@ $router->group('/api/v1/play', function($router){
 
 // ---------- game requests ----------
 
-$router->get("/games/request", function(){
+$router->get("/games/request", fn() => movedTo("/discover/request"));
+
+$router->get("/discover/request", function(){
     global $twig;
     global $currentuser;
 

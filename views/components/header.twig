@@ -3,7 +3,7 @@
   <button id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="sidebar"><i class="ph-bold ph-list"></i></button>
   <a href="{{ currentuser ? '/home' : '/' }}" id="branding">Water <em>Games</em>{% if theme.emoji %}<span class="brandEmoji" aria-hidden="true">{{ theme.emoji }}</span>{% endif %}</a>
 
-  <form id="navSearch" action="/games" method="get" role="search">
+  <form id="navSearch" action="/discover" method="get" role="search">
     <i class="ph-bold ph-magnifying-glass"></i>
     <label class="sr-only" for="navSearchInput">Search games</label>
     <input id="navSearchInput" type="search" name="q" placeholder="Search games" value="{{ search ?? '' }}" autocomplete="off">
@@ -42,7 +42,7 @@
           <a class="dropdownItem" href="/users/{{ currentuser.username|lower|url_encode }}">Profile</a>
           <a class="dropdownItem" href="/favorites">Favorites</a>
           <a class="dropdownItem" href="/music/playlists">Playlists</a>
-          <a class="dropdownItem" href="/games/request">Request a game</a>
+          <a class="dropdownItem" href="/discover/request">Request a game</a>
           <a class="dropdownItem" href="/settings">Settings</a>
           {% if currentuser.admin %}
           <a class="dropdownItem" href="/admin">Admin panel</a>

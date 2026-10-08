@@ -24,9 +24,9 @@ class notifications {
             case "achievement":
                 return ["ph-trophy", "You earned " . ($data["name"] ?? "an achievement") . ".", "/users/" . rawurlencode(strtolower($data["username"] ?? "")) . "#achievements"];
             case "request_added":
-                return ["ph-check-circle", ($data["name"] ?? "A game you asked for") . " is on the site now. Thanks for the request!", isset($data["gameid"]) ? self::gameLink($data) : "/games"];
+                return ["ph-check-circle", ($data["name"] ?? "A game you asked for") . " is on the site now. Thanks for the request!", isset($data["gameid"]) ? self::gameLink($data) : "/discover"];
             case "request_declined":
-                return ["ph-x-circle", "Your request for " . ($data["name"] ?? "a game") . " wasn't added." . (!empty($data["note"]) ? " " . $data["note"] : ""), "/games/request"];
+                return ["ph-x-circle", "Your request for " . ($data["name"] ?? "a game") . " wasn't added." . (!empty($data["note"]) ? " " . $data["note"] : ""), "/discover/request"];
             case "group_added":
                 return ["ph-users-three", "$who added you to " . ($data["name"] ?? "a group chat") . ".", null];
             case "announcement":
@@ -45,7 +45,7 @@ class notifications {
     }
 
     private static function gameLink(array $data){
-        return "/" . (($data["type"] ?? "game") === "app" ? "apps" : "games") . "/" . (int) $data["gameid"];
+        return "/" . (($data["type"] ?? "game") === "app" ? "apps" : "play") . "/" . (int) $data["gameid"];
     }
 
     static function send(int $userId, string $type, ?int $actorId = null, array $data = []){

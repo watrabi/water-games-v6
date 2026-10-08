@@ -33,7 +33,7 @@
         </div>
         <label class="checkRow"><input type="checkbox" name="public" value="1"{% if collection.public %} checked{% endif %}><span>Public (shows on your profile and the collections page)</span></label>
         {% if currentuser.admin %}
-        <label class="checkRow"><input type="checkbox" name="staff" value="1"{% if collection.staff %} checked{% endif %}><span>Staff pick (shows on /games and everyone's home page)</span></label>
+        <label class="checkRow"><input type="checkbox" name="staff" value="1"{% if collection.staff %} checked{% endif %}><span>Staff pick (shows on /discover and everyone's home page)</span></label>
         {% endif %}
         <div class="buttonRow">
             <button class="button" type="submit">Save</button>

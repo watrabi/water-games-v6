@@ -232,7 +232,7 @@
             <li data-save="{{ save.gameid }}">
                 <span class="gameIcon tiny">{% if save.gameIcon %}<img src="{{ save.gameIcon }}" alt="">{% else %}{{ save.name|first|upper }}{% endif %}</span>
                 <div>
-                    <strong><a href="/{{ save.type == 'app' ? 'apps' : 'games' }}/{{ save.gameid }}">{{ save.name }}</a></strong>
+                    <strong><a href="/{{ save.type == 'app' ? 'apps' : 'play' }}/{{ save.gameid }}">{{ save.name }}</a></strong>
                     <p class="muted">{{ (save.bytes / 1024)|round(1) }} KB · saved {{ save.updated|ago }}</p>
                 </div>
                 <button class="button quiet small danger" type="button" data-delete-save="{{ save.gameid }}" data-name="{{ save.name }}">Delete</button>

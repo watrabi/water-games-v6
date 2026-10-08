@@ -11,7 +11,7 @@
     </div>
 
     {% if games is empty %}
-        {{ g.empty('blobheart', 'Nothing saved yet.', 'Hit the heart on any game to save it. <a href="/games">Find something to play</a>.') }}
+        {{ g.empty('blobheart', 'Nothing saved yet.', 'Hit the heart on any game to save it. <a href="/discover">Find something to play</a>.') }}
     {% else %}
         {{ g.grid(games) }}
     {% endif %}

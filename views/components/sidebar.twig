@@ -9,7 +9,7 @@
   {% else %}
     {{ nav.item('/', 'ph-bold ph-house', 'Home', here) }}
   {% endif %}
-  {{ nav.item('/games', 'ph-bold ph-game-controller', 'Games', here, '/games/') }}
+  {{ nav.item('/discover', 'ph-bold ph-game-controller', 'Games', here, '/play/') }}
   {{ nav.item('/apps', 'ph-bold ph-squares-four', 'Apps', here, '/apps/') }}
   {{ nav.item('/music', 'ph-bold ph-music-notes', 'Music', here) }}
   {{ nav.item('/collections', 'ph-bold ph-folders', 'Collections', here, '/collections/') }}
@@ -22,6 +22,6 @@
     {{ nav.item('/music/playlists', 'ph-bold ph-playlist', 'Playlists', here, '/music/playlists/') }}
     {{ nav.item('/notifications', 'ph-bold ph-bell', 'Notifications', here) }}
     {{ nav.item('/recap', 'ph-bold ph-calendar-check', 'Your week', here) }}
-    {{ nav.item('/games/request', 'ph-bold ph-lightbulb', 'Request a game', here) }}
+    {{ nav.item('/discover/request', 'ph-bold ph-lightbulb', 'Request a game', here) }}
   {% endif %}
 </nav>

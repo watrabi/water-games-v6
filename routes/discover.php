@@ -16,11 +16,12 @@ function randomRedirect(string $type){
     $id = featured::randomId($type, $unplayed, $not) ?? featured::randomId($type, null, $not);
 
     header("Cache-Control: no-store");
-    header("Location: " . ($id ? "/" . ($type === "app" ? "apps" : "games") . "/" . $id : "/" . ($type === "app" ? "apps" : "games")));
+    header("Location: " . ($type === "app" ? ($id ? "/apps/" . $id : "/apps") : ($id ? "/play/" . $id : "/discover")));
     exit;
 }
 
-$router->get("/games/random", fn() => randomRedirect("game"));
+$router->get("/play/random", fn() => randomRedirect("game"));
+$router->get("/games/random", fn() => movedTo("/play/random"));
 $router->get("/apps/random", fn() => randomRedirect("app"));
 
 // ---------- for search engines ----------
@@ -36,6 +37,7 @@ $router->get("/robots.txt", function(){
         "Disallow: /settings",
         "Disallow: /notifications",
         "Disallow: /auth/reset",
+        "Disallow: /play/random",
         "Disallow: /games/random",
         "Disallow: /apps/random",
         "Disallow: /chat/",
@@ -59,12 +61,12 @@ $router->get("/sitemap.xml", function(){
             . "<priority>$priority</priority></url>";
     };
 
-    foreach(["/"=>"1.0", "/games"=>"0.9", "/apps"=>"0.7", "/music"=>"0.6", "/collections"=>"0.6", "/terms"=>"0.1", "/privacy"=>"0.1", "/credits"=>"0.1"] as $path => $priority){
+    foreach(["/"=>"1.0", "/discover"=>"0.9", "/apps"=>"0.7", "/music"=>"0.6", "/collections"=>"0.6", "/terms"=>"0.1", "/privacy"=>"0.1", "/credits"=>"0.1"] as $path => $priority){
         $add($path, null, $priority);
     }
 
     foreach($db->table("games")->select(["id", "type", "created"])->orderBy("id")->get() as $game){
-        $add("/" . ($game->type === "app" ? "apps" : "games") . "/" . (int) $game->id, $game->created ? (int) $game->created : null, $game->type === "app" ? "0.6" : "0.8");
+        $add("/" . ($game->type === "app" ? "apps" : "play") . "/" . (int) $game->id, $game->created ? (int) $game->created : null, $game->type === "app" ? "0.6" : "0.8");
     }
 
     try {

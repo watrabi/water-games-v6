@@ -2,7 +2,7 @@
 
 namespace watrlabs\games;
 
-// categories like Puzzle or Racing. a game can have a few; /games?tag=puzzle filters by one
+// categories like Puzzle or Racing. a game can have a few; /discover?tag=puzzle filters by one
 class tags {
 
     private static ?array $all = null;

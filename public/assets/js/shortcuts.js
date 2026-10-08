@@ -91,7 +91,7 @@ document.addEventListener("keydown", function(event) {
     if(shortcutPrefix === "g"){
         shortcutPrefix = null;
         clearTimeout(shortcutPrefixTimer);
-        let path = { h: document.querySelector('#sidebar a[href="/home"]') ? "/home" : "/", g: "/games", m: "/music", n: "/notifications", c: "/collections", r: "/games/random" }[key];
+        let path = { h: document.querySelector('#sidebar a[href="/home"]') ? "/home" : "/", g: "/discover", m: "/music", n: "/notifications", c: "/collections", r: "/play/random" }[key];
         if(path){
             event.preventDefault();
             shortcutGo(path);

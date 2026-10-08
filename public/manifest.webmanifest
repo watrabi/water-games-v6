@@ -14,7 +14,7 @@
     { "src": "/assets/images/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Games", "url": "/games" },
+    { "name": "Games", "url": "/discover" },
     { "name": "Music", "url": "/music" }
   ]
 }

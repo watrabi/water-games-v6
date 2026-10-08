@@ -43,7 +43,7 @@
                 </div>
                 {% if item.status == 'added' %}
                     <span class="statusPill good"><i class="ph-bold ph-check"></i>Added</span>
-                    {% if item.gameid %}<a class="button quiet small" href="/{{ item.game_type == 'app' ? 'apps' : 'games' }}/{{ item.gameid }}">Play</a>{% endif %}
+                    {% if item.gameid %}<a class="button quiet small" href="/{{ item.game_type == 'app' ? 'apps' : 'play' }}/{{ item.gameid }}">Play</a>{% endif %}
                 {% elseif item.status == 'declined' %}
                     <span class="statusPill">Not added</span>
                 {% else %}
