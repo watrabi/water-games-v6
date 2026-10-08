@@ -118,6 +118,7 @@ if($banner && ($_COOKIE["wg_dismissed"] ?? "") === $banner["id"]){
 }
 $twig->addGlobal('banner', $banner);
 $twig->addGlobal('csrf', \watrlabs\watrkit\csrf::token());
+$twig->addGlobal('siteUrl', \watrlabs\watrkit\site::url());
 
 $twig->addGlobal('captcha', [
     "enabled"=>\watrlabs\authentication\security::captchaActive(),

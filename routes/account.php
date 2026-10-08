@@ -41,6 +41,7 @@ $router->group('/api/v1/auth', function($router){
 
     // second step of signing in, after a right password
     $router->post("/2fa", function(){
+        \watrlabs\watrkit\ratelimit::guard("2fa", \watrlabs\watrkit\ratelimit::ip(), 20, 900, "Too many tries. Wait a few minutes.");
         try {
             $userId = totp::answer((string) ($_POST["token"] ?? ""), (string) ($_POST["code"] ?? ""));
         } catch (\InvalidArgumentException $e) {
@@ -52,6 +53,7 @@ $router->group('/api/v1/auth', function($router){
     });
 
     $router->post("/forgot", function(){
+        \watrlabs\watrkit\ratelimit::guard("forgot", \watrlabs\watrkit\ratelimit::ip(), 5, 3600, "That's a lot of reset emails. Try again in an hour.");
         if(!\watrlabs\authentication\security::verifyCaptcha($_POST["cf-turnstile-response"] ?? null)){
             return apiError("Captcha failed, try again.");
         }
@@ -63,6 +65,7 @@ $router->group('/api/v1/auth', function($router){
     });
 
     $router->post("/reset", function(){
+        \watrlabs\watrkit\ratelimit::guard("reset", \watrlabs\watrkit\ratelimit::ip(), 10, 3600);
         try {
             $userId = (new passwordreset())->finish((string) ($_POST["token"] ?? ""), (string) ($_POST["password"] ?? ""));
         } catch (\InvalidArgumentException $e) {
@@ -85,6 +88,7 @@ $router->group('/api/v1/auth', function($router){
 $router->group('/api/v1/account', function($router){
 
     $router->post("/email", function(){
+        \watrlabs\watrkit\ratelimit::guard("account", accountUser(), 20, 3600);
         $me = accountUser();
 
         if(!password_verify((string) ($_POST["password"] ?? ""), $me->password)){
@@ -113,10 +117,23 @@ $router->group('/api/v1/account', function($router){
         return ["status"=>"okay", "message"=>$share ? "Friends can see what you're playing." : "Your activity is hidden now."];
     });
 
+    $router->post("/recap", function(){
+        $me = accountUser();
+
+        $on = !empty($_POST["email"]);
+        if($on && empty($me->email)){
+            return apiError("Add an email address first.");
+        }
+        (new users())->update((int) $me->id, ["recap_email"=>$on ? 1 : 0]);
+
+        return ["status"=>"okay", "message"=>$on ? "You'll get it by email every Monday." : "No more recap emails. The notification still comes."];
+    });
+
     // ---------- 2FA ----------
 
     // step one: a new secret to scan. it's only kept once a code from it works
     $router->post("/2fa/setup", function(){
+        \watrlabs\watrkit\ratelimit::guard("account", accountUser(), 20, 3600);
         global $db;
         $me = accountUser();
 
@@ -131,6 +148,7 @@ $router->group('/api/v1/account', function($router){
     });
 
     $router->post("/2fa/enable", function(){
+        \watrlabs\watrkit\ratelimit::guard("2fa_enable", accountUser(), 10, 900, "Too many tries. Wait a few minutes.");
         global $db;
         $me = accountUser();
 
@@ -155,6 +173,7 @@ $router->group('/api/v1/account', function($router){
     });
 
     $router->post("/2fa/disable", function(){
+        \watrlabs\watrkit\ratelimit::guard("confirm", accountUser(), 10, 900, "Too many tries. Wait a few minutes.");
         global $db;
         $me = accountUser();
 
@@ -218,6 +237,7 @@ $router->group('/api/v1/account', function($router){
     });
 
     $router->post("/delete", function(){
+        \watrlabs\watrkit\ratelimit::guard("confirm", accountUser(), 10, 900, "Too many tries. Wait a few minutes.");
         $me = accountUser();
 
         try {

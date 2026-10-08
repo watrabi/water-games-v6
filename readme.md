@@ -23,6 +23,7 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/music` track list, with a player bar that follows you between pages. `/music/playlists` for your playlists
 - `/ai` chat with saved conversations, tools and image input (see below)
 - `/games/request` asks for a game to be added, `/notifications` is everything the bell has shown you
+- `/collections`, `/recap`, `/games/random`, `/sitemap.xml`, `/robots.txt`, `/health`
 - `/auth/forgot` and `/auth/reset` for forgotten passwords (needs mail, see below)
 
 # admin panel
@@ -59,6 +60,80 @@ loads. up to 1MB per game, merged key by key so a device that only knows some ke
 site's own keys (`watr*`, `wg_*`, `sidebarClosed`, `aiModel`) are never included. games hosted on other sites, and
 games that save to IndexedDB (most Unity WebGL builds), can't be saved this way. people can see and delete their
 saves under Settings → Privacy & saves.
+
+# leaderboards
+games can send scores to the site. switch it on for a game in admin → Games → the game → Leaderboard (higher or
+lower is better, a number or a time, a label like "points", and the highest believable score). then in the game:
+```html
+<script src="/assets/js/watr-sdk.js"></script>
+<script>
+  // when a run ends. times are milliseconds
+  watr.submitScore(1234).then(result => {
+    if(result.personalBest){ /* show "new best!" */ }
+  });
+</script>
+```
+the game page passes it on, so this works for games on the site and on other sites. scores only count while the game
+is open for that person, at most one every 5 seconds per game, never above the game's limit. **anyone with devtools can
+still send a made-up score**, it's a browser game. admins can wipe someone's scores from their admin page. boards are
+all time, this week (monday to sunday) and friends. from the board you can challenge a friend to beat your best; they
+get a notification, and you get one if they do.
+
+# discovering games
+- **game of the day**: picked automatically each day (same for everyone, no repeats within 30 days, skips games
+  people mostly dislike), shown on `/`, `/home`, `/games` and the game itself. admins can pin one for today from the
+  game's admin page
+- **random**: `/games/random` (and `/games/random?unplayed=1` for one you haven't tried), `g` then `r` anywhere
+- **collections**: `/collections`. anyone can make lists of games with the folder button on a game page, public or
+  private. collections an admin marks as staff picks show on `/games` and `/home`
+- **game pages** can have "How to play" (controls) and up to 6 screenshots, from the admin form. games added in the
+  last two weeks get a "New" badge
+- **share previews**: games, profiles, playlists and collections have their own title, description and picture when
+  a link is pasted into Discord and the like. set `SITE_URL` (or `APP_DOMAIN`) so the links are right
+- `/sitemap.xml` (games, apps, public collections, the plain pages) and `/robots.txt`. profiles are left out
+
+# levels, streaks + your week
+- **XP**: a point per minute played, 50 per achievement, 10 per day played. level = floor(√(xp / 25)) + 1. the level
+  shows next to names on comments, profiles, leaderboards and the chat friends list
+- **streak**: days in a row with at least a minute of play. new achievements at 7 and 30 days
+- **weekly recap**: `/recap`. every monday people get a notification with last week's playtime, most played games
+  and highlights, and an email too if they turn it on in Settings → Privacy & saves (needs mail set up)
+
+# reactions + editing
+comments and chat messages (DMs and groups) take emoji reactions from a fixed set of 8. you can edit your comments any
+time, and edit or delete your chat messages for an hour after sending. edited things say "edited", and moderators see
+what a reported message said before it was changed (admin → Reports). group chats show "x is typing..." and
+"Seen by ..." like DMs (typing needs the realtime server, edits from others show up live with it, or when the chat is
+reopened without it).
+
+# safety
+- **rate limits** (`classes/watrlabs/watrkit/ratelimit.php`): sign in, sign up, password resets, 2FA, friend
+  requests, votes, reports, uploads, AI messages, collections and more. over the limit gets a 429 with `Retry-After`.
+  5 wrong passwords lock that username for 15 minutes, 10 from one address lock that address. after 3 wrong ones from an
+  address, signing in asks for the captcha too (when Turnstile is set up)
+- **bans and mutes**: admin → Users → someone. ban or mute for an hour, a day, 3 days, a week, 30 days or (bans only)
+  forever, with a reason they get to see. muted people can still play but can't chat, comment, react, or make things
+  others see. both lift themselves when the time's up. every ban, mute and lift is in their history on that page
+
+# cron + health
+`bin/cron.php` does the timed jobs: health checks with alerts, lifting bans and mutes that ran out, weekly recap
+emails, cleaning up old rate limit rows. run it every 5 minutes:
+```
+*/5 * * * * php /www/wwwroot/games.watr.lol/bin/cron.php >> /www/wwwroot/games.watr.lol/storage/logs/cron.log 2>&1
+```
+`php bin/cron.php health` prints the checks. the same checks are on the admin dashboard (System). when one starts or
+stops failing it posts to `ALERT_WEBHOOK` (a Discord or Slack webhook url) and/or emails `ALERT_EMAIL`. without the
+cron, recaps still arrive as notifications when people open `/home`, they just don't get emailed.
+
+`GET /health` answers 200 `{"status":"okay"}` while the database works and 503 when it doesn't, for uptime monitors
+(UptimeRobot, Cloudflare health checks...).
+
+# deploying
+on the server, as root: `bin/deploy.sh` (or `DRY_RUN=1 bin/deploy.sh` to see what would change). it backs up the
+database and code, clones the branch, runs new migrations before the code that needs them, copies the code over without
+touching `.env`, `phinx.php`, `vendor/`, `storage/`, uploads or `public/game-files/`, runs `composer install` if the
+lock file changed, clears the twig cache, and restarts `watr-realtime` if `realtime/` changed. `BRANCH=main` for
+another branch. it never deletes files from the site.
 
 # accounts
 - **forgot password**: emails a link that works once within an hour. only works for accounts with an email, which
@@ -135,7 +210,8 @@ screen" on phones, Chromebook shelf). the service worker only caches files under
 pages and the api always come from the network.
 
 # keyboard shortcuts
-`?` shows them all. `/` search, `g` then `h`/`g`/`m`/`n` for home/games/music/notifications, `c` chat, and on a game
+`?` shows them all. `/` search, `g` then `h`/`g`/`m`/`n`/`c` for home/games/music/notifications/collections, `g` then
+`r` for a random game, `c` chat, and on a game
 `f` fullscreen and `t` theater mode. they don't fire while you're typing.
 
 # backups

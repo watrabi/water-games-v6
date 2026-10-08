@@ -16,6 +16,16 @@
         <a class="button quiet" href="/games">All games</a>
     </div>
 
+    {% if recap %}
+    <a class="recapCard panel" href="/recap">
+        <i class="ph-bold ph-calendar-check"></i>
+        <span><strong>Last week:</strong> {{ recap.summary }}{% if recap.daysPlayed > 1 %}, over {{ recap.daysPlayed }} days{% endif %}.</span>
+        <span class="recapCardLink">See your week <i class="ph-bold ph-arrow-right"></i></span>
+    </a>
+    {% endif %}
+
+    {% if gotd %}{{ g.gotd(gotd) }}{% endif %}
+
     {% if recent is not empty %}
     <section>
         <div class="sectionHeader">
@@ -63,6 +73,16 @@
                 {% endif %}
             </section>
 
+            {% if staffPicks is not empty %}
+            <section>
+                <div class="sectionHeader">
+                    <h2>Staff picks</h2>
+                    <a href="/collections">All collections</a>
+                </div>
+                {{ g.collectionGrid(staffPicks) }}
+            </section>
+            {% endif %}
+
             {% if newest is not empty %}
             <section>
                 <div class="sectionHeader">
@@ -75,6 +95,17 @@
         </div>
 
         <aside class="homeSide">
+            <section class="panel sidePanel progressPanel">
+                <h2>Level {{ currentuser.level }}</h2>
+                <div class="levelBar" role="progressbar" aria-label="Progress to level {{ currentuser.level + 1 }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ levelProgress }}"><span style="width: {{ levelProgress }}%"></span></div>
+                <p class="muted">{{ currentuser.xp|number_format }} / {{ nextLevelXp|number_format }} XP to level {{ currentuser.level + 1 }}</p>
+                <p class="streakLine">
+                    <i class="{{ streak ? 'ph-fill' : 'ph-bold' }} ph-fire{{ streak ? ' lit' : '' }}"></i>
+                    {% if streak %}<strong>{{ streak }} day{{ streak == 1 ? '' : 's' }}</strong> in a row{% else %}No streak right now{% endif %}{% if currentuser.streak_best > 1 %} <span class="muted">· best {{ currentuser.streak_best }}</span>{% endif %}
+                </p>
+                <p class="muted hint">Play a minute a day to keep it going. XP comes from playtime, achievements and days played.</p>
+            </section>
+
             {% if playingNow is not empty %}
             <section class="panel sidePanel">
                 <h2>Friends playing now</h2>

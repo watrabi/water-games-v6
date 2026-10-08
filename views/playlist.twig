@@ -2,6 +2,8 @@
 {% import "components/games.twig" as g %}
 {% import "components/avatar.twig" as a %}
 {% block pageName %}{{ playlist.name }}{% endblock %}
+{% block ogDescription %}A playlist by {{ playlist.username }} on {{ env("APP_NAME") }}, {{ tracks|length }} {{ tracks|length == 1 ? 'track' : 'tracks' }}.{% endblock %}
+{% block ogImage %}{{ (tracks|filter(t => t.coverPath)|first).coverPath ?? '' }}{% endblock %}
 {% block headerIncludes %}
     <link rel="stylesheet" href="/assets/css/gamepage.css?t=15">
 {% endblock %}
@@ -57,7 +59,11 @@
 <script src="/assets/js/musicpage.js?t=3" defer></script>
 {% if mine %}
 <script>
-(function(){
+// jquery loads with defer, so on a full page load this has to wait for it
+(function run(){
+    if(!window.jQuery){
+        return document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
     let id = {{ playlist.id }};
     let message = $("#playlistMsg");
 

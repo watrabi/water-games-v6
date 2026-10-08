@@ -1,4 +1,13 @@
 {% extends "admin/base.twig" %}
+{# what the reported message said before its author changed it #}
+{% macro edits(report) %}
+  {% if report.edits is defined and report.edits is not empty %}
+  <div class="notice reportEdits">
+    <strong>Changed after sending.</strong> Earlier versions, oldest first:
+    <ol>{% for e in report.edits %}<li><span class="reportText">{{ e.body ?: '(no text)' }}</span> <span class="muted">· replaced {{ e.created|date("M j, g:i A") }}</span></li>{% endfor %}</ol>
+  </div>
+  {% endif %}
+{% endmacro %}
 {% import "admin/macros.twig" as m %}
 {% block adminTitle %}Reports{% endblock %}
 
@@ -80,6 +89,7 @@
             <span class="reportWhen">{{ report.sent|date("M j, g:i A") }}</span>
         </li>
     </ol>
+    {{ r.edits(report) }}
     {% else %}
     <p class="muted reportWho">
         From <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
@@ -93,12 +103,13 @@
                 <span class="reportBody">
                     {% if msg.image_id %}<a href="/chat/images/{{ msg.image_id }}" target="_blank" rel="noopener"><img src="/chat/images/{{ msg.image_id }}" alt="Image in the chat"></a>{% endif %}
                     {% if msg.body %}<span class="reportText">{{ msg.body }}</span>{% endif %}
-                    {% if msg.deleted %}<span class="badge">removed</span>{% endif %}
+                    {% if msg.deleted %}<span class="badge">{{ msg.deleted == 2 ? 'deleted by sender' : 'removed' }}</span>{% endif %}
                 </span>
                 <span class="reportWhen">{{ msg.created|date("M j, g:i A") }}</span>
             </li>
         {% endfor %}
     </ol>
+    {{ r.edits(report) }}
     {% endif %}
 </article>
 {% endfor %}

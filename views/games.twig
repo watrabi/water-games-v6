@@ -2,14 +2,14 @@
 {% import "components/games.twig" as g %}
 {% block pageName %}Games{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=13">
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=16">
 {% endblock %}
 {% block body %}
 <div class="page">
     <div class="pageHeader">
         <div>
             <h1>{% if search %}Results for “{{ search }}”{% elseif tag %}{{ tag.name }} games{% else %}Games, for you.{% endif %}</h1>
-            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search or tag %} · <a href="/games?sort={{ sort }}">clear {{ search ? 'search' : 'filter' }}</a>{% endif %}{% if currentuser %} · <a href="/games/request">Can't find one? Request it</a>{% endif %}</p>
+            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search or tag %} · <a href="/games?sort={{ sort }}">clear {{ search ? 'search' : 'filter' }}</a>{% endif %}{% if currentuser %} · <a href="/games/request">Can't find one? Request it</a>{% endif %} · <a href="/games/random{{ currentuser ? '?unplayed=1' : '' }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i> Random{{ currentuser ? ' one you haven\'t played' : '' }}</a></p>
         </div>
         <form class="pageSearch" action="/games" method="get" role="search">
             <input type="hidden" name="sort" value="{{ sort }}">
@@ -31,6 +31,15 @@
             <a href="/games?sort={{ sort }}&tag={{ item.slug }}{% if search %}&q={{ search|url_encode }}{% endif %}" class="tagChip{{ tag and tag.id == item.id ? ' active' : '' }}"{% if tag and tag.id == item.id %} aria-current="true"{% endif %}>{{ item.name }}</a>
         {% endfor %}
     </nav>
+    {% endif %}
+
+    {% if gotd %}{{ g.gotd(gotd) }}{% endif %}
+
+    {% if staffPicks is not empty %}
+    <section>
+        <div class="sectionHeader"><h2>Staff picks</h2><a href="/collections">All collections</a></div>
+        {{ g.collectionGrid(staffPicks) }}
+    </section>
     {% endif %}
 
     {% if games is empty %}

@@ -7,6 +7,8 @@ use watrlabs\games\comments;
 use watrlabs\users\users;
 use watrlabs\music\music;
 use watrlabs\watrkit\uploads;
+use watrlabs\watrkit\ratelimit;
+use watrlabs\users\moderation;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -30,16 +32,36 @@ $router->group('/api/v1/auth', function($router) {
             return apiError("Please make sure both fields are filled out.");
         }
 
+        // wrong passwords are counted per address and per username. after a few from one address it
+        // needs a captcha too, after more it waits
+        $ip = ratelimit::ip();
+        $nameKey = "n" . substr(hash("sha256", strtolower($username)), 0, 32);
+        if(ratelimit::count("login_fail", $ip) >= 10 || ratelimit::count("login_fail_name", $nameKey) >= 5){
+            http_response_code(429);
+            return ["status"=>"error", "message"=>"Too many wrong passwords. Wait 15 minutes and try again.", "captcha"=>security::captchaActive()];
+        }
+        if(security::captchaActive() && ratelimit::count("login_fail", $ip) >= 3){
+            if(!security::verifyCaptcha($_POST["cf-turnstile-response"] ?? null)){
+                http_response_code(400);
+                return ["status"=>"error", "message"=>"Finish the captcha first.", "captcha"=>true];
+            }
+        }
+
         $userInfo = $db->table("users")->where("username", $username)->first();
 
         // same message either way so you can't fish for usernames
         if(!$userInfo || !password_verify($password, $userInfo->password)){
-            return apiError("Username or password incorrect.", 401);
+            ratelimit::hit("login_fail", $ip, 10, 900);
+            ratelimit::hit("login_fail_name", $nameKey, 5, 900);
+            http_response_code(401);
+            return ["status"=>"error", "message"=>"Username or password incorrect.", "captcha"=>security::captchaActive() && ratelimit::count("login_fail", $ip) >= 3];
         }
 
-        if(!empty($userInfo->banned)){
-            return apiError("This account has been banned.", 403);
+        if(moderation::isBanned($userInfo)){
+            return apiError(moderation::banMessage($userInfo), 403);
         }
+
+        ratelimit::clear("login_fail_name", $nameKey);
 
         $db->table("users")->where("id", $userInfo->id)->update([
             "LastIP"=>$security->encryptIp($security::getRequestIp())
@@ -66,6 +88,8 @@ $router->group('/api/v1/auth', function($router) {
             return apiError("Captcha failed, try again.");
         }
 
+        ratelimit::guard("register", ratelimit::ip(), 5, 3600, "That's a lot of new accounts from here. Try again later.");
+
         $email = $_POST["email"] ?? null;
 
         return registration::createUser($username, $password, $email ?: null);
@@ -76,6 +100,7 @@ $router->group('/api/v1/auth', function($router) {
 $router->group('/api/v1/games', function($router) {
 
     $router->post("/favorite", function(){
+        \watrlabs\watrkit\ratelimit::guard("favorite", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 60, 60);
         global $currentuser;
 
         if(!$currentuser){
@@ -149,7 +174,38 @@ $router->group('/api/v1/games', function($router) {
         return ["status"=>"okay"];
     });
 
+    $router->post("/comments/{id}/edit", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+        ratelimit::guard("comment_change", $currentuser, 30, 60);
+
+        try {
+            return ["status"=>"okay", "comment"=>(new comments())->edit($currentuser, (int) $id, (string) ($_POST["body"] ?? ""))];
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+    });
+
+    $router->post("/comments/{id}/react", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+        ratelimit::guard("react", $currentuser, 60, 60);
+
+        try {
+            return ["status"=>"okay", "reactions"=>(new \watrlabs\social\reactions())->toggle($currentuser, "comment", (int) $id, (string) ($_POST["emoji"] ?? ""))];
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+    });
+
     $router->post("/comments/{id}/report", function($id){
+        \watrlabs\watrkit\ratelimit::guard("report", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 20, 3600);
         global $currentuser;
 
         if(!$currentuser){
@@ -188,10 +244,14 @@ $router->group('/api/v1/music', function($router) {
     });
 
     $router->post("/upload", function(){
+        \watrlabs\watrkit\ratelimit::guard("upload", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 30, 3600);
         global $currentuser;
 
         if(!$currentuser){
             return apiError("You need to be signed in to upload music.", 401);
+        }
+        if(moderation::isMuted($currentuser)){
+            return apiError(moderation::muteMessage($currentuser), 403);
         }
 
         // over post_max_size php throws the whole body away, so there's nothing to look at
@@ -284,10 +344,14 @@ $router->post("/api/v1/themes/custom/{id}/delete", function($id){
 $router->group('/api/v1/account', function($router) {
 
     $router->post("/blurb", function(){
+        \watrlabs\watrkit\ratelimit::guard("profile", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 30, 3600);
         global $currentuser;
 
         if(!$currentuser){
             return apiError("You need to be signed in.", 401);
+        }
+        if(moderation::isMuted($currentuser)){
+            return apiError(moderation::muteMessage($currentuser), 403);
         }
 
         $blurb = trim($_POST["blurb"] ?? "");
@@ -303,6 +367,7 @@ $router->group('/api/v1/account', function($router) {
     });
 
     $router->post("/avatar", function(){
+        \watrlabs\watrkit\ratelimit::guard("profile", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 30, 3600);
         global $currentuser;
 
         if(!$currentuser){
@@ -339,6 +404,7 @@ $router->group('/api/v1/account', function($router) {
     });
 
     $router->post("/password", function(){
+        \watrlabs\watrkit\ratelimit::guard("confirm", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 10, 900, "Too many tries. Wait a few minutes.");
         global $currentuser;
 
         if(!$currentuser){

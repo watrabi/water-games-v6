@@ -80,6 +80,7 @@ $router->group('/api/v1/play', function($router){
     });
 
     $router->post("/{id}/save", function($id){
+        \watrlabs\watrkit\ratelimit::guard("cloudsave", playUser(), 30, 60);
         $me = playUser();
         $game = playGame($id);
         $input = playInput();
@@ -114,6 +115,7 @@ $router->group('/api/v1/play', function($router){
     // ---------- votes + reports ----------
 
     $router->post("/{id}/vote", function($id){
+        \watrlabs\watrkit\ratelimit::guard("vote", playUser(), 60, 60);
         $me = playUser();
         $game = playGame($id);
 
@@ -124,6 +126,7 @@ $router->group('/api/v1/play', function($router){
     });
 
     $router->post("/{id}/report", function($id){
+        \watrlabs\watrkit\ratelimit::guard("report", playUser(), 20, 3600);
         $me = playUser();
         $game = playGame($id);
 

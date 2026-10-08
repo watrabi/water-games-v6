@@ -80,6 +80,7 @@ class groups {
     public function create(int $me, string $name, array $memberIds){
         global $db;
 
+        \watrlabs\users\moderation::requireUnmutedId($me);
         $members = $this->addable($me, $memberIds);
         if(count($members) < 2){
             throw new \InvalidArgumentException("Pick at least two friends for a group. For one, just message them.");
@@ -190,6 +191,7 @@ class groups {
     public function rename(int $me, int $groupId, string $name){
         global $db;
 
+        \watrlabs\users\moderation::requireUnmutedId($me);
         $this->requireMember($groupId, $me);
         $name = self::cleanName($name);
         if($name === ""){
@@ -206,6 +208,7 @@ class groups {
     public function send(int $me, int $groupId, string $body, ?int $imageId){
         global $db;
 
+        \watrlabs\users\moderation::requireUnmutedId($me);
         $this->requireMember($groupId, $me);
 
         $body = trim(str_replace("\r\n", "\n", $body));
@@ -259,15 +262,73 @@ class groups {
         $rows = $db->query($sql . " ORDER BY m.id DESC LIMIT " . ($limit + 1), $params)->get();
         $more = count($rows) > $limit;
 
-        return ["messages"=>array_map([$this, "shape"], array_reverse(array_slice($rows, 0, $limit))), "more"=>$more];
+        $messages = reactions::attach("group", array_map([$this, "shape"], array_reverse(array_slice($rows, 0, $limit))));
+        return ["messages"=>$messages, "more"=>$more, "seen"=>$this->seenBy($me, $groupId)];
     }
 
     public function markRead(int $me, int $groupId){
         global $db;
 
+        if(!$this->isMember($groupId, $me)){
+            return;
+        }
+
         $last = (int) ($db->query("SELECT MAX(id) AS lastid FROM chat_group_messages WHERE groupid = ?", [$groupId])->first()->lastid ?? 0);
         $db->table("chat_group_members")->where("groupid", $groupId)->where("userid", $me)->where("last_read", "<", $last)->update(["last_read"=>$last]);
-        realtime::publish([$me], ["type"=>"group_read", "group"=>$groupId]);
+
+        // everyone in the group: your other tabs clear the unread count, the others update "seen by"
+        realtime::publish($this->memberIds($groupId), ["type"=>"group_read", "group"=>$groupId, "by"=>$me, "lastId"=>$last]);
+    }
+
+    // who has read up to which message, everyone but you: [{id, username, lastRead}]
+    public function seenBy(int $me, int $groupId){
+        global $db;
+
+        return array_map(fn($r) => ["id"=>(int) $r->id, "username"=>$r->username, "lastRead"=>(int) $r->last_read], $db->query(
+            "SELECT u.id, u.username, m.last_read FROM chat_group_members m INNER JOIN users u ON u.id = m.userid WHERE m.groupid = ? AND m.userid <> ?",
+            [$groupId, $me]
+        )->get());
+    }
+
+    // ---------- editing and deleting your own ----------
+
+    public function edit(int $me, int $id, string $body){
+        global $db;
+
+        \watrlabs\users\moderation::requireUnmutedId($me);
+        $message = $db->table("chat_group_messages")->where("id", $id)->first();
+        chat::ownRecent($message, $me);
+        $this->requireMember((int) $message->groupid, $me);
+        $body = chat::cleanEdit($body, $message);
+
+        if($body !== (string) $message->body){
+            chat::keepOld("group", $id, $message->body);
+            $db->table("chat_group_messages")->where("id", $id)->update(["body"=>$body !== "" ? chat::filter($body) : null, "edited"=>time()]);
+        }
+
+        return $this->publishChange($id);
+    }
+
+    public function deleteOwn(int $me, int $id){
+        global $db;
+
+        $message = $db->table("chat_group_messages")->where("id", $id)->first();
+        chat::ownRecent($message, $me);
+        $this->requireMember((int) $message->groupid, $me);
+
+        chat::keepOld("group", $id, $message->body);
+        $db->table("chat_group_messages")->where("id", $id)->update(["deleted"=>chat::DELETED_BY_SENDER]);
+
+        return $this->publishChange($id);
+    }
+
+    private function publishChange(int $id){
+        global $db;
+
+        $row = $db->table("chat_group_messages")->where("id", $id)->first();
+        $shaped = reactions::attach("group", [$this->shape($row)])[0];
+        realtime::publish($this->memberIds((int) $row->groupid), ["type"=>"edited", "kind"=>"group", "message"=>$shaped]);
+        return $shaped;
     }
 
     // your groups with members, unread counts and the newest message id (for sorting)
@@ -342,6 +403,8 @@ class groups {
 
         $deleted = (bool) $row->deleted;
         return [
+            "removedBy"=>$deleted ? ((int) $row->deleted === chat::DELETED_BY_SENDER ? "sender" : "mod") : null,
+            "edited"=>!$deleted && !empty($row->edited),
             "id"=>(int) $row->id,
             "group"=>(int) $row->groupid,
             "from"=>(int) $row->sender_id,

@@ -27,7 +27,7 @@
             <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Username">
         </form>
         <nav class="sortTabs" aria-label="Filter users">
-            {% for key, label in {all: 'Everyone', admins: 'Admins', banned: 'Banned'} %}
+            {% for key, label in {all: 'Everyone', admins: 'Admins', banned: 'Banned', muted: 'Muted'} %}
                 <a href="?{{ {filter: key, q: search}|url_encode }}"{% if filter == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
             {% endfor %}
         </nav>
@@ -42,16 +42,17 @@
     {% for user in rows %}
         {% set me = user.id == currentuser.id %}
         <tr>
-            <td><a href="/users/{{ user.username|lower|url_encode }}">{{ user.username }}</a>{% if me %} <span class="muted">(you)</span>{% endif %}</td>
+            <td><a href="/admin/users/{{ user.id }}">{{ user.username }}</a>{% if me %} <span class="muted">(you)</span>{% endif %}</td>
             <td class="muted ellipsis">{{ user.email ?: '–' }}</td>
             <td class="muted">{{ user.registered|date("M j, Y") }}</td>
             <td>
                 {% if user.admin %}<span class="badge">admin</span>{% endif %}
-                {% if user.banned %}<span class="badge danger">banned</span>{% endif %}
+                {% if user.banned %}<span class="badge danger" title="{{ user.banned_until ? 'until ' ~ user.banned_until|date('M j, g:ia') : 'forever' }}">banned{% if user.banned_until %} · {{ user.banned_until|date('M j') }}{% endif %}</span>{% endif %}
+                {% if user.muted_until and user.muted_until > now %}<span class="badge" title="until {{ user.muted_until|date('M j, g:ia') }}">muted · {{ user.muted_until|date('M j') }}</span>{% endif %}
             </td>
             <td class="rowActions">
                 {% if not me %}
-                    {% if user.banned %}{{ u.action(user, 'unban', 'Unban', back, false) }}{% else %}{{ u.action(user, 'ban', 'Ban', back, true) }}{% endif %}
+                    {% if user.banned %}{{ u.action(user, 'unban', 'Unban', back, false) }}{% else %}<a class="button quiet" href="/admin/users/{{ user.id }}#moderate">Ban or mute</a>{% endif %}
                     {% if user.admin %}{{ u.action(user, 'unadmin', 'Remove admin', back, true) }}{% else %}{{ u.action(user, 'admin', 'Make admin', back, true) }}{% endif %}
                 {% endif %}
                 {{ u.action(user, 'signout', 'Sign out everywhere', back, false) }}

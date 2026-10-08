@@ -37,7 +37,11 @@ let state = {
     lastRequests: 0,
     lastStateLoad: 0,
     realtime: null,     // {url, token} when the websocket server is set up
-    live: false         // websocket connected
+    live: false,        // websocket connected
+    emoji: [],          // the reactions people can pick
+    editWindow: 3600,   // seconds your own messages stay editable
+    muted: null,        // the reason text, while a moderator has you muted
+    groupSeen: {}       // in the open group: member id -> the last message id they've read
 };
 
 // ---------- helpers ----------
@@ -219,7 +223,13 @@ function renderHome(){
         row.append(avatar(friend.username, friend.online, friend.avatar));
 
         let text = el("span", "chatRowText");
-        text.append(el("span", "chatName", friend.username));
+        let name = el("span", "chatName", friend.username);
+        if(friend.level){
+            let level = el("span", "levelBadge", String(friend.level));
+            level.title = "Level " + friend.level;
+            name.append(level);
+        }
+        text.append(name);
         text.append(el("span", "chatMeta" + (friend.playing ? " playing" : ""), friendStatus(friend)));
         row.append(text);
 
@@ -265,6 +275,9 @@ function renderHome(){
 function applyState(data){
     state.me = data.me;
     state.reasons = data.reasons;
+    state.emoji = data.emoji || [];
+    state.editWindow = data.editWindow || 3600;
+    state.muted = data.muted || null;
     state.requests = data.requests;
     state.blocked = data.blocked;
     state.lastRequests = data.requests.incoming.length;
@@ -507,6 +520,8 @@ function openGroup(id){
 
         tray.messages.replaceChildren();
         state.hasMore = data.more;
+        state.groupSeen = {};
+        (data.seen || []).forEach(m => { state.groupSeen[m.id] = { username: m.username, lastRead: m.lastRead }; });
         addMessages(data.messages, false);
         scrollToEnd();
 
@@ -524,10 +539,11 @@ function openGroup(id){
 function setComposer(relation){
     let notice = document.getElementById("chatNotice");
     let composer = document.getElementById("chatComposer");
-    let canSend = relation === "friends";
+    let canSend = relation === "friends" && !state.muted;
     composer.hidden = !canSend;
     notice.hidden = canSend;
-    notice.textContent = {
+    notice.classList.remove("error");
+    notice.textContent = relation === "friends" && state.muted ? state.muted : {
         blocked: "You blocked this person.",
         blockedby: "You can't message this person.",
         none: "You're not friends anymore, so you can't send new messages.",
@@ -574,7 +590,7 @@ function messageNode(message, showName){
 
     if(message.deleted){
         bubble.classList.add("removed");
-        bubble.textContent = "Removed by a moderator";
+        bubble.textContent = message.removedBy === "sender" ? "Message deleted" : "Removed by a moderator";
     } else {
         if(message.image){
             let link = el("a", "chatImage");
@@ -597,9 +613,54 @@ function messageNode(message, showName){
         if(message.body){
             bubble.append(el("p", "chatText", message.body));
         }
+        if(message.edited){
+            bubble.append(el("span", "chatEdited", "edited"));
+        }
     }
 
     row.append(bubble);
+
+    if(!message.deleted && window.watrReactions){
+        let bar = window.watrReactions.bar(message.reactions || [], state.muted ? null : state.me.id, state.emoji, function(emoji) {
+            return api("POST", messagePath(message) + "/react", { emoji: emoji }).then(r => r.reactions, function(error) {
+                flash(error.message);
+                return null;
+            });
+        });
+        row.reactBar = bar;
+        row.append(bar);
+    }
+
+    // yours, for an hour: edit and delete
+    if(mine && !message.deleted && Date.now() / 1000 - message.created < state.editWindow){
+        let tools = el("span", "chatTools");
+        if(message.body !== null || message.image){
+            let edit = el("button", "chatTool");
+            edit.type = "button";
+            edit.title = "Edit";
+            edit.setAttribute("aria-label", "Edit this message");
+            edit.innerHTML = '<i class="ph-bold ph-pencil-simple"></i>';
+            edit.addEventListener("click", () => editMessage(message, row));
+            tools.append(edit);
+        }
+        let del = el("button", "chatTool");
+        del.type = "button";
+        del.title = "Delete";
+        del.setAttribute("aria-label", "Delete this message");
+        del.innerHTML = '<i class="ph-bold ph-trash"></i>';
+        del.addEventListener("click", function() {
+            // second click confirms
+            if(!del.classList.contains("really")){
+                del.classList.add("really");
+                del.title = "Click again to delete";
+                setTimeout(() => { del.classList.remove("really"); del.title = "Delete"; }, 4000);
+                return;
+            }
+            changeMessage(message, "delete");
+        });
+        tools.append(del);
+        row.append(tools);
+    }
 
     if(!mine && !message.deleted){
         let flag = el("button", "chatFlag");
@@ -612,6 +673,77 @@ function messageNode(message, showName){
     }
 
     return row;
+}
+
+// ---------- editing your own ----------
+
+function messagePath(message){
+    return (message.group ? "/api/v1/social/group-message/" : "/api/v1/social/message/") + message.id;
+}
+
+function changeMessage(message, action, body){
+    return api("POST", messagePath(message) + "/" + action, body !== undefined ? { body: body } : {}).then(function(data) {
+        replaceMessage(data.message);
+    }).catch(function(error) {
+        flash(error.message);
+    });
+}
+
+// a message changed (edited, deleted, from here or another tab): redraw it where it is
+function replaceMessage(message){
+    let row = tray.messages.querySelector('.chatMsg[data-id="' + Number(message.id) + '"]');
+    if(!row){
+        return;
+    }
+    let fresh = messageNode(message, row.classList.contains("named"));
+    row.replaceWith(fresh);
+    if(window.parseEmoji){
+        window.parseEmoji(fresh);
+    }
+    updateSeen();
+}
+
+function editMessage(message, row){
+    let bubble = row.querySelector(".chatBubble");
+    if(!bubble || bubble.querySelector(".chatEditBox")){
+        return;
+    }
+
+    let box = el("textarea", "chatEditBox");
+    box.value = message.body || "";
+    box.maxLength = 1000;
+    box.rows = 2;
+    box.setAttribute("aria-label", "Edit your message");
+    let hint = el("span", "chatEditHint", "Enter to save, Esc to cancel");
+    let text = bubble.querySelector(".chatText");
+    if(text){
+        text.hidden = true;
+    }
+    bubble.append(box, hint);
+    box.focus();
+
+    function close(){
+        box.remove();
+        hint.remove();
+        if(text){
+            text.hidden = false;
+        }
+    }
+
+    box.addEventListener("keydown", function(event) {
+        if(event.key === "Enter" && !event.shiftKey && !event.isComposing){
+            event.preventDefault();
+            let body = box.value.trim();
+            if(body === (message.body || "")){
+                return close();
+            }
+            box.disabled = true;
+            changeMessage(message, "edit", body).finally(close);
+        } else if(event.key === "Escape"){
+            event.stopPropagation();
+            close();
+        }
+    });
 }
 
 // adds messages in order, with a time label whenever there's a gap
@@ -689,7 +821,7 @@ function loadOlder(){
 function updateSeen(){
     tray.messages.querySelectorAll(".chatSeen").forEach(n => n.remove());
     if(state.kind === "group"){
-        return;
+        return updateGroupSeen();
     }
     let mine = tray.messages.querySelectorAll(".chatMsg.mine");
     let last = mine[mine.length - 1];
@@ -700,6 +832,25 @@ function updateSeen(){
     if((state.seen[state.convo] || 0) >= Number(last.dataset.id)){
         last.after(el("p", "chatSeen", "Seen"));
     }
+}
+
+// groups: "Seen by sam, alex" under the newest message, for everyone who's read up to it
+function updateGroupSeen(){
+    let all = tray.messages.querySelectorAll(".chatMsg");
+    let last = all[all.length - 1];
+    if(!last){
+        return;
+    }
+    let id = Number(last.dataset.id);
+    let from = Number(last.dataset.from);
+    let names = Object.keys(state.groupSeen)
+        .filter(uid => Number(uid) !== from && state.groupSeen[uid].lastRead >= id)
+        .map(uid => state.groupSeen[uid].username);
+    if(!names.length){
+        return;
+    }
+    let text = names.length > 3 ? "Seen by " + names.slice(0, 3).join(", ") + " and " + (names.length - 3) + " more" : "Seen by " + names.join(", ");
+    last.after(el("p", "chatSeen", text));
 }
 
 // ---------- sending ----------
@@ -1147,9 +1298,31 @@ function handleLive(data){
             break;
 
         case "group_read":
-            if(state.groups[data.group]){
-                state.groups[data.group].unread = 0;
-                refreshLists();
+            if(data.by === undefined || data.by === state.me.id){
+                // you read it in another tab
+                if(state.groups[data.group]){
+                    state.groups[data.group].unread = 0;
+                    refreshLists();
+                }
+            } else if(state.kind === "group" && state.convo === data.group && state.groupSeen[data.by]){
+                state.groupSeen[data.by].lastRead = Math.max(state.groupSeen[data.by].lastRead, data.lastId);
+                updateSeen();
+            }
+            break;
+
+        case "edited":
+            if((data.kind === "group" && state.kind === "group" && state.convo === data.message.group)
+                || (data.kind === "dm" && state.kind === "dm" && (state.convo === data.message.from || state.convo === data.message.to))){
+                replaceMessage(data.message);
+            }
+            break;
+
+        case "reaction":
+            if(data.kind === state.kind){
+                let row = tray.messages.querySelector('.chatMsg[data-id="' + Number(data.id) + '"]');
+                if(row && row.reactBar){
+                    row.reactBar.update(data.reactions);
+                }
             }
             break;
 
@@ -1190,7 +1363,13 @@ function handleLive(data){
             break;
 
         case "typing":
-            if(state.kind === "dm" && state.convo === data.from && state.friends[data.from]){
+            if(data.group){
+                let group = state.groups[data.group];
+                let member = group && group.members.find(m => m.id === data.from);
+                if(state.kind === "group" && state.convo === data.group && member){
+                    showTyping(member.username + " is typing...");
+                }
+            } else if(state.kind === "dm" && state.convo === data.from && state.friends[data.from]){
                 showTyping();
             }
             break;
@@ -1210,8 +1389,8 @@ function markRemoved(id){
     }
 }
 
-function showTyping(){
-    document.getElementById("chatSub").textContent = "typing...";
+function showTyping(text){
+    document.getElementById("chatSub").textContent = text || "typing...";
     document.getElementById("chatSub").classList.add("typing");
     clearTimeout(typingTimer);
     typingTimer = setTimeout(hideTyping, 4000);
@@ -1227,13 +1406,20 @@ function hideTyping(){
 }
 
 tray.input.addEventListener("input", function() {
-    if(!socket || socket.readyState !== WebSocket.OPEN || !state.convo || state.kind !== "dm" || !tray.input.value.trim()){
+    if(!socket || socket.readyState !== WebSocket.OPEN || !state.convo || !tray.input.value.trim()){
         return;
     }
     let now = Date.now();
-    if(now - lastTypingSent > 2000){
-        lastTypingSent = now;
+    if(now - lastTypingSent <= 2000){
+        return;
+    }
+    lastTypingSent = now;
+    if(state.kind === "dm"){
         socket.send(JSON.stringify({ type: "typing", to: state.convo }));
+    } else if(state.groups[state.convo]){
+        // node doesn't know who's in a group, so we say. the other side ignores it from non-members
+        let to = state.groups[state.convo].members.map(m => m.id).filter(id => id !== state.me.id);
+        socket.send(JSON.stringify({ type: "typing", group: state.convo, to: to }));
     }
 });
 

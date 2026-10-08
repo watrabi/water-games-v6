@@ -32,7 +32,17 @@ class accountdata {
                 "avatar"=>$user->avatar,
                 "twoFactor"=>(bool) $user->totp_enabled,
                 "shareActivity"=>(bool) $user->share_activity,
+                "level"=>(int) $user->level,
+                "xp"=>(int) $user->xp,
+                "streakBest"=>(int) $user->streak_best,
+                "recapEmails"=>(bool) $user->recap_email,
             ],
+            "scores"=>self::rows("SELECT g.name, s.period, s.score, s.created FROM game_scores s INNER JOIN games g ON g.id = s.gameid WHERE s.userid = ?", $id),
+            "collections"=>array_map(function($collection){
+                $collection["games"] = self::rows("SELECT g.name FROM collection_games x INNER JOIN games g ON g.id = x.gameid WHERE x.collectionid = ? ORDER BY x.position", [$collection["id"]]);
+                unset($collection["id"]);
+                return $collection;
+            }, self::rows("SELECT id, name, description, public, created FROM collections WHERE userid = ?", $id)),
             "favorites"=>self::rows("SELECT g.name, f.created FROM favorites f INNER JOIN games g ON g.id = f.gameid WHERE f.userid = ?", $id),
             "playtime"=>self::rows("SELECT g.name, p.seconds, p.sessions, p.first_played, p.last_played FROM playtime p INNER JOIN games g ON g.id = p.gameid WHERE p.userid = ?", $id),
             "votes"=>self::rows("SELECT g.name, v.vote, v.created FROM game_votes v INNER JOIN games g ON g.id = v.gameid WHERE v.userid = ?", $id),
@@ -102,6 +112,9 @@ class accountdata {
         foreach($db->table("playlists")->where("userid", $userId)->get() as $playlist){
             $db->table("playlist_tracks")->where("playlistid", $playlist->id)->delete();
         }
+        foreach($db->table("collections")->where("userid", $userId)->get() as $collection){
+            $db->table("collection_games")->where("collectionid", $collection->id)->delete();
+        }
         foreach($db->table("ai_chats")->where("userid", $userId)->get() as $chat){
             $db->table("ai_messages")->where("chatid", $chat->id)->delete();
         }
@@ -116,6 +129,7 @@ class accountdata {
             "tracks"=>"uploader_id", "playtime"=>"userid", "cloud_saves"=>"userid", "game_votes"=>"userid", "game_requests"=>"userid",
             "game_reports"=>"userid", "notifications"=>"userid", "user_achievements"=>"userid", "activity"=>"userid",
             "playlists"=>"userid", "password_resets"=>"userid", "login_challenges"=>"userid",
+            "game_scores"=>"userid", "user_game_daily"=>"userid", "collections"=>"userid", "reactions"=>"userid",
         ];
         foreach($byUser as $table => $column){
             $db->table($table)->where($column, $userId)->delete();
@@ -123,6 +137,7 @@ class accountdata {
 
         $db->table("notifications")->where("actor_id", $userId)->delete();
         $db->table("chat_messages")->where("sender_id", $userId)->orWhere("recipient_id", $userId)->delete();
+        $db->table("challenges")->where("from_id", $userId)->orWhere("to_id", $userId)->delete();
         $db->table("friendships")->where("requester_id", $userId)->orWhere("addressee_id", $userId)->delete();
         $db->table("blocks")->where("blocker_id", $userId)->orWhere("blocked_id", $userId)->delete();
         $db->table("users")->where("id", $userId)->delete();

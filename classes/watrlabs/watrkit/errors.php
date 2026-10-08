@@ -57,7 +57,10 @@ class errors {
     // this is for working on the site. i wanna do something fancy like laravel but I have no idea how they do it
     // just stops execution and shows the raw error
     static function displayTextError($e){
-        // I'll probably do something better than this
+        // I'll probably do something better than this. 503 so uptime monitors (and /health) see it as down
+        if(!headers_sent()){
+            http_response_code(503);
+        }
         header("Content-type: text/plain");
         die($e);
     }

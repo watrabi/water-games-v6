@@ -1,8 +1,8 @@
-# Build plan: the big feature batch
+# Build plan
 
 Handoff file. If you're an agent picking this up: read this first, then `DESIGN.md` (visual rules),
-then `readme.md`. Tick boxes as you finish things and add notes under "Log" at the bottom. Everything below is
-built and tested locally but not committed or deployed yet. The owner asked for **all** of these, and said commits only happen when they ask.
+then `readme.md`. Tick boxes as you finish things and add notes under "Log" at the bottom. Batch 1 (further down)
+is done and deployed. Batch 2 is in progress. The owner said commits and deploys only happen when they ask.
 
 ## How the codebase works (short)
 
@@ -24,7 +24,93 @@ built and tested locally but not committed or deployed yet. The owner asked for 
 - Style rules (DESIGN.md): color tokens only, square corners, no gradients/glow, Archivo for headings, blob
   emoji for empty states, phosphor icons (`ph-bold ph-...`). Copy is casual and lowercase-ish, chrome stays plain.
 
-## Decisions already made
+## Batch 2 (2026-10-07): retention, discovery, social, safety, ops
+
+The owner asked for all of these (changelog page left out on purpose).
+
+Already existed before batch 2, so don't rebuild them: Turnstile on sign-up and forgot password (prod has keys
+and `CONFIG_CaptchaEnabled=true`), the word filter on comments (comments use `chat::filter`), DM typing and "Seen",
+and per-minute limits on comments and chat.
+
+### Decisions
+
+- **Scores** come from games through `postMessage`. Games include `/assets/js/watr-sdk.js` and call
+  `watr.submitScore(n)`. play.js only accepts messages from the game's own iframe and posts them to
+  `POST /api/v1/play/{id}/score`. Admins turn scores on per game (`games.scores` = off|high|low, plus a label and
+  a format of number|time). Scores can be faked by anyone with devtools. The mitigations: the game has to be open
+  for you right now (`users.playing_game_id`), at most 1 score every 5s per game, and an optional per-game
+  `score_max`. Admins can wipe a person's scores. Boards are all time, this week (ISO week), and friends.
+  `game_scores` keeps the best per (game, user, period), where period is `all` or a week like `2026-41`.
+- **Challenges**: from the leaderboard, send a friend "beat my 1,234 in Slope" (notification `challenge`). If they
+  beat it, the challenger gets `challenge_beaten`. Stored in the `challenges` table.
+- **Game of the day**: picked by date from games with plays, the same for everyone that day
+  (`ORDER BY CRC32(CONCAT(id, day))`), and it never repeats within 30 days if there are enough games. Admins can
+  pin a game for today (`settings.gotd_pin` = "Y-m-d:id"). **Random**: `/games/random` (and `?unplayed=1`).
+- **Streaks/XP**: `user_game_daily` (userid, gameid, day, seconds) is filled by `playtime::beat`. A day counts
+  once you have 60s of playtime on it. Stored on users: `streak`, `streak_best`, `streak_day`, `xp`, `level`.
+  XP = minutes played + 50 per achievement + 10 per streak day. Level = floor(sqrt(xp / 25)) + 1. New
+  achievements: streak_7 and streak_30, plus top_score (#1 on a board). The level badge shows next to usernames
+  on comments, profiles, leaderboards and the chat friends list.
+- **Weekly recap**: `recap::build(user, week)` from user_game_daily. Delivered once per ISO week per user
+  (`users.recap_week`). Lazily on the first page view after Monday (a notification), and by `bin/cron.php` (the
+  notification plus an email for people who opted in, `users.recap_email`, default off). `/recap` shows last week.
+- **Collections**: like playlists but for games/apps. Public or private, max 30 per user, 200 games each.
+  Admin-made collections can be marked `staff` (shown as "Staff picks" on /games and /home). `/collections`,
+  `/collections/{id}`, plus "Add to collection" on the play page and public ones on profiles.
+- **Game details**: `games.controls` (text), `games.screenshots` (json list of upload paths, max 6), and a "New"
+  badge on tiles for 14 days after `games.created`.
+- **Share previews**: base.twig gets og:url/og:image/twitter:card blocks. A twig global `siteUrl` comes from
+  `APP_DOMAIN` (prod is games.watr.lol). Games use their icon, profiles their avatar, the rest the 512 icon.
+- **sitemap.xml/robots.txt**: routes, not files, so they use siteUrl. Static pages, games, apps, public
+  collections. Not profiles (kids' usernames don't need indexing).
+- **Reactions**: a fixed set of 8 emoji (no free text). One table, `reactions` (kind dm|group|comment, item_id,
+  userid, emoji). Pushed live for chat.
+- **Edit/delete your own**: chat messages (DM + group) can be edited or deleted for 1 hour after sending,
+  comments any time. `edited` (timestamp) column. Old text goes to `message_edits` so moderators see what a
+  reported message said before. Self-deleted chat messages use `deleted = 2` ("Message deleted"); 1 still means
+  removed by a moderator.
+- **Groups**: typing goes through node with the member list, and clients ignore typing from non-members. "Seen
+  by" comes from chat_group_members.last_read, and group_read is now published to every member.
+- **Rate limits**: `watrkit/ratelimit.php`, a fixed-window counter in the `rate_limits` table, keyed by
+  "action:ip" or "action:u12". Over the limit returns a 429 with Retry-After. Login: 10 failures/15min per IP,
+  plus 5/15min per username. Sign-in asks for Turnstile after 3 failures from an IP.
+- **Mutes/bans**: users get `banned_until`, `ban_reason`, `muted_until`, `mute_reason`. A ban with a passed
+  `banned_until` lifts itself. Muted people can't chat, comment, react, make groups/collections or edit. The
+  `moderation_log` table holds the history, shown on the admin user page. Durations: 1h/1d/3d/7d/30d/forever.
+- **Health**: `GET /health` (JSON, 200/503, no details). `bin/cron.php` runs every 5 min: checks (db, realtime,
+  disk, backups < 36h old, storage writable) and alerts on state changes to `ALERT_WEBHOOK` (Discord/Slack-style
+  JSON) and/or `ALERT_EMAIL`. Weekly recaps and cleanup (rate_limits, play_views) run there too. The admin
+  dashboard gets a System panel.
+- **Deploy**: `bin/deploy.sh` runs on the server and does the documented steps (backup, clone the branch to /tmp,
+  migrate, rsync with the excludes, composer install if the lock changed, clear the twig cache, restart
+  watr-realtime if realtime/ changed).
+- **Prod cron**: the backup cron gets installed on prod (owner said yes). bin/cron.php goes in only after the code
+  is deployed.
+
+### Checklist
+
+- [x] migration `20261017120000_batch_two.php`
+- [x] ratelimit class + applied (login/register/forgot/reset/2fa/search/friend requests/votes/favorites/reports/uploads/AI)
+- [x] login captcha after 3 failures
+- [x] timed bans + mutes + reasons + moderation_log + admin UI + user-facing messages
+- [x] og tags, siteUrl, sitemap.xml, robots.txt
+- [x] game controls + screenshots (admin + play page), "New" badge
+- [x] game of the day (home, landing, games) + admin pin, /games/random + button + `g r` shortcut
+- [x] scores: sdk, play.js bridge, API, leaderboard UI on play page, admin settings, wipe scores
+- [x] challenges
+- [x] user_game_daily, streaks, xp/levels, level badges, new achievements
+- [x] weekly recap (/recap, notification, email opt-in in settings)
+- [x] collections (pages, API, play page menu, profile, staff picks)
+- [x] reactions (DM, group, comments)
+- [x] edit/delete own messages + comments, message_edits shown in admin reports
+- [x] group typing + seen by
+- [x] /health, bin/cron.php, admin System panel
+- [x] bin/deploy.sh
+- [ ] install the backup cron on prod (**blocked**: the permission check refused editing root's crontab on prod. the script works, a manual run made the first backup at 2026-10-08 02:52 UTC. the owner adds it, see the readme)
+- [x] tests, readme, .env.example
+- [x] php -l, phpunit, click through in the browser at desktop + 390px
+
+## Batch 1 decisions
 
 - **Playtime**: counts only while `document.visibilityState === "visible"` AND `document.hasFocus()`.
   Poll every 1s (clicking into the game iframe fires `blur` on the parent window, but `hasFocus()` stays true,
@@ -146,3 +232,15 @@ Routes / pages:
 - 2026-10-08: play spam fix. `watrkit/playcounter.php` + `play_views` table: one counted play per person per game
   per 30 min (songs 10 min), accounts by id, guests by HMAC of IP. Existing inflated counts were left alone
   (owner's call); admins can reset a game's count from its edit page.
+- 2026-10-08: **batch 2 built and tested locally, not committed or deployed.** Migrations 20261017120000 (schema) and
+  20261017120100 (XP backfill from playtime + achievements) applied locally. 71 tests pass (`vendor/bin/phpunit`); the
+  4 deprecations come from the pixie library. Checked in headless Chrome (puppeteer-core in the scratchpad, since the Chrome
+  extension wasn't connected) at 1440px and 390px with no page errors and no horizontal overflow. Clicked through:
+  a test game calling watr.submitScore -> leaderboard + "new best" toast + a worse score not replacing it, challenge -> the friend's notice and notification,
+  collections dialog (create + add), comment post/react/edit, DM send/react/edit/delete between two accounts, login lockout
+  (429 after 5 wrong), timed ban message, mute blocking comments. Test accounts and the test game were removed afterwards.
+  Found and fixed along the way: inline scripts on collection AND playlist pages ran before the deferred jQuery on a full page load.
+  **To ship:** `bin/deploy.sh` on the server (it runs both migrations). Then add the crons (backup, and bin/cron.php),
+  and optionally ALERT_WEBHOOK, plus MAIL_* for recap/alert emails (prod has no mail configured).
+  Prod already has Turnstile keys, so sign-up/forgot have the captcha, and sign-in now asks for it after 3 wrong passwords.
+

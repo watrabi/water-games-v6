@@ -3,9 +3,12 @@
 {% import "components/avatar.twig" as a %}
 {% set isApp = game.type == 'app' %}
 {% block pageName %}{{ game.name }}{% endblock %}
+{% block ogTitle %}{{ isApp ? '' : 'Play ' }}{{ game.name }} on {{ env("APP_NAME") }}{% endblock %}
+{% block ogDescription %}{{ game.description ?: (isApp ? game.name ~ ', right in your browser.' : 'Play ' ~ game.name ~ ' free in your browser, no downloads.') }}{% endblock %}
+{% block ogImage %}{{ screenshots ? screenshots|first : game.gameIcon }}{% endblock %}
+{% block twitterCard %}{{ screenshots ? 'summary_large_image' : 'summary' }}{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=15">
-    <meta content="{{ game.name }} on {{ env("APP_NAME") }}" property="og:title"/>
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=16">
 {% endblock %}
 {% block body %}
 <div class="page playPage">
@@ -20,7 +23,7 @@
                 {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
             </span>
             <div>
-                <h1>{{ game.name }}</h1>
+                <h1>{{ game.name }}{% if isGotd %} <span class="gotdBadge" title="Game of the day"><i class="ph-fill ph-sun"></i>Game of the day</span>{% endif %}</h1>
                 <p class="muted">{{ game.plays|number_format }} {% if isApp %}{{ game.plays == 1 ? 'open' : 'opens' }}{% else %}{{ game.plays == 1 ? 'play' : 'plays' }}{% endif %} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span>{% if rating is not null %} · <span id="ratingText">{{ rating }}% liked</span>{% else %} <span id="ratingText"></span>{% endif %}</p>
                 {% if currentuser %}
                 <p class="playStats">
@@ -42,6 +45,7 @@
             {% else %}
                 <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="ph-bold ph-heart"></i>Favorite</a>
             {% endif %}
+            {% if currentuser %}<button class="button quiet" id="collectButton" title="Add to a collection"><i class="ph-bold ph-folder-plus"></i><span class="sr-only">Add to a collection</span></button>{% endif %}
             <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="ph-bold ph-arrow-square-out"></i><span class="sr-only">Open in a new tab</span></a>
             <button class="button quiet" id="theaterButton" aria-pressed="false" title="Theater mode (T)"><i class="ph-bold ph-frame-corners"></i><span class="sr-only">Theater mode</span></button>
             {% if currentuser %}<button class="button quiet" id="reportGameButton" title="Report a problem"><i class="ph-bold ph-flag"></i><span class="sr-only">Report a problem</span></button>{% endif %}
@@ -57,7 +61,30 @@
     </nav>
     {% endif %}
 
+    {% for c in challenges %}
+    <div class="notice challengeNotice"><i class="ph-bold ph-sword"></i><span><a href="/users/{{ c.username|lower|url_encode }}">{{ c.username }}</a> challenged you to beat <strong>{{ c.text }}</strong>. Good luck.</span></div>
+    {% endfor %}
+
     {% if currentuser %}
+    <dialog class="modal" id="collectDialog" aria-labelledby="collectTitle">
+        <form method="dialog" id="collectForm">
+            <h2 id="collectTitle">Add {{ game.name }} to a collection</h2>
+            <ul class="collectList" id="collectList"><li class="muted">Loading…</li></ul>
+            <div class="field">
+                <label for="collectNew">Or start a new one</label>
+                <div class="inputRow">
+                    <input id="collectNew" maxlength="60" placeholder="Best 2 player games">
+                    <button type="button" class="button quiet" id="collectCreate">Create</button>
+                </div>
+            </div>
+            <div class="notice danger" id="collectError" role="alert" hidden></div>
+            <div class="modalActions">
+                <a class="button quiet" href="/collections/mine">Your collections</a>
+                <button type="button" class="button" id="collectDone">Done</button>
+            </div>
+        </form>
+    </dialog>
+
     <dialog class="modal" id="reportGameDialog" aria-labelledby="reportGameTitle">
         <form method="dialog" id="reportGameForm">
             <h2 id="reportGameTitle">What's wrong with {{ game.name }}?</h2>
@@ -80,18 +107,77 @@
     </dialog>
     {% endif %}
 
-    {% if game.description %}
+    {% if screenshots is not empty %}
+    <div class="shotStrip" aria-label="Screenshots">
+        {% for shot in screenshots %}
+        <a href="{{ shot }}" target="_blank" rel="noopener"><img src="{{ shot }}" alt="{{ game.name }} screenshot {{ loop.index }}" loading="lazy"></a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if game.description or game.controls %}
+    <div class="aboutRow">
+        {% if game.description %}
         <div class="playDescription">
             <h2>About</h2>
             <p>{{ game.description|nl2br }}</p>
         </div>
+        {% endif %}
+        {% if game.controls %}
+        <div class="playDescription playControls">
+            <h2>How to play</h2>
+            <ul>
+                {% for line in game.controls|split("\n") %}{% if line|trim %}<li>{{ line|trim }}</li>{% endif %}{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if scoresOn %}
+    <section class="leaderboard" id="scores">
+        <div class="sectionHeader">
+            <h2>Leaderboard</h2>
+            <nav class="sortTabs" aria-label="Which leaderboard">
+                <a href="#scores" data-period="all" class="active" aria-current="true">All time</a>
+                <a href="#scores" data-period="week">This week</a>
+                {% if currentuser %}<a href="#scores" data-period="friends">Friends</a>{% endif %}
+            </nav>
+        </div>
+        <ol class="scoreList" id="scoreList"><li class="muted">Loading…</li></ol>
+        <div class="scoreFooter">
+            <p class="muted" id="scoreMine"></p>
+            {% if currentuser %}<button class="button quiet" type="button" id="challengeButton" hidden><i class="ph-bold ph-sword"></i>Challenge a friend</button>{% endif %}
+        </div>
+        {% if not currentuser %}<p class="muted"><a href="/auth/sign-in">Sign in</a> to get on the board.</p>{% endif %}
+    </section>
+
+    {% if currentuser %}
+    <dialog class="modal" id="challengeDialog" aria-labelledby="challengeTitle">
+        <form method="dialog" id="challengeForm">
+            <h2 id="challengeTitle">Who should try to beat you?</h2>
+            <p class="muted">They get a notification with your best, <span id="challengeScore"></span>. If they beat it, you'll hear about it.</p>
+            <div class="field">
+                <label for="challengeFriend">Friend</label>
+                <select id="challengeFriend" required><option value="">Loading…</option></select>
+            </div>
+            <div class="notice danger" id="challengeError" role="alert" hidden></div>
+            <div class="modalActions">
+                <button type="button" class="button quiet" id="challengeCancel">Cancel</button>
+                <button type="submit" class="button" id="challengeSend">Send challenge</button>
+            </div>
+        </form>
+    </dialog>
+    {% endif %}
     {% endif %}
 
     {% if commentsOn %}
     <section class="comments" id="comments">
         <h2>Comments <span class="commentCount" id="commentCount">{{ commentCount|number_format }}</span></h2>
 
-        {% if currentuser %}
+        {% if currentuser and muteMessage %}
+        <p class="notice">{{ muteMessage }}</p>
+        {% elseif currentuser %}
         <form class="commentForm" id="commentForm">
             {{ a.avatar(currentuser) }}
             <div class="commentInput">
@@ -126,6 +212,6 @@
     {% endif %}
 </div>
 <script type="application/json" id="playData">{{ playData|raw }}</script>
-<script src="/assets/js/play.js?t=4" defer></script>
-{% if commentsOn %}<script src="/assets/js/comments.js?t=1" defer></script>{% endif %}
+<script src="/assets/js/play.js?t=5" defer></script>
+{% if commentsOn %}<script src="/assets/js/comments.js?t=2" defer></script>{% endif %}
 {% endblock %}

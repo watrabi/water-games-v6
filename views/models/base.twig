@@ -3,27 +3,37 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/base.css?t=225">
+    <link rel="stylesheet" href="/assets/css/base.css?t=226">
     <link rel="stylesheet" href="/assets/css/themes.css?t=1">
-    <link rel="stylesheet" href="/assets/css/features.css?t=2">
-    {% if currentuser %}<link rel="stylesheet" href="/assets/css/chat.css?t=3">{% endif %}
+    <link rel="stylesheet" href="/assets/css/features.css?t=3">
+    {% if currentuser %}<link rel="stylesheet" href="/assets/css/chat.css?t=4">{% endif %}
     <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
     {# icons: phosphor (phosphoricons.com), bold for everything, fill for the "on" states like a favorited heart #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css" integrity="sha384-nblAP2mo2pVPyMQZDw9Xy9Cwgs9lowushAYep4w5+Q9kF4Ibf3n0B/gCMVdR+Vqy" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css" integrity="sha384-pPVoXE8ft+zxKtxIDDI7SfTK6y95NHm4qa+hKEg/hs8VkjW5IP+9/dGOPCbDpUPl" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="/assets/js/jquery-3.0.0.min.js" defer></script>
     <script src="/assets/js/watrgames.js?t=224" defer></script>
-    <script src="/assets/js/shortcuts.js?t=1" defer></script>
+    <script src="/assets/js/shortcuts.js?t=2" defer></script>
+    <script src="/assets/js/reactions.js?t=1" defer></script>
     {% if currentuser %}<script src="/assets/js/notifications.js?t=1" defer></script>{% endif %}
     <script src="/assets/js/music.js?t=4" defer></script>
     <script src="/assets/js/lyrics.js?t=3" defer></script>
-    <meta content="{{ env("APP_NAME") }}" property="og:title"/>
-    <meta content="{{ env("APP_DESC") }}" property="og:description"/>
-    <meta name="description" content="{{ env("APP_DESC") }}">
-    <!--
-    <meta content="" property="og:url"/>
-    <meta content="" property="og:image"/>
-    -->
+    {# share previews (discord, imessage, twitter...). a page can define ogTitle, ogDescription, ogImage and
+       twitterCard blocks (they're only read here, never printed on their own), see play.twig #}
+    {% set ogTitle = block('ogTitle') is defined ? block('ogTitle')|trim : ((block('pageName')|trim) ? (block('pageName')|trim) ~ ' - ' ~ env("APP_NAME") : env("APP_NAME")) %}
+    {% set ogDesc = (block('ogDescription') is defined ? block('ogDescription') : env("APP_DESC"))|striptags|trim|replace({"\n": " "}) %}
+    {% set ogDesc = ogDesc|length > 200 ? ogDesc|slice(0, 199) ~ '…' : ogDesc %}
+    {% set ogImage = block('ogImage') is defined and block('ogImage')|trim ? block('ogImage')|trim : '/assets/images/icons/icon-512.png' %}
+    {% set pageUrl = siteUrl ~ path %}
+    <meta property="og:site_name" content="{{ env("APP_NAME") }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ ogTitle }}">
+    <meta property="og:description" content="{{ ogDesc }}">
+    <meta property="og:url" content="{{ pageUrl }}">
+    <meta property="og:image" content="{{ ogImage starts with 'http' ? ogImage : siteUrl ~ ogImage }}">
+    <meta name="twitter:card" content="{{ block('twitterCard') is defined ? block('twitterCard')|trim : 'summary' }}">
+    <meta name="description" content="{{ ogDesc }}">
+    <link rel="canonical" href="{{ pageUrl }}">
     <meta content="{{ theme.color }}" name="theme-color"/>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/assets/images/icons/icon-192.png" type="image/png">

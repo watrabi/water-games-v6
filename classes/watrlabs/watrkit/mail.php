@@ -66,10 +66,8 @@ class mail {
         }
     }
 
-    // https://example.com, from the request (works behind cloudflare / a proxy)
+    // https://example.com
     static function siteUrl(){
-        $https = !empty($_SERVER["HTTPS"]) || ($_SERVER["HTTP_X_FORWARDED_PROTO"] ?? "") === "https";
-        $host = $_ENV["APP_DOMAIN"] ?? ($_SERVER["HTTP_HOST"] ?? "localhost");
-        return ($https ? "https" : "http") . "://" . $host;
+        return site::url();
     }
 }

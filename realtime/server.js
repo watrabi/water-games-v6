@@ -185,6 +185,18 @@ wss.on("connection", function(ws, userId) {
                 sendTo(message.to, { type: "typing", from: userId });
             }
         }
+
+        // in a group the browser lists who's in it (node has no database to check). each client only shows it
+        // for a group it's in, from someone who's a member, so a made up list can't put words anywhere
+        if(message.type === "typing" && Number.isInteger(message.group) && Array.isArray(message.to)){
+            let now = Date.now();
+            if(now - ws.lastTyping >= TYPING_EVERY_MS){
+                ws.lastTyping = now;
+                message.to.slice(0, 20).filter(id => Number.isInteger(id) && id !== userId).forEach(function(id) {
+                    sendTo(id, { type: "typing", from: userId, group: message.group });
+                });
+            }
+        }
     });
 
     ws.on("close", function() {

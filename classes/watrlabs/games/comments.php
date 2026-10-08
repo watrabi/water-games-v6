@@ -22,7 +22,7 @@ class comments {
     public function list(int $gameId, $viewer, ?int $before = null){
         global $db;
 
-        $sql = "SELECT c.id, c.userid, c.body, c.created, u.username, u.avatar
+        $sql = "SELECT c.id, c.userid, c.body, c.created, c.edited, u.username, u.avatar, u.level
                 FROM game_comments c INNER JOIN users u ON u.id = c.userid
                 WHERE c.gameid = ? AND c.deleted = 0 AND u.banned = 0";
         $params = [$gameId];
@@ -42,7 +42,7 @@ class comments {
         $rows = $db->query($sql . " ORDER BY c.id DESC LIMIT " . (self::PER_PAGE + 1), $params)->get();
 
         return [
-            "comments"=>array_map(fn($row) => self::shape($row, $viewer), array_slice($rows, 0, self::PER_PAGE)),
+            "comments"=>\watrlabs\social\reactions::attach("comment", array_map(fn($row) => self::shape($row, $viewer), array_slice($rows, 0, self::PER_PAGE))),
             "more"=>count($rows) > self::PER_PAGE,
         ];
     }
@@ -59,6 +59,7 @@ class comments {
     public function add($user, int $gameId, string $body){
         global $db;
 
+        \watrlabs\users\moderation::requireUnmuted($user);
         $body = trim(str_replace("\r\n", "\n", $body));
         $body = preg_replace("/\n{3,}/", "\n\n", $body);
 
@@ -87,7 +88,7 @@ class comments {
         ]);
 
         $row = $db->query(
-            "SELECT c.id, c.userid, c.body, c.created, u.username, u.avatar FROM game_comments c INNER JOIN users u ON u.id = c.userid WHERE c.id = ?",
+            "SELECT c.id, c.userid, c.body, c.created, c.edited, u.username, u.avatar, u.level FROM game_comments c INNER JOIN users u ON u.id = c.userid WHERE c.id = ?",
             [$id]
         )->first();
 
@@ -95,7 +96,39 @@ class comments {
         \watrlabs\social\achievements::award($userId, "first_comment");
         $this->notifyMentions($user, $gameId, $row->body);
 
-        return self::shape($row, $user);
+        return self::shape($row, $user) + ["reactions"=>[]];
+    }
+
+    // your own, any time. the old text is kept for moderators
+    public function edit($user, int $id, string $body){
+        global $db;
+
+        \watrlabs\users\moderation::requireUnmuted($user);
+
+        $comment = $db->table("game_comments")->where("id", $id)->where("deleted", 0)->first();
+        if(!$comment || (int) $comment->userid !== (int) $user->id){
+            throw new \InvalidArgumentException("You can only edit your own comments.");
+        }
+
+        $body = trim(preg_replace("/\n{3,}/", "\n\n", str_replace("\r\n", "\n", $body)));
+        if($body === ""){
+            throw new \InvalidArgumentException("Type something, or delete the comment instead.");
+        }
+        if(mb_strlen($body) > self::MAX_LENGTH){
+            throw new \InvalidArgumentException("Comments can be " . self::MAX_LENGTH . " characters at most.");
+        }
+
+        if($body !== $comment->body){
+            \watrlabs\social\chat::keepOld("comment", $id, $comment->body);
+            $db->table("game_comments")->where("id", $id)->update(["body"=>chat::filter($body), "edited"=>time()]);
+        }
+
+        $row = $db->query(
+            "SELECT c.id, c.userid, c.body, c.created, c.edited, u.username, u.avatar, u.level FROM game_comments c INNER JOIN users u ON u.id = c.userid WHERE c.id = ?",
+            [$id]
+        )->first();
+
+        return \watrlabs\social\reactions::attach("comment", [self::shape($row, $user)])[0];
     }
 
     // "@sam" pings sam, unless one of you blocked the other. a few per comment at most
@@ -180,8 +213,9 @@ class comments {
             "id"=>(int) $row->id,
             "body"=>$row->body,
             "created"=>(int) $row->created,
-            "user"=>["username"=>$row->username, "avatar"=>$row->avatar],
+            "user"=>["username"=>$row->username, "avatar"=>$row->avatar, "level"=>(int) ($row->level ?? 1)],
             "mine"=>$mine,
+            "edited"=>!empty($row->edited),
             "canDelete"=>$mine || ($viewer && !empty($viewer->admin)),
             "canReport"=>$viewer && !$mine,
         ];

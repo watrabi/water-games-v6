@@ -120,14 +120,38 @@ function render(comment){
     let body = el("div", "commentBody");
     let head = el("div", "commentHead");
     head.append(profileLink(comment.user, "commentAuthor", document.createTextNode(comment.user.username)));
+    let level = el("span", "levelBadge", comment.user.level || 1);
+    level.title = "Level " + (comment.user.level || 1);
+    head.append(level);
     let time = el("time", "muted", ago(comment.created));
     time.dateTime = new Date(comment.created * 1000).toISOString();
     time.title = new Date(comment.created * 1000).toLocaleString();
     head.append(time);
+    if(comment.edited){
+        head.append(el("span", "muted commentEdited", "(edited)"));
+    }
 
-    body.append(head, el("p", "commentText", comment.body));
+    let text = el("p", "commentText", comment.body);
+    body.append(head, text);
+
+    // reactions: anyone signed in (and not muted) can add, everyone sees them
+    let canReact = data.signedIn && !data.muted && window.watrReactions;
+    if(window.watrReactions){
+        body.append(window.watrReactions.bar(comment.reactions || [], canReact ? data.me : null, data.emoji, function(emoji) {
+            return $.post("/api/v1/games/comments/" + comment.id + "/react", { emoji: emoji }).then(r => r.reactions, function(xhr) {
+                showNotice(msg, apiMessage(xhr));
+                return null;
+            });
+        }));
+    }
 
     let actions = el("div", "commentActions");
+    if(comment.mine){
+        let edit = el("button", "commentAction", "Edit");
+        edit.type = "button";
+        edit.addEventListener("click", () => startEdit(comment, li, text));
+        actions.append(edit);
+    }
     if(comment.canReport){
         let report = el("button", "commentAction", "Report");
         report.type = "button";
@@ -165,6 +189,61 @@ function render(comment){
 
     li.append(profileLink(comment.user, "commentAvatar", avatar(comment.user)), body);
     return li;
+}
+
+// swaps the text for a box, saves on enter (shift+enter for a new line), escape cancels
+function startEdit(comment, li, text){
+    if(li.querySelector(".commentEditBox")){
+        return;
+    }
+
+    let box = el("textarea", "commentEditBox");
+    box.value = comment.body;
+    box.maxLength = 500;
+    box.rows = 2;
+    box.setAttribute("aria-label", "Edit your comment");
+    let bar = el("div", "commentEditBar");
+    let save = el("button", "button small", "Save");
+    save.type = "button";
+    let cancel = el("button", "button quiet small", "Cancel");
+    cancel.type = "button";
+    bar.append(save, cancel);
+
+    text.hidden = true;
+    text.after(box, bar);
+    box.focus();
+
+    function close(){
+        box.remove();
+        bar.remove();
+        text.hidden = false;
+    }
+
+    function submit(){
+        let body = box.value.trim();
+        if(!body){
+            box.focus();
+            return;
+        }
+        save.disabled = true;
+        $.post("/api/v1/games/comments/" + comment.id + "/edit", { body: body }).done(function(result) {
+            li.replaceWith(render(result.comment));
+        }).fail(function(xhr) {
+            save.disabled = false;
+            showNotice(msg, apiMessage(xhr));
+        });
+    }
+
+    save.addEventListener("click", submit);
+    cancel.addEventListener("click", close);
+    box.addEventListener("keydown", function(event) {
+        if(event.key === "Enter" && !event.shiftKey && !event.isComposing){
+            event.preventDefault();
+            submit();
+        } else if(event.key === "Escape"){
+            close();
+        }
+    });
 }
 
 function addPage(page){

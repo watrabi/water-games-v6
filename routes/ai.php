@@ -290,6 +290,7 @@ $router->get("/ai/attachments/{id}", function($id){
 $router->group('/api/v1/ai', function($router) {
 
     $router->post("/upload", function(){
+        \watrlabs\watrkit\ratelimit::guard("ai_upload", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 20, 600);
         global $currentuser;
 
         if(!$currentuser){
@@ -321,6 +322,7 @@ $router->group('/api/v1/ai', function($router) {
 
     // streams the answer back as server-sent events
     $router->post("/send", function(){
+        \watrlabs\watrkit\ratelimit::guard("ai_send", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 10, 60, "You're sending messages really fast. Wait a moment.");
         global $currentuser;
 
         if(!$currentuser){

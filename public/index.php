@@ -57,7 +57,11 @@ $routers = [
     "social",
     "play",
     "account",
-    "playlists"
+    "playlists",
+    "discover",
+    "scores",
+    "collections",
+    "recap"
 ];
 
 foreach ($routers as $r) {

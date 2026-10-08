@@ -2,6 +2,10 @@
 {% block pageName %}Sign in{% endblock %}
 {% block headerIncludes %}
 <link rel="stylesheet" href="/assets/css/authpage.css?t=31">
+{% if captcha.enabled %}
+{# only shown after a few wrong passwords, login.js renders it then (no cf-turnstile class, so it isn't drawn on load) #}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
 {% endblock %}
 
 {% block body %}
@@ -24,6 +28,7 @@
                 <label for="password">Password</label>
                 <input id="password" name="password" type="password" autocomplete="current-password" required>
             </div>
+            <div class="field" id="loginCaptcha" data-sitekey="{{ captcha.siteKey }}" hidden></div>
             <button class="button" type="submit" id="loginButton">Sign in</button>
             <p class="hint authForgot"><a href="/auth/forgot">Forgot your password?</a></p>
         </form>
@@ -43,5 +48,5 @@
         <p class="authSwitch muted">New here? <a href="/auth/sign-up">Make an account</a></p>
     </div>
 </div>
-<script src="/assets/js/login.js?t=12" defer></script>
+<script src="/assets/js/login.js?t=13" defer></script>
 {% endblock %}

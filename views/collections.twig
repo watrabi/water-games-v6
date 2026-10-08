@@ -1,0 +1,71 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}{{ mineOnly is defined ? 'Your collections' : 'Collections' }}{% endblock %}
+{% block ogDescription %}Lists of games people on {{ env("APP_NAME") }} put together.{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>{{ mineOnly is defined ? 'Your collections' : 'Collections' }}</h1>
+            <p>{% if mineOnly is defined %}Lists of games you put together. <a href="/collections">See everyone's</a>.{% else %}Lists of games people put together. Make your own with the <i class="ph-bold ph-folder-plus" aria-label="add to collection"></i> button on any game.{% endif %}</p>
+        </div>
+        {% if currentuser %}
+        <form class="inlineCreate" id="collectionCreate">
+            <label class="sr-only" for="collectionName">New collection name</label>
+            <input id="collectionName" maxlength="60" placeholder="New collection" required>
+            <button class="button" type="submit"><i class="ph-bold ph-plus"></i>Create</button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="notice danger" id="collectionMsg" role="alert" hidden></div>
+
+    {% if mineOnly is not defined %}
+        {% if staff is not empty %}
+        <section>
+            <div class="sectionHeader"><h2>Staff picks</h2></div>
+            {{ g.collectionGrid(staff) }}
+        </section>
+        {% endif %}
+
+        {% if mine is not empty %}
+        <section>
+            <div class="sectionHeader"><h2>Yours</h2><a href="/collections/mine">See all</a></div>
+            {{ g.collectionGrid(mine|slice(0, 6)) }}
+        </section>
+        {% endif %}
+
+        <section>
+            <div class="sectionHeader"><h2>From everyone</h2></div>
+            {% if community is empty %}
+                {{ g.empty('blobpeek', 'Nobody has made one yet.', 'Be the first: open a game and hit the folder button.') }}
+            {% else %}
+                {{ g.collectionGrid(community) }}
+            {% endif %}
+        </section>
+    {% else %}
+        {% if mine is empty %}
+            {{ g.empty('blobclipboard', 'No collections yet.', 'Make one above, or hit the folder button on any game.') }}
+        {% else %}
+            {{ g.collectionGrid(mine) }}
+        {% endif %}
+    {% endif %}
+</div>
+{% if currentuser %}
+<script>
+// jquery loads with defer, so on a full page load this has to wait for it
+(function run(){
+    if(!window.jQuery){
+        return document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
+    $("#collectionCreate").on("submit", function(event) {
+        event.preventDefault();
+        $.post("/api/v1/collections", { name: $("#collectionName").val() }).done(function(data) {
+            window.watrNav ? window.watrNav.go("/collections/" + data.id) : location.href = "/collections/" + data.id;
+        }).fail(function(xhr) {
+            showNotice($("#collectionMsg"), apiMessage(xhr));
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

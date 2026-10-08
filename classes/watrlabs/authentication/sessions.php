@@ -220,7 +220,7 @@ class sessions {
                 $user = $users->getUserInfo($sessionInfo->userid);
 
                 // banned accounts get signed out
-                if(!$user || !empty($user->banned)){
+                if(!$user || \watrlabs\users\moderation::isBanned($user)){
                     $this->destroySession($sessionId);
                     return false;
                 }

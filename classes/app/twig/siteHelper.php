@@ -39,6 +39,15 @@ class siteHelper extends AbstractExtension
                 if ($diff < 86400 * 7) { return intdiv($diff, 86400) . "d ago"; }
                 return date("M j", (int) $time);
             }),
+
+            // json text -> array (screenshots and the like). anything broken is an empty list
+            new TwigFilter('json_decode', fn($json) => is_string($json) ? (json_decode($json, true) ?? []) : []),
+
+            // 1234 -> "1,234 points", 83456 with a time game -> "1:23.456"
+            new TwigFilter('score', fn($score, $game = null) => \watrlabs\games\scores::format((int) $score, $game)),
+
+            // added in the last two weeks
+            new TwigFilter('isNew', fn($game) => !empty($game->created) && (int) $game->created > time() - 14 * 86400),
         ];
     }
 }

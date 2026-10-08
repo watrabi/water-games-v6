@@ -31,6 +31,14 @@ class notifications {
                 return ["ph-users-three", "$who added you to " . ($data["name"] ?? "a group chat") . ".", null];
             case "announcement":
                 return ["ph-megaphone", $data["text"] ?? "", $data["link"] ?? null];
+            case "muted":
+                return ["ph-speaker-slash", "A moderator muted you " . \watrlabs\users\moderation::untilText($data["until"] ?? null) . "." . (!empty($data["reason"]) ? " Reason: " . $data["reason"] : ""), null];
+            case "challenge":
+                return ["ph-sword", "$who challenged you to beat " . ($data["score"] ?? "their score") . " in " . ($data["game"] ?? "a game") . ".", isset($data["gameid"]) ? self::gameLink($data) . "#scores" : null];
+            case "challenge_beaten":
+                return ["ph-trophy", "$who beat your " . ($data["score"] ?? "score") . " in " . ($data["game"] ?? "a game") . " with " . ($data["theirs"] ?? "a better one") . ".", isset($data["gameid"]) ? self::gameLink($data) . "#scores" : null];
+            case "recap":
+                return ["ph-calendar-check", "Your week: " . ($data["summary"] ?? "see how it went") . ".", "/recap"];
         }
 
         return ["ph-bell", "Something happened.", null];

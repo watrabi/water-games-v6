@@ -7,6 +7,7 @@
       {% else %}
         {{ game.name|first|upper }}
       {% endif %}
+      {% if game|isNew %}<span class="tileBadge">New</span>{% endif %}
     </span>
     <p class="gameName" title="{{ game.name }}">{{ game.name }}</p>
     <p class="gameMeta">{{ game.plays|compact }} {{ game.type == 'app' ? (game.plays == 1 ? 'open' : 'opens') : (game.plays == 1 ? 'play' : 'plays') }}{% if game.favorites %} · {{ game.favorites|compact }} <i class="ph-bold ph-heart" aria-label="favorites"></i>{% endif %}</p>
@@ -18,6 +19,45 @@
     {% for game in games %}
       {{ _self.tile(game) }}
     {% endfor %}
+  </div>
+{% endmacro %}
+
+{# today's pick, a wide card with a play button and a random one next to it #}
+{% macro gotd(game) %}
+  <section class="gotdCard panel" aria-labelledby="gotdName">
+    <a class="gameIcon" href="/games/{{ game.id }}" tabindex="-1" aria-hidden="true">
+      {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="">{% else %}{{ game.name|first|upper }}{% endif %}
+    </a>
+    <div class="gotdText">
+      <p class="eyebrow"><i class="ph-fill ph-sun"></i> Game of the day</p>
+      <h2 id="gotdName"><a href="/games/{{ game.id }}">{{ game.name }}</a></h2>
+      {% if game.description %}<p class="muted">{{ game.description|length > 140 ? game.description|slice(0, 139) ~ '…' : game.description }}</p>{% endif %}
+    </div>
+    <div class="gotdActions">
+      <a class="button" href="/games/{{ game.id }}"><i class="ph-bold ph-play"></i>Play</a>
+      <a class="button quiet" href="/games/random?not={{ game.id }}" title="Random game (G then R)"><i class="ph-bold ph-shuffle"></i>Surprise me</a>
+    </div>
+  </section>
+{% endmacro %}
+
+{# a collection: up to four of its games' icons in a square #}
+{% macro collectionTile(c) %}
+  <a class="collectionTile" href="/collections/{{ c.id }}">
+    <span class="collectionCover">
+      {% for cover in c.covers %}
+        <span>{% if cover.icon %}<img src="{{ cover.icon }}" alt="" loading="lazy">{% else %}{{ cover.name|first|upper }}{% endif %}</span>
+      {% else %}
+        <i class="ph-bold ph-folder-simple"></i>
+      {% endfor %}
+    </span>
+    <p class="gameName" title="{{ c.name }}">{{ c.name }}</p>
+    <p class="gameMeta">{{ c.games }} {{ c.games == 1 ? 'game' : 'games' }}{% if c.username is defined and not c.staff %} · {{ c.username }}{% endif %}{% if not c.public %} · <i class="ph-bold ph-lock" aria-label="private"></i>{% endif %}</p>
+  </a>
+{% endmacro %}
+
+{% macro collectionGrid(list) %}
+  <div class="gameGrid collectionGrid">
+    {% for c in list %}{{ _self.collectionTile(c) }}{% endfor %}
   </div>
 {% endmacro %}
 

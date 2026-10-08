@@ -54,6 +54,7 @@ $router->group('/api/v1/playlists', function($router){
     });
 
     $router->post("/", function(){
+        \watrlabs\watrkit\ratelimit::guard("playlists", \watrlabs\watrkit\ratelimit::who($GLOBALS["currentuser"]), 20, 3600);
         global $currentuser;
 
         if(!$currentuser){

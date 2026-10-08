@@ -445,6 +445,205 @@ if(data.cloud && gameId){
     frame.setAttribute("src", frame.dataset.src);
 }
 
+// ---------- leaderboard ----------
+// games send scores with watr.submitScore() from /assets/js/watr-sdk.js, which posts a message to this page.
+// only messages from this game's own frame count, and the answer goes back to it so it can say "new best!"
+
+let period = "all";
+let myBest = null;
+
+function escapeText(text){
+    let node = document.createElement("span");
+    node.textContent = text;
+    return node.innerHTML;
+}
+
+function loadScores(){
+    let list = $("#scoreList");
+    if(!list.length){
+        return;
+    }
+
+    $.getJSON(api("/scores"), { period: period }).done(function(result) {
+        list.empty();
+        if(!result.rows.length){
+            list.append($("<li class='muted scoreEmpty'>").text(period === "friends" ? "None of your friends have a score yet." : "No scores yet. Be the first!"));
+        }
+        result.rows.forEach(function(row) {
+            let user = escapeText(row.username);
+            let item = $("<li>").toggleClass("mine", row.me).html(
+                '<span class="scoreRank">' + row.rank + '</span>' +
+                '<a class="scoreName" href="/users/' + encodeURIComponent(row.username.toLowerCase()) + '">' + user + '</a>' +
+                '<span class="levelBadge" title="Level ' + row.level + '">' + row.level + '</span>' +
+                '<span class="scoreValue">' + escapeText(row.text) + '</span>'
+            );
+            list.append(item);
+        });
+
+        let mine = $("#scoreMine");
+        if(result.me){
+            myBest = result.me.text;
+            mine.text("Your best" + (period === "week" ? " this week" : "") + ": " + result.me.text + " (#" + result.me.rank + ")");
+        } else {
+            mine.text(data.signedIn && period !== "friends" ? "You don't have a score " + (period === "week" ? "this week" : "yet") + "." : "");
+        }
+        if(period === "all"){
+            $("#challengeButton").prop("hidden", !result.me);
+        }
+    }).fail(function() {
+        list.html("<li class='muted'>Couldn't load the leaderboard.</li>");
+    });
+}
+
+if(data.scores){
+    loadScores();
+
+    $("#scores .sortTabs a").on("click", function(event) {
+        event.preventDefault();
+        period = $(this).data("period");
+        $("#scores .sortTabs a").removeClass("active").removeAttr("aria-current");
+        $(this).addClass("active").attr("aria-current", "true");
+        loadScores();
+    });
+}
+
+function onGameMessage(event){
+    let message = event.data;
+    if(!frame || event.source !== frame.contentWindow || !message || message.source !== "watr-sdk" || message.type !== "score"){
+        return;
+    }
+
+    function answer(result){
+        try {
+            event.source.postMessage({ source: "watr", id: message.id, result: result }, "*");
+        } catch (e) {}
+    }
+
+    if(!data.scores){
+        return answer({ ok: false, message: "This game doesn't have a leaderboard." });
+    }
+    if(!data.signedIn){
+        showNotice(playMsg, "Sign in to put your scores on the leaderboard.", "success");
+        return answer({ ok: false, message: "Not signed in." });
+    }
+
+    $.post(api("/score"), { score: message.score }).done(function(result) {
+        if(result.personalBest){
+            showNotice(playMsg, "New best: " + result.bestText + " (#" + result.rank + " all time)", "success");
+            loadScores();
+        }
+        answer({ ok: true, personalBest: result.personalBest, best: result.best, rank: result.rank, text: result.text });
+    }).fail(function(xhr) {
+        answer({ ok: false, message: apiMessage(xhr) });
+    });
+}
+window.addEventListener("message", onGameMessage);
+onCleanup(() => window.removeEventListener("message", onGameMessage));
+
+// ---------- challenge a friend ----------
+
+let challengeDialog = document.getElementById("challengeDialog");
+
+$("#challengeButton").on("click", function() {
+    $("#challengeError").prop("hidden", true);
+    $("#challengeScore").text(myBest || "");
+    let select = $("#challengeFriend").html("<option value=''>Loading…</option>");
+    challengeDialog.showModal();
+
+    $.getJSON("/api/v1/social/state").done(function(state) {
+        select.empty();
+        if(!state.friends.length){
+            select.append("<option value=''>Add some friends first (chat tray, bottom left)</option>");
+            return;
+        }
+        select.append("<option value=''>Pick a friend</option>");
+        state.friends.forEach(function(friend) {
+            select.append($("<option>").val(friend.id).text(friend.username));
+        });
+    });
+});
+
+$("#challengeCancel").on("click", () => challengeDialog.close());
+
+$("#challengeForm").on("submit", function(event) {
+    event.preventDefault();
+    let friend = $("#challengeFriend").val();
+    if(!friend){
+        showNotice($("#challengeError"), "Pick who to challenge.");
+        return;
+    }
+
+    $("#challengeSend").prop("disabled", true);
+    $.post(api("/challenge"), { friend: friend }).done(function(result) {
+        challengeDialog.close();
+        showNotice(playMsg, result.message, "success");
+    }).fail(function(xhr) {
+        showNotice($("#challengeError"), apiMessage(xhr));
+    }).always(function() {
+        $("#challengeSend").prop("disabled", false);
+    });
+});
+
+onCleanup(function() {
+    if(challengeDialog && challengeDialog.open){
+        challengeDialog.close();
+    }
+});
+
+// ---------- add to a collection ----------
+
+let collectDialog = document.getElementById("collectDialog");
+
+function renderCollections(collections){
+    let list = $("#collectList").empty();
+    if(!collections.length){
+        list.append("<li class='muted'>You don't have any collections yet.</li>");
+    }
+    collections.forEach(function(collection) {
+        let box = $("<input type='checkbox'>").prop("checked", collection.has).on("change", function() {
+            let input = $(this).prop("disabled", true);
+            $.post("/api/v1/collections/" + collection.id + "/" + (input.prop("checked") ? "add" : "remove"), { game: gameId }).fail(function(xhr) {
+                input.prop("checked", !input.prop("checked"));
+                showNotice($("#collectError"), apiMessage(xhr));
+            }).always(() => input.prop("disabled", false));
+        });
+        let label = $("<label class='checkRow'>").append(box, $("<span>").text(collection.name), $("<span class='muted'>").text(collection.public ? "" : " (private)"));
+        list.append($("<li>").append(label));
+    });
+}
+
+function loadCollections(){
+    return $.getJSON("/api/v1/collections", { game: gameId }).done(result => renderCollections(result.collections));
+}
+
+$("#collectButton").on("click", function() {
+    $("#collectError").prop("hidden", true);
+    collectDialog.showModal();
+    loadCollections();
+});
+
+$("#collectDone").on("click", () => collectDialog.close());
+
+$("#collectCreate").on("click", function() {
+    let name = $("#collectNew").val().trim();
+    if(!name){
+        $("#collectNew").trigger("focus");
+        return;
+    }
+    $.post("/api/v1/collections", { name: name, game: gameId }).done(function() {
+        $("#collectNew").val("");
+        loadCollections();
+    }).fail(function(xhr) {
+        showNotice($("#collectError"), apiMessage(xhr));
+    });
+});
+
+onCleanup(function() {
+    if(collectDialog && collectDialog.open){
+        collectDialog.close();
+    }
+});
+
 // ---------- cleanup ----------
 
 function cleanup(){

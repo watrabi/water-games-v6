@@ -292,6 +292,15 @@ $("#sessionsOthers").on("click", function() {
 
 // ---------- privacy + saves ----------
 
+$("#recapForm").on("submit", function(event) {
+    event.preventDefault();
+    $.post("/api/v1/account/recap", { email: $("#recapEmail").is(":checked") ? "1" : "" }).done(function(data) {
+        showNotice($("#recapMsg"), data.message, "success");
+    }).fail(function(xhr) {
+        showNotice($("#recapMsg"), apiMessage(xhr));
+    });
+});
+
 $("#privacyForm").on("submit", function(event) {
     event.preventDefault();
     $.post("/api/v1/account/privacy", { share_activity: $("#shareActivity").is(":checked") ? "1" : "" }).done(function(data) {

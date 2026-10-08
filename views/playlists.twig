@@ -34,7 +34,11 @@
     {% endif %}
 </div>
 <script>
-(function(){
+// jquery loads with defer, so on a full page load this has to wait for it
+(function run(){
+    if(!window.jQuery){
+        return document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
     $("#playlistCreate").on("submit", function(event) {
         event.preventDefault();
         $.post("/api/v1/playlists", { name: $("#playlistName").val() }).done(function(data) {

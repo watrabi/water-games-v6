@@ -2,12 +2,15 @@
 {% import "components/games.twig" as g %}
 {% import "components/avatar.twig" as a %}
 {% block pageName %}{{ profile.username }}{% endblock %}
+{% block ogTitle %}{{ profile.username }} on {{ env("APP_NAME") }}{% endblock %}
+{% block ogDescription %}{{ profile.blurb ?: profile.username ~ ' plays games on ' ~ env("APP_NAME") ~ '.' }}{% endblock %}
+{% block ogImage %}{{ profile.avatar }}{% endblock %}
 {% block body %}
 <div class="page">
     <div class="profileHeader">
         {{ a.avatar(profile, 'large') }}
         <div>
-            <h1>{{ profile.username }}</h1>
+            <h1>{{ profile.username }} <span class="levelBadge large" title="Level {{ profile.level }}">Lv {{ profile.level }}</span></h1>
             <p class="muted">Joined {{ profile.registered|date("F Y") }} · {{ friendCount }} friend{{ friendCount == 1 ? '' : 's' }}</p>
             {% if profile.blurb %}<p class="blurb">{{ profile.blurb }}</p>{% endif %}
         </div>
@@ -45,6 +48,7 @@
         <div><dt>Played for</dt><dd>{{ totalPlaytime|playtime }}</dd></div>
         <div><dt>Games tried</dt><dd>{{ gamesPlayed|number_format }}</dd></div>
         <div><dt>Achievements</dt><dd>{{ achievements.count }}<span class="figureOf">/{{ achievements.list|length }}</span></dd></div>
+        <div><dt>Streak</dt><dd>{{ streak }} <span class="figureOf">{{ streak == 1 ? 'day' : 'days' }}</span></dd>{% if profile.streak_best > 1 %}<dd class="figureNote">best {{ profile.streak_best }}</dd>{% endif %}</div>
     </dl>
     {% endif %}
 
@@ -65,6 +69,16 @@
             </li>
             {% endfor %}
         </ol>
+    </section>
+    {% endif %}
+
+    {% if collections is not empty %}
+    <section id="collections">
+        <div class="sectionHeader">
+            <h2>Collections</h2>
+            {% if currentuser and currentuser.id == profile.id %}<a href="/collections/mine">Manage</a>{% endif %}
+        </div>
+        {{ g.collectionGrid(collections) }}
     </section>
     {% endif %}
 

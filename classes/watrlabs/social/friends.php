@@ -170,7 +170,7 @@ class friends {
         global $db;
 
         $rows = $db->query(
-            "SELECT u.id, u.username, u.avatar, u.last_seen, u.playing_game_id, u.play_beat, u.share_activity, g.name AS playing_name, g.type AS playing_type
+            "SELECT u.id, u.username, u.avatar, u.level, u.last_seen, u.playing_game_id, u.play_beat, u.share_activity, g.name AS playing_name, g.type AS playing_type
              FROM friendships f
              INNER JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
              LEFT JOIN games g ON g.id = u.playing_game_id
@@ -198,6 +198,7 @@ class friends {
             "id"=>(int) $row->id,
             "username"=>$row->username,
             "avatar"=>$row->avatar,
+            "level"=>(int) $row->level,
             "playing"=>\watrlabs\games\playtime::nowPlaying($row) && $row->playing_name
                 ? ["id"=>(int) $row->playing_game_id, "name"=>$row->playing_name, "type"=>$row->playing_type] : null,
             "online"=>self::isOnline($row->last_seen) || in_array((int) $row->id, $connected, true),

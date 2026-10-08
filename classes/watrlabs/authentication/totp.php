@@ -172,7 +172,7 @@ class totp {
         $db->table("login_challenges")->where("id", $challenge->id)->update(["attempts"=>$challenge->attempts + 1]);
 
         $user = $db->table("users")->where("id", $challenge->userid)->first();
-        if(!$user || empty($user->totp_enabled) || !empty($user->banned)){
+        if(!$user || empty($user->totp_enabled) || \watrlabs\users\moderation::isBanned($user)){
             throw new \InvalidArgumentException("Sign in again.");
         }
 

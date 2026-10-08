@@ -19,6 +19,9 @@ class achievements {
         "dj"=>["DJ", "Made a playlist", "ph-playlist"],
         "requester"=>["Good taste", "Asked for a game that got added", "ph-lightbulb"],
         "secure"=>["Locked down", "Turned on two-factor sign in", "ph-shield-check"],
+        "streak_7"=>["On a roll", "Played 7 days in a row", "ph-fire"],
+        "streak_30"=>["Can't stop", "Played 30 days in a row", "ph-fire-simple"],
+        "top_score"=>["Top of the board", "Number one on a leaderboard", "ph-crown"],
     ];
 
     // awards a code once. returns true if it was new
@@ -37,6 +40,7 @@ class achievements {
         $user = $db->table("users")->select(["username"])->where("id", $userId)->first();
         notifications::send($userId, "achievement", null, ["code"=>$code, "name"=>self::ALL[$code][0], "username"=>$user->username ?? ""]);
         activity::log($userId, "achievement", null, ["code"=>$code]);
+        \watrlabs\users\progress::recalc($userId);
 
         return true;
     }

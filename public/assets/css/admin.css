@@ -736,3 +736,87 @@ form.adminForm > .panel:last-of-type {
 .adminColumns > .panel {
     margin-top: 0;
 }
+
+/* screenshots on the game form: each with a "keep" box */
+.shotPicker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.shotKeep {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shotKeep img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background-color: var(--raised);
+    border: 1px solid var(--line);
+}
+
+.reportEdits {
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.reportEdits ol {
+    margin: 6px 0 0;
+    padding-left: 20px;
+}
+
+/* ---------- system health on the dashboard ---------- */
+
+.systemPanel {
+    margin-bottom: 16px;
+}
+
+.healthList {
+    display: grid;
+    gap: 6px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.healthList li {
+    display: grid;
+    grid-template-columns: 96px 130px 1fr;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.healthState {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.healthState.good {
+    color: var(--link);
+}
+
+.healthState.bad {
+    color: var(--danger);
+}
+
+.healthState.off {
+    color: var(--muted);
+}
+
+@media (max-width: 640px) {
+    .healthList li {
+        grid-template-columns: 90px 1fr;
+    }
+
+    .healthList li .muted {
+        grid-column: 1 / -1;
+    }
+}

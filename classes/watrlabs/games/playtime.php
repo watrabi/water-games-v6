@@ -75,6 +75,7 @@ class playtime {
 
         if($credit > 0){
             achievements::checkPlaytime($userId);
+            \watrlabs\users\progress::played($userId, $gameId, $credit, $now);
         }
 
         return $this->secondsFor($userId, $gameId);

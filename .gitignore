@@ -7,3 +7,4 @@ phinx.php
 storage/errorlog.log
 storage/backups/
 storage/logs/
+storage/cron/

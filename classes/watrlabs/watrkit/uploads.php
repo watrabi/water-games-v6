@@ -56,10 +56,29 @@ class uploads {
         return isset($_FILES[$field]) && ($_FILES[$field]["error"] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
     }
 
-    // $kind: "icons" | "covers" for images, "music" for audio. returns the public path
+    // $kind: "icons" | "covers" | "screenshots" for images, "music" for audio. returns the public path
     static function store(string $field, string $kind): string {
-        $file = $_FILES[$field];
+        return self::storeFile($_FILES[$field], $kind);
+    }
 
+    // a <input type="file" multiple name="x[]"> arrives as lists of names, sizes... turn it into a list of files
+    static function many(string $field): array {
+        $files = [];
+        foreach((array) ($_FILES[$field]["name"] ?? []) as $i => $name){
+            if(($_FILES[$field]["error"][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE){
+                continue;
+            }
+            $files[] = [
+                "name"=>$name,
+                "tmp_name"=>$_FILES[$field]["tmp_name"][$i],
+                "size"=>$_FILES[$field]["size"][$i],
+                "error"=>$_FILES[$field]["error"][$i],
+            ];
+        }
+        return $files;
+    }
+
+    static function storeFile(array $file, string $kind): string {
         if($file["error"] === UPLOAD_ERR_INI_SIZE || $file["error"] === UPLOAD_ERR_FORM_SIZE){
             throw new \InvalidArgumentException("That file is bigger than the server allows (upload_max_filesize in php.ini).");
         }
@@ -118,7 +137,7 @@ class uploads {
 
     // removes a file we uploaded earlier (anything outside /uploads/ is left alone)
     static function delete(?string $path){
-        if(!$path || !preg_match('#^/uploads/(icons|covers|music|avatars)/[a-f0-9]+\.[a-z0-9]+$#', $path)){
+        if(!$path || !preg_match('#^/uploads/(icons|covers|music|avatars|screenshots)/[a-f0-9]+\.[a-z0-9]+$#', $path)){
             return;
         }
 

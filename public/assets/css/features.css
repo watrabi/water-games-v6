@@ -1180,3 +1180,702 @@ body.theater .player {
 .settingsPanels > section + section {
   margin-top: 0;
 }
+
+/* ---------- batch 2: discovery, leaderboards, levels, collections, reactions. same rules: tokens only,
+   square corners, flat panels ---------- */
+
+.profileFigures dd.figureNote {
+  margin-top: 2px;
+  font-family: var(--body);
+  font-stretch: normal;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* "New" in the corner of a game tile */
+.gameIcon {
+  position: relative;
+}
+
+.tileBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--body);
+  font-stretch: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* level number next to a username */
+.levelBadge {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--link) 45%, transparent);
+  color: var(--link);
+  font-family: var(--body);
+  font-stretch: normal;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: 2px;
+}
+
+.levelBadge.large {
+  font-size: 13px;
+  line-height: 20px;
+  padding: 0 7px;
+  vertical-align: 8px;
+}
+
+/* ---------- game of the day ---------- */
+
+.gotdCard {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding: 18px;
+}
+
+.gotdCard .gameIcon {
+  font-size: 36px;
+}
+
+.gotdCard .gameIcon:hover {
+  border-color: var(--link);
+}
+
+.gotdText {
+  min-width: 0;
+}
+
+.gotdText h2 a {
+  color: var(--text);
+}
+
+.gotdText .muted {
+  margin-top: 4px;
+  max-width: 60ch;
+}
+
+.gotdText .eyebrow i,
+.gotdBadge i {
+  color: var(--link);
+}
+
+.gotdActions {
+  display: flex;
+  gap: 8px;
+}
+
+.gotdBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-strong);
+  font-family: var(--body);
+  font-stretch: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  .gotdCard {
+    grid-template-columns: 64px 1fr;
+    gap: 14px;
+  }
+
+  .gotdCard .gameIcon {
+    font-size: 26px;
+  }
+
+  .gotdActions {
+    grid-column: 1 / -1;
+  }
+
+  .gotdActions .button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ---------- home: level, streak, recap ---------- */
+
+.levelBar {
+  height: 8px;
+  margin: 10px 0 6px;
+  background-color: var(--raised);
+  border: 1px solid var(--line);
+}
+
+.levelBar span {
+  display: block;
+  height: 100%;
+  background-color: var(--link);
+}
+
+.progressPanel .muted {
+  font-size: 13px;
+}
+
+.streakLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.streakLine i {
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.streakLine i.lit {
+  color: var(--danger);
+}
+
+.progressPanel .hint {
+  margin-top: 8px;
+}
+
+.recapCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  color: var(--text);
+}
+
+.recapCard:hover {
+  border-color: var(--link);
+  text-decoration: none;
+}
+
+.recapCard > i {
+  font-size: 22px;
+  color: var(--link);
+}
+
+.recapCardLink {
+  margin-left: auto;
+  color: var(--link);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .recapCard {
+    flex-wrap: wrap;
+  }
+
+  .recapCardLink {
+    margin-left: 34px;
+  }
+}
+
+/* ---------- recap page ---------- */
+
+.recapChart {
+  margin-bottom: 32px;
+}
+
+.recapChart h2 {
+  margin-bottom: 14px;
+}
+
+.weekChart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.weekDay {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weekDay .dayBar {
+  height: 140px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.weekLabel {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* the hover tip, same as the admin dashboard's */
+.dayBar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  outline: none;
+}
+
+.dayBar span {
+  display: block;
+  width: 100%;
+  background-color: var(--link);
+}
+
+.dayBar:hover span,
+.dayBar:focus-visible span {
+  background-color: var(--text);
+}
+
+.dayBar:hover::after,
+.dayBar:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.weekDay:first-child .dayBar:hover::after,
+.weekDay:first-child .dayBar:focus-visible::after {
+  left: 0;
+  transform: none;
+}
+
+.weekDay:last-child .dayBar:hover::after,
+.weekDay:last-child .dayBar:focus-visible::after {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.chartTable {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.chartTable summary {
+  color: var(--link);
+  cursor: pointer;
+}
+
+.chartTable table {
+  margin-top: 8px;
+}
+
+.recapGames {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recapExtras {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recapExtras li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recapExtras i {
+  color: var(--link);
+}
+
+/* ---------- play page: screenshots, how to play, leaderboard ---------- */
+
+.shotStrip {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.shotStrip a {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+.shotStrip img {
+  display: block;
+  height: 160px;
+  width: auto;
+  max-width: 300px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background-color: var(--raised);
+}
+
+.shotStrip a:hover img {
+  border-color: var(--link);
+}
+
+.aboutRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 32px;
+}
+
+.playControls ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.leaderboard {
+  margin-bottom: 36px;
+}
+
+.scoreList {
+  max-width: 560px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+}
+
+.scoreList li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.scoreList li:last-child {
+  border-bottom: none;
+}
+
+.scoreList li.mine {
+  background-color: color-mix(in srgb, var(--link) 10%, transparent);
+}
+
+.scoreList li.muted {
+  padding: 14px 12px;
+}
+
+.scoreRank {
+  width: 32px;
+  flex-shrink: 0;
+  font-family: var(--display);
+  font-stretch: 125%;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.scoreList li:nth-child(1) .scoreRank {
+  color: var(--link);
+}
+
+.scoreName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreValue {
+  margin-left: auto;
+  padding-left: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scoreFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  max-width: 560px;
+  margin-top: 10px;
+}
+
+.scoreFooter .button {
+  margin-left: auto;
+}
+
+.challengeNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.challengeNotice i {
+  color: var(--link);
+}
+
+.collectList {
+  display: grid;
+  gap: 4px;
+  max-height: 260px;
+  margin: 12px 0 16px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.inputRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- collections ---------- */
+
+.collectionTile {
+  display: block;
+  min-width: 0;
+  color: var(--text);
+}
+
+.collectionTile:hover {
+  text-decoration: none;
+}
+
+.collectionTile:hover .gameName {
+  text-decoration: underline;
+}
+
+.collectionCover {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 2px;
+  background-color: var(--raised);
+  border: 1px solid var(--line);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.collectionCover > i {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  place-self: center;
+  font-size: 40px;
+  color: var(--muted);
+}
+
+.collectionCover > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--surface);
+  font-family: var(--display);
+  font-stretch: 125%;
+  font-weight: 900;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+/* one game fills the square, two or three split it */
+.collectionCover > span:only-child {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
+.collectionCover > span:first-child:nth-last-child(2),
+.collectionCover > span:first-child:nth-last-child(2) ~ span,
+.collectionCover > span:first-child:nth-last-child(3) {
+  grid-row: 1 / -1;
+}
+
+.collectionCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.collectionTile:hover .collectionCover {
+  border-color: var(--link);
+}
+
+@media (hover: hover) {
+  .collectionTile:hover .collectionCover {
+    transform: translate(-3px, -3px);
+    box-shadow: 3px 3px 0 var(--link);
+  }
+}
+
+.collectionDescription {
+  max-width: 70ch;
+  margin-top: 8px;
+}
+
+.collectionForm {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+  margin-bottom: 24px;
+}
+
+.collectionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.collectionItem .trackTools {
+  padding: 0;
+}
+
+/* ---------- reactions (comments + chat) ---------- */
+
+.reactions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.reactChip,
+.reactAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  background-color: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.reactChip:hover:not([disabled]),
+.reactAdd:hover {
+  border-color: var(--link);
+}
+
+.reactChip.mine {
+  border-color: var(--link);
+  background-color: color-mix(in srgb, var(--link) 14%, transparent);
+}
+
+.reactChip[disabled] {
+  cursor: default;
+}
+
+.reactChip .emoji,
+.reactOption .emoji {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+}
+
+.reactAdd {
+  color: var(--muted);
+}
+
+/* the add button stays out of the way until you hover the thing it's under */
+.reactions.empty .reactAdd {
+  opacity: 0;
+}
+
+.comment:hover .reactions.empty .reactAdd,
+.chatMsg:hover .reactions.empty .reactAdd,
+.reactions.empty .reactAdd:focus-visible,
+.reactions .reactAdd[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .reactions.empty .reactAdd {
+    opacity: 1;
+  }
+}
+
+.reactions.empty {
+  margin-top: 2px;
+}
+
+.reactPicker {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  background-color: var(--surface);
+}
+
+.reactPicker[hidden] {
+  display: none;
+}
+
+.reactOption {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.reactOption:hover,
+.reactOption:focus-visible {
+  border-color: var(--link);
+}
+
+/* ---------- comment editing ---------- */
+
+.commentEdited {
+  font-size: 12px;
+}
+
+.commentEditBox {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.commentEditBar {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.leaderboard .sectionHeader {
+  max-width: 560px;
+}

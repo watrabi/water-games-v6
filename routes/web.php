@@ -74,6 +74,7 @@ $router->get("/", function() {
 
     echo $twig->render('default.twig', [
         "popular"=>$games->list("popular", null, 9),
+        "gotd"=>\watrlabs\games\featured::gameOfDay(),
         "gameCount"=>$games->count(),
         "appCount"=>$games->count("app"),
         "trackCount"=>(new music())->count(),
@@ -101,6 +102,12 @@ $router->get('/home', function(){
         "feed"=>(new activity())->feedFor($me, 12),
         "playingNow"=>array_slice($playingNow, 0, 8),
         "totalPlaytime"=>$playtime->totalFor($me),
+        "gotd"=>\watrlabs\games\featured::gameOfDay(),
+        "staffPicks"=>(new \watrlabs\games\collections())->staffPicks(4),
+        "streak"=>\watrlabs\users\progress::currentStreak($currentuser),
+        "levelProgress"=>\watrlabs\users\progress::levelProgress((int) $currentuser->xp),
+        "nextLevelXp"=>\watrlabs\users\progress::xpForLevel((int) $currentuser->level + 1),
+        "recap"=>\watrlabs\users\recap::forHome($currentuser),
     ]);
 });
 
@@ -123,6 +130,9 @@ $router->get("/games", function(){
         "search"=>$search,
         "tag"=>$tag,
         "tags"=>tags::used("game"),
+        // the extras only on the plain page, not on a search or a category
+        "gotd"=>$search === "" && !$tag ? \watrlabs\games\featured::gameOfDay() : null,
+        "staffPicks"=>$search === "" && !$tag ? (new \watrlabs\games\collections())->staffPicks(6) : [],
     ]);
 
 });
@@ -162,6 +172,8 @@ function renderPlayer($id, $type){
     $commentsOn = comments::enabled();
     $comments = new comments();
 
+    $scoresOn = \watrlabs\games\scores::enabled($game);
+
     echo $twig->render('play.twig', [
         "game"=>$game,
         "favorited"=>$currentuser ? $games->isFavorited($currentuser->id, $game->id) : false,
@@ -172,6 +184,10 @@ function renderPlayer($id, $type){
         "rating"=>games::rating($game->likes, $game->dislikes),
         "brokenReasons"=>requests::BROKEN_REASONS,
         "cloudOn"=>$currentuser && cloudsaves::supported($game),
+        "screenshots"=>json_decode((string) $game->screenshots, true) ?: [],
+        "isGotd"=>$type === "game" && \watrlabs\games\featured::gameOfDayId() === (int) $game->id,
+        "scoresOn"=>$scoresOn,
+        "challenges"=>$scoresOn && $currentuser ? (new \watrlabs\games\scores())->openChallenges((int) $currentuser->id, $game) : [],
         // what play.js needs: the tracker, cloud saves and fullscreen
         "playData"=>json_encode([
             "game"=>(int) $game->id,
@@ -180,8 +196,10 @@ function renderPlayer($id, $type){
             "beatEvery"=>playtime::BEAT_EVERY,
             "seconds"=>$played ? (int) $played->seconds : 0,
             "siteKeys"=>cloudsaves::SITE_KEYS,
+            "scores"=>$scoresOn,
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
         "commentsOn"=>$commentsOn,
+        "muteMessage"=>$currentuser && \watrlabs\users\moderation::isMuted($currentuser) ? \watrlabs\users\moderation::muteMessage($currentuser) : null,
         "commentCount"=>$commentsOn ? $comments->count((int) $game->id) : 0,
         "commentMax"=>comments::MAX_LENGTH,
         // comment text ends up in a script tag, so < > & and quotes are escaped
@@ -189,6 +207,9 @@ function renderPlayer($id, $type){
             "game"=>(int) $game->id,
             "signedIn"=>(bool) $currentuser,
             "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
+            "emoji"=>\watrlabs\social\reactions::EMOJI,
+            "me"=>$currentuser ? (int) $currentuser->id : null,
+            "muted"=>$currentuser && \watrlabs\users\moderation::isMuted($currentuser) ? \watrlabs\users\moderation::muteMessage($currentuser) : null,
         ] + $comments->list((int) $game->id, $currentuser), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) : null,
     ]);
 }
@@ -298,6 +319,8 @@ $router->get("/users/{username}", function($username){
         "mostPlayed"=>$shares ? $playtime->most((int) $profile->id, 6) : [],
         "relation"=>$relation,
         "friendCount"=>$friendCount,
+        "streak"=>$shares ? \watrlabs\users\progress::currentStreak($profile) : 0,
+        "collections"=>(new \watrlabs\games\collections())->listFor((int) $profile->id, !$isMe),
     ]);
 });
 

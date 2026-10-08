@@ -6,6 +6,7 @@ class games {
 
     // every list query goes through this so cards always have a favorites count
     private const SELECT = "SELECT g.id, g.type, g.name, g.description, g.gamePath, g.gameIcon, g.plays, g.created,
+        g.controls, g.screenshots, g.scores, g.score_label, g.score_format, g.score_max,
         (SELECT COUNT(*) FROM favorites f WHERE f.gameid = g.id) AS favorites,
         (SELECT COUNT(*) FROM game_votes v WHERE v.gameid = g.id AND v.vote = 1) AS likes,
         (SELECT COUNT(*) FROM game_votes v WHERE v.gameid = g.id AND v.vote = -1) AS dislikes
@@ -63,11 +64,17 @@ class games {
         return $result[0] ?? null;
     }
 
-    // a few others of the same type to show next to the one being played
+    // a few others of the same type to show next to the one being played: the most categories in common
+    // first, then the most played
     public function related(int $excludeId, string $type = "game", int $limit = 6){
         global $db;
 
-        return $db->query(self::SELECT . " WHERE g.id <> ? AND g.type = ? ORDER BY g.plays DESC LIMIT " . max(1, $limit), [$excludeId, $type])->get();
+        return $db->query(
+            self::SELECT . " WHERE g.id <> ? AND g.type = ?
+            ORDER BY (SELECT COUNT(*) FROM game_tags a INNER JOIN game_tags b ON b.tagid = a.tagid AND b.gameid = ? WHERE a.gameid = g.id) DESC, g.plays DESC
+            LIMIT " . max(1, $limit),
+            [$excludeId, $type, $excludeId]
+        )->get();
     }
 
     public function favoritesFor(int $userId, int $limit = 200){

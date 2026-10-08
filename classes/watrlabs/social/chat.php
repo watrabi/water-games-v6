@@ -12,6 +12,11 @@ class chat {
     const PER_MINUTE = 20;
     const IMAGES_PER_DAY = 40;
     const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    const EDIT_WINDOW = 3600; // your own messages can be edited or deleted for an hour
+
+    // deleted: 0 = there, 1 = removed by a moderator, 2 = deleted by whoever sent it
+    const DELETED_BY_MOD = 1;
+    const DELETED_BY_SENDER = 2;
 
     const REPORT_REASONS = [
         "harassment"=>"Bullying or harassment",
@@ -33,6 +38,7 @@ class chat {
     public function send(int $me, int $other, string $body, ?int $imageId){
         global $db;
 
+        \watrlabs\users\moderation::requireUnmutedId($me);
         if(!$this->friends->areFriends($me, $other) || $this->friends->relation($me, $other) !== "friends"){
             throw new \InvalidArgumentException("You can only message friends.");
         }
@@ -100,7 +106,72 @@ class chat {
         $more = count($rows) > $limit;
         $rows = array_reverse(array_slice($rows, 0, $limit));
 
-        return ["messages"=>array_map([$this, "shape"], $rows), "more"=>$more];
+        return ["messages"=>reactions::attach("dm", array_map([$this, "shape"], $rows)), "more"=>$more];
+    }
+
+    // ---------- editing and deleting your own ----------
+
+    // the old text is kept in message_edits, so a reported message can't be edited away
+    static function keepOld(string $kind, int $id, ?string $body){
+        global $db;
+
+        $db->table("message_edits")->insert(["kind"=>$kind, "item_id"=>$id, "body"=>$body, "created"=>time()]);
+    }
+
+    // shared checks for DM and group messages
+    static function cleanEdit(string $body, $message): string {
+        $body = trim(str_replace("\r\n", "\n", $body));
+        $body = preg_replace("/\n{3,}/", "\n\n", $body);
+        if($body === "" && !$message->image_id){
+            throw new \InvalidArgumentException("Type something, or delete the message instead.");
+        }
+        if(mb_strlen($body) > self::MAX_LENGTH){
+            throw new \InvalidArgumentException("Messages can be " . self::MAX_LENGTH . " characters at most.");
+        }
+        return $body;
+    }
+
+    static function ownRecent($message, int $me){
+        if(!$message || (int) $message->sender_id !== $me || (int) $message->deleted !== 0){
+            throw new \InvalidArgumentException("You can only change your own messages.");
+        }
+        if((int) $message->created < time() - self::EDIT_WINDOW){
+            throw new \InvalidArgumentException("Messages can only be changed for an hour after sending.");
+        }
+    }
+
+    public function edit(int $me, int $id, string $body){
+        global $db;
+
+        \watrlabs\users\moderation::requireUnmutedId($me);
+        $message = $db->table("chat_messages")->where("id", $id)->first();
+        self::ownRecent($message, $me);
+        $body = self::cleanEdit($body, $message);
+
+        if($body === (string) $message->body){
+            return $this->shape($message);
+        }
+
+        self::keepOld("dm", $id, $message->body);
+        $db->table("chat_messages")->where("id", $id)->update(["body"=>$body !== "" ? self::filter($body) : null, "edited"=>time()]);
+
+        $shaped = reactions::attach("dm", [$this->shape($db->table("chat_messages")->where("id", $id)->first())])[0];
+        realtime::publish([(int) $message->sender_id, (int) $message->recipient_id], ["type"=>"edited", "kind"=>"dm", "message"=>$shaped]);
+        return $shaped;
+    }
+
+    public function deleteOwn(int $me, int $id){
+        global $db;
+
+        $message = $db->table("chat_messages")->where("id", $id)->first();
+        self::ownRecent($message, $me);
+
+        self::keepOld("dm", $id, $message->body);
+        $db->table("chat_messages")->where("id", $id)->update(["deleted"=>self::DELETED_BY_SENDER]);
+
+        $shaped = $this->shape($db->table("chat_messages")->where("id", $id)->first());
+        realtime::publish([(int) $message->sender_id, (int) $message->recipient_id], ["type"=>"edited", "kind"=>"dm", "message"=>$shaped]);
+        return $shaped;
     }
 
     public function markRead(int $me, int $other){
@@ -189,6 +260,8 @@ class chat {
             "created"=>(int) $row->created,
             "read"=>$row->read_at !== null,
             "deleted"=>$deleted,
+            "removedBy"=>$deleted ? ((int) $row->deleted === self::DELETED_BY_SENDER ? "sender" : "mod") : null,
+            "edited"=>!$deleted && !empty($row->edited),
         ];
     }
 

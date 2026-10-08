@@ -35,6 +35,12 @@
     </div>
 
     <div class="field">
+        <label for="controls">Controls <span class="muted">(optional)</span></label>
+        <textarea id="controls" name="controls" rows="3" maxlength="2000" placeholder="Arrow keys to move&#10;Space to jump">{{ game.controls }}</textarea>
+        <p class="hint">One per line. Shows under the game as "How to play".</p>
+    </div>
+
+    <div class="field">
         <label for="gamePath">Game path</label>
         <input id="gamePath" name="gamePath" value="{{ game.gamePath }}" class="mono" placeholder="/game-files/slope/index.html" required>
         <p class="hint">The page the player loads in a frame. Usually the game's index.html under public/game-files, or a full URL.</p>
@@ -51,6 +57,57 @@
             </div>
         </div>
     </div>
+
+    {% set shots = game.screenshots ? game.screenshots|json_decode : [] %}
+    <fieldset class="field">
+        <legend>Screenshots <span class="muted">(optional, up to 6)</span></legend>
+        {% if shots is not empty %}
+        <div class="shotPicker">
+            {% for shot in shots %}
+            <label class="shotKeep">
+                <img src="{{ shot }}" alt="Screenshot {{ loop.index }}" loading="lazy">
+                <span class="checkRow"><input type="checkbox" name="keepShots[]" value="{{ shot }}" checked><span>Keep</span></span>
+            </label>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <input type="file" name="shotFiles[]" accept="image/png,image/jpeg,image/gif,image/webp" multiple aria-label="Add screenshots">
+        <p class="hint">Untick one to remove it when you save. The first one is also what shows when someone shares the link.</p>
+    </fieldset>
+
+    {% if game.type == 'game' %}
+    <fieldset class="field">
+        <legend>Leaderboard</legend>
+        <p class="hint">Only works for games that send scores with <code>watr.submitScore(n)</code> from <code>/assets/js/watr-sdk.js</code> (see the readme).{% if scoreCount is defined and scoreCount %} {{ scoreCount|number_format }} {{ scoreCount == 1 ? 'person has' : 'people have' }} a score.{% endif %}</p>
+        <div class="formRow">
+            <div class="field narrowField">
+                <label for="scores">Scores</label>
+                <select id="scores" name="scores">
+                    <option value="off"{% if game.scores == 'off' %} selected{% endif %}>Off</option>
+                    <option value="high"{% if game.scores == 'high' %} selected{% endif %}>Higher is better</option>
+                    <option value="low"{% if game.scores == 'low' %} selected{% endif %}>Lower is better</option>
+                </select>
+            </div>
+            <div class="field narrowField">
+                <label for="score_format">Shown as</label>
+                <select id="score_format" name="score_format">
+                    <option value="number"{% if game.score_format == 'number' %} selected{% endif %}>A number</option>
+                    <option value="time"{% if game.score_format == 'time' %} selected{% endif %}>A time (sent in ms)</option>
+                </select>
+            </div>
+            <div class="field narrowField">
+                <label for="score_label">Label</label>
+                <input id="score_label" name="score_label" value="{{ game.score_label }}" maxlength="20" placeholder="points">
+            </div>
+            <div class="field narrowField">
+                <label for="score_max">Highest believable</label>
+                <input id="score_max" name="score_max" value="{{ game.score_max }}" inputmode="numeric" placeholder="no limit">
+            </div>
+        </div>
+    </fieldset>
+
+    <label class="checkRow"><input type="checkbox" name="pin" value="1"{% if pinned %} checked{% endif %}><span>Make this today's game of the day{% if isGotd is defined and isGotd and not pinned %} <span class="muted">(it already is, picked automatically)</span>{% endif %}</span></label>
+    {% endif %}
 
     {% if allTags is defined and allTags is not empty %}
     <fieldset class="field tagPicker">

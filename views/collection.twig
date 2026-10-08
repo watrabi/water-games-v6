@@ -1,0 +1,118 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}{{ collection.name }}{% endblock %}
+{% block ogDescription %}{{ collection.description ?: (collection.staff ? 'A staff pick' : 'A collection by ' ~ collection.username) ~ ' on ' ~ env("APP_NAME") ~ ', ' ~ games|length ~ (games|length == 1 ? ' game.' : ' games.') }}{% endblock %}
+{% block ogImage %}{{ (games|filter(x => x.gameIcon)|first).gameIcon ?? '' }}{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <p class="eyebrow">{{ collection.staff ? 'Staff pick' : 'Collection' }}{% if not collection.public %} · private{% endif %}</p>
+            <h1>{{ collection.name }}</h1>
+            <p>By <a href="/users/{{ collection.username|lower|url_encode }}">{{ collection.username }}</a> · {{ games|length }} {{ games|length == 1 ? 'game' : 'games' }} · updated {{ collection.updated|ago }}</p>
+            {% if collection.description %}<p class="collectionDescription">{{ collection.description|nl2br }}</p>{% endif %}
+        </div>
+        {% if mine %}
+        <div class="buttonRow">
+            <button class="button quiet" type="button" id="collectionEdit">Edit</button>
+            <button class="button quiet danger" type="button" id="collectionDelete">Delete</button>
+        </div>
+        {% endif %}
+    </div>
+    <div class="notice danger" id="collectionMsg" role="alert" hidden></div>
+
+    {% if mine %}
+    <form class="panel collectionForm" id="collectionForm" hidden>
+        <div class="field">
+            <label for="cName">Name</label>
+            <input id="cName" name="name" maxlength="60" value="{{ collection.name }}" required>
+        </div>
+        <div class="field">
+            <label for="cDescription">Description <span class="muted">(optional)</span></label>
+            <textarea id="cDescription" name="description" maxlength="300" rows="2">{{ collection.description }}</textarea>
+        </div>
+        <label class="checkRow"><input type="checkbox" name="public" value="1"{% if collection.public %} checked{% endif %}><span>Public (shows on your profile and the collections page)</span></label>
+        {% if currentuser.admin %}
+        <label class="checkRow"><input type="checkbox" name="staff" value="1"{% if collection.staff %} checked{% endif %}><span>Staff pick (shows on /games and everyone's home page)</span></label>
+        {% endif %}
+        <div class="buttonRow">
+            <button class="button" type="submit">Save</button>
+            <button class="button quiet" type="button" id="collectionCancel">Cancel</button>
+        </div>
+    </form>
+    {% endif %}
+
+    {% if games is empty %}
+        {{ g.empty('blobpeek', 'Nothing in here yet.', mine ? 'Open any game and use the <i class="ph-bold ph-folder-plus"></i> button to add it.' : 'Check back later.') }}
+    {% else %}
+        <div class="gameGrid" id="collectionGames">
+            {% for game in games %}
+            <div class="collectionItem" data-game="{{ game.id }}">
+                {{ g.tile(game) }}
+                {% if mine %}
+                <span class="trackTools">
+                    <button class="playerButton" type="button" data-move="-1" aria-label="Move {{ game.name }} earlier"{% if loop.first %} disabled{% endif %}><i class="ph-bold ph-caret-left"></i></button>
+                    <button class="playerButton" type="button" data-move="1" aria-label="Move {{ game.name }} later"{% if loop.last %} disabled{% endif %}><i class="ph-bold ph-caret-right"></i></button>
+                    <button class="playerButton" type="button" data-remove aria-label="Remove {{ game.name }}"><i class="ph-bold ph-x"></i></button>
+                </span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% if mine %}
+<script>
+// jquery loads with defer, so on a full page load this has to wait for it
+(function run(){
+    if(!window.jQuery){
+        return document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
+    let id = {{ collection.id }};
+    let message = $("#collectionMsg");
+
+    function act(action, data){
+        return $.post("/api/v1/collections/" + id + "/" + action, data || {}).fail(function(xhr) {
+            showNotice(message, apiMessage(xhr));
+        });
+    }
+
+    $("#collectionEdit").on("click", () => $("#collectionForm").prop("hidden", false).find("input").first().trigger("focus"));
+    $("#collectionCancel").on("click", () => $("#collectionForm").prop("hidden", true));
+
+    $("#collectionForm").on("submit", function(event) {
+        event.preventDefault();
+        act("update", {
+            name: $("#cName").val(),
+            description: $("#cDescription").val(),
+            public: this.public.checked ? 1 : 0,
+            staff: this.staff && this.staff.checked ? 1 : 0
+        }).done(() => window.watrNav.reload());
+    });
+
+    $("#collectionDelete").on("click", function() {
+        if(!confirm("Delete this collection? The games stay on the site.")){
+            return;
+        }
+        act("delete").done(() => window.watrNav.go("/collections/mine"));
+    });
+
+    $("#collectionGames").on("click", "[data-remove]", function() {
+        act("remove", { game: $(this).closest("[data-game]").data("game") }).done(() => window.watrNav.reload());
+    });
+
+    $("#collectionGames").on("click", "[data-move]", function() {
+        let item = $(this).closest("[data-game]");
+        let order = $("#collectionGames [data-game]").map((i, el) => $(el).data("game")).get();
+        let from = order.indexOf(item.data("game"));
+        let to = from + Number($(this).data("move"));
+        if(to < 0 || to >= order.length){
+            return;
+        }
+        order.splice(to, 0, order.splice(from, 1)[0]);
+        act("reorder", { games: order }).done(() => window.watrNav.reload());
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

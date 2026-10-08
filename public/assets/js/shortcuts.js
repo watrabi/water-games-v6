@@ -7,6 +7,8 @@ const shortcutKeys = [
     [["g", "g"], "Go to games"],
     [["g", "m"], "Go to music"],
     [["g", "n"], "Go to notifications"],
+    [["g", "c"], "Go to collections"],
+    [["g", "r"], "Random game"],
     [["c"], "Open chat"],
     [["f"], "Fullscreen (on a game)"],
     [["t"], "Theater mode (on a game)"],
@@ -89,7 +91,7 @@ document.addEventListener("keydown", function(event) {
     if(shortcutPrefix === "g"){
         shortcutPrefix = null;
         clearTimeout(shortcutPrefixTimer);
-        let path = { h: document.querySelector('#sidebar a[href="/home"]') ? "/home" : "/", g: "/games", m: "/music", n: "/notifications" }[key];
+        let path = { h: document.querySelector('#sidebar a[href="/home"]') ? "/home" : "/", g: "/games", m: "/music", n: "/notifications", c: "/collections", r: "/games/random" }[key];
         if(path){
             event.preventDefault();
             shortcutGo(path);

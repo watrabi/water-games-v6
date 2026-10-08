@@ -209,6 +209,17 @@
         <button class="button" type="submit">Save</button>
     </form>
 
+    <form class="panel" id="recapForm">
+        <h2>Weekly recap</h2>
+        <p class="muted">Every Monday you get a notification with last week's playtime and highlights (it's also at <a href="/recap">/recap</a>). You can have it emailed too.</p>
+        <div class="notice" id="recapMsg" role="status" hidden></div>
+        <label class="checkRow">
+            <input type="checkbox" id="recapEmail"{% if currentuser.recap_email %} checked{% endif %}{% if not currentuser.email or not mailAvailable %} disabled{% endif %}>
+            <span>Email me my weekly recap{% if not currentuser.email %} <span class="muted">(add an email under Account first)</span>{% elseif not mailAvailable %} <span class="muted">(this site can't send email right now)</span>{% endif %}</span>
+        </label>
+        <button class="button" type="submit"{% if not currentuser.email or not mailAvailable %} disabled{% endif %}>Save</button>
+    </form>
+
     <div class="panel">
         <h2>Cloud saves</h2>
         <p class="muted">Progress from games on this site is kept on your account, so it follows you to other devices. Games from other sites, and games that save with IndexedDB, can't be saved this way.</p>
@@ -277,5 +288,5 @@
     </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
-<script src="/assets/js/settings.js?t=7" defer></script>
+<script src="/assets/js/settings.js?t=8" defer></script>
 {% endblock %}

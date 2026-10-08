@@ -1,0 +1,84 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Your week{% endblock %}
+{% block body %}
+<div class="page recapPage">
+    <div class="pageHeader">
+        <div>
+            <p class="eyebrow">Weekly recap</p>
+            <h1>{{ week.start|date('M j') }} to {{ week.end|date('M j') }}</h1>
+            <p>
+                {% if previous %}<a href="/recap?week={{ previous }}"><i class="ph-bold ph-caret-left"></i> Week before</a>{% endif %}
+                {% if previous and next %} · {% endif %}
+                {% if next %}<a href="/recap?week={{ next }}">Week after <i class="ph-bold ph-caret-right"></i></a>{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if not recap %}
+        {{ g.empty('blobsleeping', 'Nothing played that week.', 'Playtime only counts while a game\'s tab is in front. <a href="/games/random">Try something random</a>?') }}
+    {% else %}
+        <dl class="profileFigures recapFigures">
+            <div><dt>Played</dt><dd>{{ recap.total|playtime }}</dd></div>
+            <div><dt>Days</dt><dd>{{ recap.daysPlayed }} <span class="muted">of 7</span></dd></div>
+            <div><dt>Games</dt><dd>{{ recap.gameCount }}</dd></div>
+            <div><dt>New ones tried</dt><dd>{{ recap.newGames }}</dd></div>
+        </dl>
+
+        {# one series, so no legend: the heading names it #}
+        {% set peak = max(recap.chart|map(d => d.seconds)|merge([1])) %}
+        <section class="panel recapChart">
+            <h2>Playtime each day</h2>
+            <div class="weekChart" role="img" aria-label="Playtime per day, {{ recap.total|playtime }} in total">
+                {% for d in recap.chart %}
+                <div class="weekDay">
+                    <div class="dayBar" tabindex="0" data-tip="{{ d.day|date('D M j') }}: {{ d.seconds ? d.seconds|playtime : 'nothing' }}">
+                        <span style="height: {{ d.seconds ? max(3, (d.seconds / peak * 100)|round) : 0 }}%"></span>
+                    </div>
+                    <span class="weekLabel muted">{{ d.label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <details class="chartTable">
+                <summary>Show as a table</summary>
+                <table class="table">
+                    <thead><tr><th>Day</th><th class="right">Played</th></tr></thead>
+                    <tbody>
+                    {% for d in recap.chart %}<tr><td>{{ d.day|date('D M j') }}</td><td class="right">{{ d.seconds ? d.seconds|playtime : '–' }}</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </details>
+        </section>
+
+        <div class="homeColumns">
+            <section class="homeMain">
+                <div class="sectionHeader"><h2>What you played most</h2></div>
+                <ol class="recapGames">
+                    {% for game in recap.games %}
+                    <li>
+                        <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+                            <span class="gameIcon">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}</span>
+                            <span class="continueText">
+                                <span class="gameName">{{ game.name }}</span>
+                                <span class="gameMeta">{{ game.seconds|playtime }}</span>
+                            </span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </section>
+            <aside class="homeSide">
+                <section class="panel sidePanel">
+                    <h2>Also that week</h2>
+                    <ul class="recapExtras">
+                        {% for name in recap.achievements %}<li><i class="ph-bold ph-trophy"></i>Earned {{ name }}</li>{% endfor %}
+                        {% if recap.scores %}<li><i class="ph-bold ph-ranking"></i>Set {{ recap.scores }} {{ recap.scores == 1 ? 'score' : 'scores' }} on leaderboards</li>{% endif %}
+                        {% if recap.newGames %}<li><i class="ph-bold ph-compass"></i>Tried {{ recap.newGames }} new {{ recap.newGames == 1 ? 'game' : 'games' }}</li>{% endif %}
+                        {% if not recap.achievements and not recap.scores and not recap.newGames %}<li class="muted">Just playing. Nothing wrong with that.</li>{% endif %}
+                    </ul>
+                </section>
+            </aside>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

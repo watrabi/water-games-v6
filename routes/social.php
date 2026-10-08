@@ -60,6 +60,9 @@ $router->group('/api/v1/social', function($router){
             "groups"=>(new groups())->listFor($me->id),
             "lastGroupId"=>(new groups())->lastIdFor($me->id),
             "reasons"=>chat::REPORT_REASONS,
+            "emoji"=>\watrlabs\social\reactions::EMOJI,
+            "editWindow"=>chat::EDIT_WINDOW,
+            "muted"=>\watrlabs\users\moderation::isMuted($me) ? \watrlabs\users\moderation::muteMessage($me) : null,
             "realtime"=>\watrlabs\social\realtime::clientConfig((int) $me->id),
         ];
     });
@@ -73,6 +76,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->get("/search", function(){
+        \watrlabs\watrkit\ratelimit::guard("search", socialUser(), 60, 60);
         $me = socialUser();
         $friends = new friends();
 
@@ -80,6 +84,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->post("/friends/{id}/{action}", function($id, $action){
+        \watrlabs\watrkit\ratelimit::guard("friends", socialUser(), 60, 3600, "That's a lot of friend changes. Try again later.");
         $me = socialUser();
         $friends = new friends();
 
@@ -140,6 +145,47 @@ $router->group('/api/v1/social', function($router){
         return ["status"=>"okay", "message"=>$message];
     });
 
+    // your own messages: edit | delete, and anyone's in the chat: react
+    $router->post("/message/{id}/{action}", function($id, $action){
+        $me = socialUser();
+        \watrlabs\watrkit\ratelimit::guard("chat_change", $me, 60, 60);
+
+        try {
+            switch($action){
+                case "edit":
+                    return ["status"=>"okay", "message"=>(new chat())->edit((int) $me->id, (int) $id, (string) ($_POST["body"] ?? ""))];
+                case "delete":
+                    return ["status"=>"okay", "message"=>(new chat())->deleteOwn((int) $me->id, (int) $id)];
+                case "react":
+                    return ["status"=>"okay", "reactions"=>(new \watrlabs\social\reactions())->toggle($me, "dm", (int) $id, (string) ($_POST["emoji"] ?? ""))];
+            }
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return apiError("Unknown action.", 404);
+    });
+
+    $router->post("/group-message/{id}/{action}", function($id, $action){
+        $me = socialUser();
+        \watrlabs\watrkit\ratelimit::guard("chat_change", $me, 60, 60);
+
+        try {
+            switch($action){
+                case "edit":
+                    return ["status"=>"okay", "message"=>(new groups())->edit((int) $me->id, (int) $id, (string) ($_POST["body"] ?? ""))];
+                case "delete":
+                    return ["status"=>"okay", "message"=>(new groups())->deleteOwn((int) $me->id, (int) $id)];
+                case "react":
+                    return ["status"=>"okay", "reactions"=>(new \watrlabs\social\reactions())->toggle($me, "group", (int) $id, (string) ($_POST["emoji"] ?? ""))];
+            }
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return apiError("Unknown action.", 404);
+    });
+
     $router->post("/read/{id}", function($id){
         $me = socialUser();
         (new chat())->markRead($me->id, (int) $id);
@@ -147,6 +193,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->post("/images", function(){
+        \watrlabs\watrkit\ratelimit::guard("chat_image", socialUser(), 20, 600);
         $me = socialUser();
 
         if(!isset($_FILES["image"])){
@@ -168,6 +215,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->post("/groups", function(){
+        \watrlabs\watrkit\ratelimit::guard("groups", socialUser(), 10, 3600);
         $me = socialUser();
 
         try {
@@ -216,6 +264,7 @@ $router->group('/api/v1/social', function($router){
 
     // add | remove | leave | rename
     $router->post("/groups/{id}/{action}", function($id, $action){
+        \watrlabs\watrkit\ratelimit::guard("groups_edit", socialUser(), 60, 3600);
         $me = socialUser();
         $groups = new groups();
 
@@ -244,6 +293,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->post("/group-report/{id}", function($id){
+        \watrlabs\watrkit\ratelimit::guard("report", socialUser(), 20, 3600);
         $me = socialUser();
 
         try {
@@ -256,6 +306,7 @@ $router->group('/api/v1/social', function($router){
     });
 
     $router->post("/report/{id}", function($id){
+        \watrlabs\watrkit\ratelimit::guard("report", socialUser(), 20, 3600);
         $me = socialUser();
 
         try {

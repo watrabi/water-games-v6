@@ -1,0 +1,107 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}{{ user.username }}{% endblock %}
+
+{% macro quick(user, action, label, danger) %}
+  <form method="post" action="/admin/users/{{ user.id }}/action" class="inlineForm"{% if danger %} data-confirm="{{ label }} for {{ user.username }}?"{% endif %}>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="back" value="/admin/users/{{ user.id }}">
+    <button type="submit" class="button quiet{{ danger ? ' danger' : '' }}">{{ label }}</button>
+  </form>
+{% endmacro %}
+
+{# ban and mute share a form: how long, and why (they see the reason) #}
+{% macro punish(user, action, title, button, durations, hint) %}
+  <form class="panel adminForm" method="post" action="/admin/users/{{ user.id }}/action"{% if action == 'ban' %} data-confirm="Ban {{ user.username }}?"{% endif %}>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="back" value="/admin/users/{{ user.id }}">
+    <h2>{{ title }}</h2>
+    <p class="hint">{{ hint }}</p>
+    <div class="formRow">
+      <div class="field narrowField">
+        <label for="{{ action }}Duration">For</label>
+        <select id="{{ action }}Duration" name="duration">
+          {% for seconds, label in durations %}
+            {% if not (action == 'mute' and seconds == 0) %}<option value="{{ seconds }}"{% if seconds == 86400 %} selected{% endif %}>{{ label }}</option>{% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="{{ action }}Reason">Reason <span class="muted">(they'll see this)</span></label>
+        <input id="{{ action }}Reason" name="reason" maxlength="255" placeholder="Spamming the comments">
+      </div>
+    </div>
+    <button type="submit" class="button{{ action == 'ban' ? ' danger' : '' }}">{{ button }}</button>
+  </form>
+{% endmacro %}
+{% import _self as u %}
+
+{% block admin %}
+{% set me = user.id == currentuser.id %}
+<div class="pageHeader">
+    <div>
+        <h1>{{ user.username }}</h1>
+        <p><a href="/admin/users">Back to users</a> · <a href="/users/{{ user.username|lower|url_encode }}" target="_blank" rel="noopener">Profile</a> · joined {{ user.registered|date("M j, Y") }}{% if user.email %} · {{ user.email }}{% endif %}</p>
+    </div>
+    <div class="headerActions">
+        {% if user.admin %}<span class="badge">admin</span>{% endif %}
+        {{ u.quick(user, 'signout', 'Sign out everywhere', false) }}
+        {{ u.quick(user, 'wipescores', 'Wipe scores', true) }}
+    </div>
+</div>
+
+<dl class="figures">
+    <div><dt>Played</dt><dd>{{ counts.playtime ? counts.playtime|playtime : '0m' }}</dd></div>
+    <div><dt>Comments</dt><dd>{{ counts.comments|number_format }}</dd></div>
+    <div><dt>Chat messages</dt><dd>{{ counts.messages|number_format }}</dd></div>
+    <div><dt>Times reported</dt><dd>{{ counts.reports|number_format }}</dd></div>
+</dl>
+
+<section id="moderate">
+{% if me %}
+    <p class="muted">This is you, so there's nothing to moderate here.</p>
+{% else %}
+    {% if user.banned %}
+        <div class="notice danger">
+            Banned {{ user.banned_until ? 'until ' ~ user.banned_until|date('M j, Y g:ia') ~ ' UTC' : 'forever' }}.{% if user.ban_reason %} Reason: {{ user.ban_reason }}{% endif %}
+        </div>
+        {{ u.quick(user, 'unban', 'Unban now', false) }}
+    {% else %}
+        {{ u.punish(user, 'ban', 'Ban', 'Ban ' ~ user.username, durations, 'Signs them out everywhere and stops them signing in. Their comments are hidden while it lasts.') }}
+    {% endif %}
+
+    {% if muted %}
+        <div class="notice">
+            Muted until {{ user.muted_until|date('M j, Y g:ia') }} UTC.{% if user.mute_reason %} Reason: {{ user.mute_reason }}{% endif %}
+        </div>
+        {{ u.quick(user, 'unmute', 'Unmute now', false) }}
+    {% elseif not user.banned %}
+        {{ u.punish(user, 'mute', 'Mute', 'Mute ' ~ user.username, durations, "They can still sign in and play, but can't chat, comment, react, or post anything others see. They get a notification with the reason.") }}
+    {% endif %}
+{% endif %}
+</section>
+
+<section>
+    <h2>History</h2>
+    {% if history is empty %}
+        <p class="muted">Nothing on record.</p>
+    {% else %}
+    <table class="table">
+        <thead><tr><th>When</th><th>What</th><th>Until</th><th>Reason</th><th>By</th></tr></thead>
+        <tbody>
+        {% for row in history %}
+            <tr>
+                <td class="muted">{{ row.created|date("M j, Y g:ia") }}</td>
+                <td>{{ row.action }}</td>
+                <td class="muted">{{ row.until ? row.until|date("M j, g:ia") : (row.action in ['ban'] ? 'forever' : '–') }}</td>
+                <td>{{ row.reason ?: '–' }}</td>
+                <td class="muted">{{ row.by_name ?: 'automatic' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</section>
+{% endblock %}

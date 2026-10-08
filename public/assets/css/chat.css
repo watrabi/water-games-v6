@@ -762,3 +762,95 @@ a.chatName {
     color: var(--link);
     font-style: italic;
 }
+
+/* reactions sit on their own line under the bubble, your own edit/delete next to it like the flag */
+.chatMsg {
+    flex-wrap: wrap;
+}
+
+.chatMsg .reactions {
+    order: 5;
+    flex-basis: 100%;
+    margin-top: 2px;
+}
+
+.chatMsg.mine .reactions {
+    justify-content: flex-end;
+}
+
+/* in the tray the picker opens toward the middle so it doesn't run off the edge */
+.chatMsg.mine .reactPicker {
+    right: 0;
+    left: auto;
+}
+
+/* with no reactions yet, the add button sits next to the edit/flag buttons instead of on its own line */
+.chatMsg .reactions.empty {
+    position: static;
+    transform: none;
+    order: 4;
+    flex-basis: auto;
+}
+
+.chatTools {
+    display: flex;
+    flex-shrink: 0;
+    opacity: 0;
+}
+
+.chatMsg:hover .chatTools,
+.chatTools:focus-within {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .chatTools {
+        opacity: 0.6;
+    }
+}
+
+.chatTool {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.chatTool:hover,
+.chatTool:focus-visible {
+    color: var(--text);
+}
+
+.chatTool.really {
+    color: var(--danger);
+}
+
+.chatEdited {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.chatEditBox {
+    display: block;
+    width: 100%;
+    min-width: 180px;
+    margin-top: 4px;
+    padding: 4px 6px;
+    border: 1px solid var(--line-strong);
+    background-color: var(--bg);
+    color: var(--text);
+    font: inherit;
+    resize: vertical;
+}
+
+.chatEditHint {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    opacity: 0.7;
+}

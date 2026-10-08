@@ -59,6 +59,22 @@
     </section>
 {% endmacro %}
 
+<section class="panel systemPanel">
+    <div class="sectionHeader">
+        <h2>System</h2>
+        <span class="muted">{% if cronRan %}checked by cron {{ cronRan|ago }}{% else %}bin/cron.php hasn't run yet{% endif %}{% if not alertsOn %} · no alerts set up (ALERT_WEBHOOK){% endif %}</span>
+    </div>
+    <ul class="healthList">
+        {% for name, check in health %}
+        <li>
+            <span class="healthState {{ check.ok is null ? 'off' : (check.ok ? 'good' : 'bad') }}"><i class="ph-bold {{ check.ok is null ? 'ph-minus-circle' : (check.ok ? 'ph-check-circle' : 'ph-warning-circle') }}"></i>{{ check.ok is null ? 'Off' : (check.ok ? 'OK' : 'Problem') }}</span>
+            <strong>{{ name }}</strong>
+            <span class="muted">{{ check.detail }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+
 <div class="chartGrid">
     {{ _self.dayChart(days, 'signups', 'Signups', 'number') }}
     {{ _self.dayChart(days, 'plays', 'Plays', 'number') }}
