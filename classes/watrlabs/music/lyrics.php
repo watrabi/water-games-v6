@@ -152,7 +152,7 @@ class lyrics {
     }
 
     // lowercase, no accents or punctuation, so "Don't Stop Me Now" == "dont stop me now"
-    private static function norm(string $text){
+    public static function norm(string $text){
         $text = mb_strtolower($text);
         if(function_exists("iconv")){
             $ascii = @iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $text);
@@ -167,7 +167,7 @@ class lyrics {
     }
 
     // each artist named ("A & B feat. C" -> ["a", "b", "c"])
-    private static function artistWords(string $artist){
+    public static function artistWords(string $artist){
         $names = preg_split('/\s*(?:,|&|\+|\/|\bx\b|\band\b|\bfeat\.?|\bft\.?|\bfeaturing\b|\bwith\b)\s*/iu', $artist);
         return array_values(array_filter(array_map([self::class, "norm"], $names)));
     }

@@ -17,7 +17,7 @@
     <script src="/assets/js/reactions.js?t=1" defer></script>
     {% if currentuser %}<script src="/assets/js/notifications.js?t=1" defer></script>{% endif %}
     <script src="/assets/js/music.js?t=4" defer></script>
-    <script src="/assets/js/lyrics.js?t=4" defer></script>
+    <script src="/assets/js/lyrics.js?t=5" defer></script>
     {# share previews (discord, imessage, twitter...). a page can define ogTitle, ogDescription, ogImage and
        twitterCard blocks (they're only read here, never printed on their own), see play.twig #}
     {% set ogTitle = block('ogTitle') is defined ? block('ogTitle')|trim : ((block('pageName')|trim) ? (block('pageName')|trim) ~ ' - ' ~ env("APP_NAME") : env("APP_NAME")) %}

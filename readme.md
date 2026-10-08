@@ -261,13 +261,17 @@ VALUES ('Low Tide', 'watrlabs', '/music-files/low-tide.mp3', '/music-files/cover
 for seeking to work (apache and nginx do by default, `php -S` doesn't)
 
 # lyrics
-the player looks lyrics up on [lrclib.net](https://lrclib.net) the first time a song plays and saves them (songs with
-nothing get asked again after a week). it prefers time synced lyrics, which light up line by line, and falls back to
-plain text. when lrclib has a [Lyricsfile](https://github.com/tranxuanthang/lyricsfile/blob/main/SPECIFICATION.md)
-for the song, that's saved too (`tracks.lyricsFile`): its lines say when they end, so instrumental breaks go quiet,
-and when it has word timing the words light up as they're sung. results with word timing are picked over ones without.
-files that don't follow the 1.0 draft are ignored and the plain synced lyrics are used. changing a track's title,
-artist or length in the admin panel looks its lyrics up again.
+the player looks lyrics up the first time a song plays and saves them (songs with nothing get asked again after a week).
+**[lrc.red](https://lrc.red)** goes first: it has word by word timing (in Apple Music's TTML format) for most songs.
+if it has nothing, **[lrclib.net](https://lrclib.net)** is next, which has time synced lyrics and sometimes a
+[Lyricsfile](https://github.com/tranxuanthang/lyricsfile/blob/main/SPECIFICATION.md). either way the lyrics are saved
+as a Lyricsfile (`tracks.lyricsFile`) plus plain LRC as a fallback, and `tracks.lyricsSource` says which site they came
+from (the player credits it). lines go quiet when they end, words light up as they're sung, and background vocals are
+part of the line in brackets. a match needs the same title plus the artist or a close enough length, so a live cut
+doesn't get studio timing. changing a track's title, artist or length in the admin panel looks its lyrics up again.
+
+lrc.red doesn't say where its lyrics come from or that it has a licence for them. they look copied from Apple Music,
+so it's a takedown risk: if it goes away, lookups fall through to lrclib on their own (`classes/watrlabs/music/lrcred.php`).
 
 # AI chat
 the easy way is **admin panel → AI**: add a provider (pick Ollama, Anthropic compatible or OpenAI compatible, give it a

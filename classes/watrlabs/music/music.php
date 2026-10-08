@@ -133,8 +133,9 @@ class music {
         return true;
     }
 
-    // ["lyrics"=>?string, "synced"=>bool, "lines"=>?array, "words"=>bool]. looked up once and saved, tracks with nothing
-    // get asked again after a week. "lines" comes from the Lyricsfile when lrclib had one (see lyricsfile.php)
+    // ["lyrics"=>?string, "synced"=>bool, "lines"=>?array, "words"=>bool, "source"=>?string]. looked up once and saved,
+    // tracks with nothing get asked again after a week. lrc.red goes first (word by word timing for most songs), then
+    // lrclib. "lines" comes from the Lyricsfile either way (see lyricsfile.php)
     public function lyricsFor($track){
         global $db;
 
@@ -143,15 +144,35 @@ class music {
 
         if($stale){
             try {
-                $found = lyrics::find($track->title, $track->artist, $track->duration ? (int) $track->duration : null);
+                $duration = $track->duration ? (int) $track->duration : null;
+                $found = null;
+                $lrcredDown = false;
+                try {
+                    $found = lrcred::find($track->title, $track->artist, $duration);
+                } catch (\RuntimeException $e) {
+                    $lrcredDown = true;
+                }
+                if(!$found){
+                    $found = lyrics::find($track->title, $track->artist, $duration);
+                    if($found){
+                        $found["source"] = "lrclib";
+                    }
+                }
+
+                // lrc.red was down and lrclib had nothing: ask both again next time rather than saving "nothing"
+                if(!$found && $lrcredDown){
+                    throw new \RuntimeException("lrc.red is down");
+                }
 
                 $track->lyrics = $found["lyrics"] ?? null;
                 $track->lyricsSynced = $found["synced"] ?? false;
                 $track->lyricsFile = $found["file"] ?? null;
+                $track->lyricsSource = $found["source"] ?? null;
                 $db->table("tracks")->where("id", $track->id)->update([
                     "lyrics"=>$track->lyrics,
                     "lyricsSynced"=>$track->lyricsSynced ? 1 : 0,
                     "lyricsFile"=>$track->lyricsFile,
+                    "lyricsSource"=>$track->lyricsSource,
                     "lyricsChecked"=>time(),
                 ]);
             } catch (\RuntimeException $e) {
@@ -166,6 +187,7 @@ class music {
             "synced"=>(bool) $track->lyricsSynced,
             "lines"=>$file && $file["lines"] ? $file["lines"] : null,
             "words"=>$file ? $file["words"] : false,
+            "source"=>$track->lyrics !== null ? ($track->lyricsSource ?? "lrclib") : null,
         ];
     }
 }

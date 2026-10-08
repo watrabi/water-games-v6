@@ -487,7 +487,7 @@ $router->group('/admin', function($router){
             }
             // a different song now, so look its lyrics up again on the next play
             if($existing->title !== $values["title"] || $existing->artist !== $values["artist"] || $existing->duration != $values["duration"]){
-                $values += ["lyrics"=>null, "lyricsSynced"=>0, "lyricsFile"=>null, "lyricsChecked"=>null];
+                $values += ["lyrics"=>null, "lyricsSynced"=>0, "lyricsFile"=>null, "lyricsSource"=>null, "lyricsChecked"=>null];
             }
             $db->table("tracks")->where("id", $existing->id)->update($values);
             adminlog::add("track.edit", "track", (int) $existing->id, $values["title"]);

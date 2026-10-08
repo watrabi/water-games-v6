@@ -93,6 +93,8 @@ function render(track, data){
 
     $("#playerLyrics").removeClass("none").attr("title", "Lyrics");
     $(".lyricsCredit").prop("hidden", false);
+    let source = { "lrc.red": ["lrc.red", "https://lrc.red"], lrclib: ["LRCLIB", "https://lrclib.net"] }[data.source] || ["LRCLIB", "https://lrclib.net"];
+    $("#lyricsSource").text(source[0]).attr("href", source[1]);
     body.toggleClass("synced", !!(data.synced || data.lines));
     body.toggleClass("words", !!data.words);
     lyrics.activeKey = "";
