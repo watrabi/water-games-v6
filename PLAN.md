@@ -251,3 +251,8 @@ Routes / pages:
   cleanly. **Write migrations for MySQL 8** (explicit `'null' => false` on key columns). Prod CLI PHP is 8.5, and
   bin/bootstrap.php hides vendor deprecation notices. After the deploy, health checks are all ok except email (no MAIL_*).
   The crons (backup.sh, cron.php) are still **not installed**; adding them was refused by the permission check.
+- 2026-10-08: Lyricsfile support deployed (a6cc28f). The deploy's composer step failed twice on prod: aaPanel runs commands
+  without HOME, and cocur/slugify's PHP constraint stops at 8.4 while prod is 8.5. The code had already been copied, so
+  the lyrics API returned 500 for a few minutes until symfony/yaml was installed by hand with --ignore-platform-req=php.
+  bin/deploy.sh now sets HOME itself, passes --ignore-platform-req=php, and runs composer **before** migrations and
+  code, so a composer failure leaves the old site running.

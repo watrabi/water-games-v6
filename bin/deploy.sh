@@ -8,10 +8,11 @@
 # what it does, in order. it stops at the first thing that fails:
 #   1. backs up the database (bin/backup.sh) and the code (to /www/backup/site/, without vendor and game files)
 #   2. clones the branch into a temp folder
-#   3. copies in the new migrations and runs them, before the code that needs them goes live
-#   4. copies the code over. these are never touched: .env, phinx.php, vendor/, storage/, public/uploads/,
+#   3. composer install, only if composer.lock changed (before anything else changes, so a failure leaves the
+#      old site as it was)
+#   4. copies in the new migrations and runs them, before the code that needs them goes live
+#   5. copies the code over. these are never touched: .env, phinx.php, vendor/, storage/, public/uploads/,
 #      public/game-files/ (prod has games that aren't in the repo), public/.user.ini, public/.well-known/
-#   5. composer install, only if composer.lock changed
 #   6. clears the twig cache, fixes ownership
 #   7. restarts watr-realtime, only if realtime/ changed
 #
@@ -26,6 +27,11 @@ BACKUPS="${BACKUPS:-/www/backup/site}"
 OWNER="${OWNER:-www:www}"
 PHP="${PHP:-php}"
 DRY_RUN="${DRY_RUN:-}"
+
+# aaPanel (and cron) run commands without HOME, and composer won't start without it
+export HOME="${HOME:-/root}"
+export COMPOSER_HOME="${COMPOSER_HOME:-$HOME/.config/composer}"
+export COMPOSER_ALLOW_SUPERUSER=1
 
 say(){ echo "$(date +%H:%M:%S) $*"; }
 
@@ -79,7 +85,19 @@ cmp -s "$TMP/src/composer.lock" "$SITE/composer.lock" || LOCK_CHANGED=1
 REALTIME_CHANGED=""
 diff -rq "$TMP/src/realtime" "$SITE/realtime" --exclude=node_modules > /dev/null 2>&1 || REALTIME_CHANGED=1
 
-# ---------- 3. migrations first ----------
+# ---------- 3. dependencies ----------
+# --ignore-platform-req=php: some packages (cocur/slugify) haven't added PHP 8.5 to their list yet but run fine on it,
+# and without this composer refuses to install anything at all on the server's 8.5
+if [ -n "$LOCK_CHANGED" ]; then
+    say "composer.lock changed, installing"
+    cp "$TMP/src/composer.json" "$TMP/src/composer.lock" "$SITE/"
+    (cd "$SITE" && composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-req=php --quiet) || {
+        echo "composer install failed, stopping before the code goes live. the old code is still running" >&2
+        exit 1
+    }
+fi
+
+# ---------- 4. migrations first ----------
 say "running migrations"
 rsync -a "$TMP/src/db/" "$SITE/db/"
 if ! MIGRATE_OUT="$(cd "$SITE" && "$PHP" vendor/bin/phinx migrate -c phinx.php 2>&1)"; then
@@ -89,15 +107,9 @@ if ! MIGRATE_OUT="$(cd "$SITE" && "$PHP" vendor/bin/phinx migrate -c phinx.php 2
 fi
 echo "$MIGRATE_OUT" | grep -E "==|All Done" || true
 
-# ---------- 4. the code ----------
+# ---------- 5. the code ----------
 say "copying the code"
 rsync -rlc "${EXCLUDES[@]}" "$TMP/src/" "$SITE/"
-
-# ---------- 5. dependencies ----------
-if [ -n "$LOCK_CHANGED" ]; then
-    say "composer.lock changed, installing"
-    (cd "$SITE" && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-interaction --optimize-autoloader --quiet)
-fi
 
 # ---------- 6. tidy ----------
 find "$SITE/storage/cache" -mindepth 1 -delete 2>/dev/null || true
