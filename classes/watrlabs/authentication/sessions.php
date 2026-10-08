@@ -70,6 +70,10 @@ class sessions {
     }
 
     private function setCookie($value, $expires){
+        setcookie($_ENV["COOKIE_NAME"], $value, $this->cookieOptions($expires));
+    }
+
+    private function cookieOptions($expires){
         $options = [
             "expires"=>$expires,
             "path"=>"/",
@@ -78,13 +82,21 @@ class sessions {
             "samesite"=>"Lax",
         ];
 
-        // browsers drop cookies for ".localhost" or an ip, so those stay host-only
-        $domain = preg_replace('/:\d+$/', '', $_ENV["APP_DOMAIN"] ?? "");
-        if($domain !== "" && $domain !== "localhost" && !filter_var($domain, FILTER_VALIDATE_IP)){
-            $options["domain"] = "." . $domain; // jank but ok
+        $domain = $this->cookieDomain();
+        if($domain !== null){
+            $options["domain"] = $domain;
         }
 
-        setcookie($_ENV["COOKIE_NAME"], $value, $options);
+        return $options;
+    }
+
+    // browsers drop cookies for ".localhost" or an ip, so those stay host-only (null)
+    private function cookieDomain(){
+        $domain = preg_replace('/:\d+$/', '', $_ENV["APP_DOMAIN"] ?? "");
+        if($domain !== "" && $domain !== "localhost" && !filter_var($domain, FILTER_VALIDATE_IP)){
+            return "." . $domain; // jank but ok
+        }
+        return null;
     }
 
     // destroys a session
@@ -161,6 +173,57 @@ class sessions {
         }
 
         return $os ? "$browser on $os" : $browser;
+    }
+
+    // a browser can hold more than one cookie with our name: an old one for another domain (from before APP_DOMAIN
+    // changed) sits next to the current one, and is sent first because it's older. $_COOKIE only keeps the first,
+    // so that person could never stay signed in (the session worked, the next page read the dead cookie). this
+    // runs once per request before anything reads the cookie: it keeps the value that's a real session, and tells
+    // the browser to drop the strays
+    public function pickCookie(){
+        $name = $_ENV["COOKIE_NAME"] ?? "";
+        $values = [];
+        foreach(explode(";", $_SERVER["HTTP_COOKIE"] ?? "") as $pair){
+            $parts = explode("=", trim($pair), 2);
+            if(count($parts) === 2 && $parts[0] === $name && $parts[1] !== ""){
+                $values[] = urldecode($parts[1]);
+            }
+        }
+        $values = array_values(array_unique($values));
+        if(count($values) < 2){
+            return;
+        }
+
+        foreach($values as $value){
+            if($this->getSessionInfo($value)){
+                $_COOKIE[$name] = $value;
+                break;
+            }
+        }
+        $this->clearStrayCookies();
+    }
+
+    // expires our cookie everywhere except where we set it: host only, and every parent domain of this host
+    private function clearStrayCookies(){
+        $ours = $this->cookieDomain();
+        $host = strtolower(preg_replace('/:\d+$/', '', $_SERVER["HTTP_HOST"] ?? ""));
+        $domains = $ours === null ? [] : [null];
+        $labels = filter_var($host, FILTER_VALIDATE_IP) ? [] : explode(".", $host);
+        for($i = 0; $i < count($labels) - 1; $i++){
+            $domain = "." . implode(".", array_slice($labels, $i));
+            if($domain !== $ours){
+                $domains[] = $domain;
+            }
+        }
+
+        foreach($domains as $domain){
+            $options = $this->cookieOptions(1);
+            unset($options["domain"]);
+            if($domain !== null){
+                $options["domain"] = $domain;
+            }
+            setcookie($_ENV["COOKIE_NAME"], "", $options);
+        }
     }
 
     public function getCurrentSessionId(){

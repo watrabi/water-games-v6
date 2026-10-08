@@ -55,6 +55,7 @@ try {
 }
 
 $sessions = new sessions();
+$sessions->pickCookie();
 $currentuser = $sessions->getUserInfoFromCookie();
 
 $loader = new \Twig\Loader\FilesystemLoader('../views');
