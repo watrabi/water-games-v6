@@ -114,7 +114,8 @@ class assistant {
         $useMemory = memories::enabledFor($user);
         $short = config::shortPrompt($model);
         $useThemes = !$short && themetools::enabled() && $caps["tools"];
-        $tools = $caps["tools"] ? array_merge(tools::definitions(), $useMemory ? memories::definitions() : [], $useThemes ? themetools::definitions() : []) : [];
+        $useSandbox = $caps["tools"] && sandbox::enabled();
+        $tools = $caps["tools"] ? array_merge(tools::definitions(), $useMemory ? memories::definitions() : [], $useThemes ? themetools::definitions() : [], $useSandbox ? sandbox::definitions() : []) : [];
         $system = $short ? $this->shortSystemPrompt($user, $useMemory, $caps["tools"]) : $this->systemPrompt($user, $useMemory, $caps["tools"], $useThemes);
         $editRetries = 0;
 
@@ -186,6 +187,8 @@ class assistant {
                     if($event){
                         $this->emit($event);
                     }
+                } elseif($useSandbox && sandbox::handles($block["name"])){
+                    [$output, $isError] = sandbox::run($block, $user, $chatId);
                 } else {
                     [$output, $isError] = tools::run($block);
                 }

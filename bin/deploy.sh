@@ -15,6 +15,7 @@
 #      public/game-files/ (prod has games that aren't in the repo), public/.user.ini, public/.well-known/
 #   6. clears the twig cache, fixes ownership
 #   7. restarts watr-realtime, only if realtime/ changed, and watr-proxy, only if proxy/ changed
+#   8. rebuilds the AI sandbox image and restarts watr-sandbox, only if sandbox/ changed
 #
 # nothing is deleted from the site: a file removed from the repo stays on the server until you remove it.
 
@@ -86,6 +87,8 @@ REALTIME_CHANGED=""
 diff -rq "$TMP/src/realtime" "$SITE/realtime" --exclude=node_modules > /dev/null 2>&1 || REALTIME_CHANGED=1
 PROXY_CHANGED=""
 diff -rq "$TMP/src/proxy" "$SITE/proxy" --exclude=node_modules > /dev/null 2>&1 || PROXY_CHANGED=1
+SANDBOX_CHANGED=""
+diff -rq "$TMP/src/sandbox" "$SITE/sandbox" > /dev/null 2>&1 || SANDBOX_CHANGED=1
 
 # ---------- 3. dependencies ----------
 # --ignore-platform-req=php: some packages (cocur/slugify) haven't added PHP 8.5 to their list yet but run fine on it,
@@ -132,6 +135,13 @@ if [ -n "$PROXY_CHANGED" ] && systemctl list-unit-files watr-proxy.service > /de
     (cd "$SITE/proxy" && npm ci --omit=dev --silent)
     chown -R "$OWNER" "$SITE/proxy"
     systemctl restart watr-proxy
+fi
+
+# ---------- 9. sandbox ----------
+if [ -n "$SANDBOX_CHANGED" ] && systemctl list-unit-files watr-sandbox.service > /dev/null 2>&1; then
+    say "sandbox/ changed, rebuilding the image and restarting watr-sandbox"
+    docker build -q -t watr-sandbox:latest "$SITE/sandbox" > /dev/null
+    systemctl restart watr-sandbox
 fi
 
 say "done: $COMMIT"

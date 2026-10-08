@@ -1,0 +1,16 @@
+# copy to /etc/systemd/system/, then: systemctl daemon-reload && systemctl enable --now watr-sandbox
+[Unit]
+Description=Water Games AI code sandbox runner
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+# root because it drives docker and keeps the firewall rules in place. it only listens on localhost
+WorkingDirectory=/www/wwwroot/games.watr.lol/sandbox
+EnvironmentFile=/root/watrgames/sandbox.env
+ExecStart=/usr/bin/python3 -I runner.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

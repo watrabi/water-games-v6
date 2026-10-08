@@ -32,7 +32,8 @@ const toolLabels = {
     search_past_chats: ["Looking through past chats", "Looked through past chats"],
     create_theme: ["Making a theme", "Made a theme"],
     edit_theme: ["Changing the theme", "Changed the theme"],
-    use_theme: ["Switching themes", "Switched themes"]
+    use_theme: ["Switching themes", "Switched themes"],
+    run_code: ["Running code", "Ran code"]
 };
 
 // a theme the ai just made or switched to: redraw the page in it without reloading

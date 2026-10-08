@@ -36,6 +36,7 @@ class config {
         "exa"=>"Search the web (Exa)",
         "memory"=>"Memory (remembers things about each person between chats)",
         "themes"=>"Make site themes (each person's own)",
+        "sandbox"=>"Run code in a sandbox (Python and bash, with internet; needs the watr-sandbox service)",
     ];
 
     private static ?array $providers = null;
