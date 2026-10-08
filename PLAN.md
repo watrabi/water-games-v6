@@ -264,3 +264,6 @@ Routes / pages:
   changes artifacts with mode="edit" SEARCH/REPLACE blocks (artifacts::applyEdits, mirrored in ai.js for the live
   preview). Misses change nothing and go back to the model as a hidden user message (block "auto"=>true, shown as a
   "retry" notice), at most twice an answer. Not yet tried against a real model, only a stubbed stream.
+- 2026-10-08: URLs moved and deployed (588f8d4): /games -> /discover, /games/{id} -> /play/{id}, /games/random ->
+  /play/random, /games/request -> /discover/request. The old ones 301 with the query string (movedTo() in
+  routes/web.php). Apps stay at /apps. API paths (/api/v1/games/..., /api/v1/play/...) and /admin/games didn't change.
