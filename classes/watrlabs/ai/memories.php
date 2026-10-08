@@ -191,7 +191,7 @@ class memories {
     }
 
     // the part of the system prompt about memory
-    static function prompt($user, bool $canSave): string {
+    static function prompt($user, bool $canSave, bool $short = false): string {
         $name = config::name();
         $notes = self::list((int) $user->id);
 
@@ -210,6 +210,15 @@ class memories {
         if(!$canSave){
             return $prompt . "\nThe model you're running on right now can't use tools, so you can't save, change or search memories in this chat. "
                 . "If the user asks you to remember something, tell them to pick a different model or add it themselves at [their memory page](/ai/memory).";
+        }
+
+        if($short){
+            return $prompt . "\n"
+                . "Use these naturally, without reciting them. When they tell you something worth knowing next time (what to call them, games they love, "
+                . "what they're working on) or say \"remember\", save one short fact per remember call, and only say it's saved after the tool says \"Saved\". "
+                . "Use update_memory for something that changed and forget_memory when asked to forget. Never save passwords, real full names, addresses, "
+                . "school names, contact details, health details or private things about other people. "
+                . "They can see and delete everything at [their memory page](/ai/memory).";
         }
 
         return $prompt . "\n"

@@ -103,7 +103,7 @@
 
     {% if provider.models is not empty %}
     <table class="table modelTable">
-        <thead><tr><th>Model name</th><th>Label</th><th>Images</th><th>Tools</th>{% if provider.type == 'ollama' %}<th>Thinking</th>{% endif %}<th>On</th><th>Order</th><th></th></tr></thead>
+        <thead><tr><th>Model name</th><th>Label</th><th>Images</th><th>Tools</th>{% if provider.type == 'ollama' %}<th>Thinking</th>{% endif %}<th>Prompt</th><th>On</th><th>Order</th><th></th></tr></thead>
         <tbody>
         {% for model in provider.models %}
             {% set f = 'model' ~ model.dbId %}
@@ -127,6 +127,11 @@
                     </select>
                 </td>
                 {% endif %}
+                <td>
+                    <select form="{{ f }}" name="prompt" aria-label="How long the instructions are">
+                        {% for v, l in {auto: 'Auto', full: 'Full', short: 'Short'} %}<option value="{{ v }}"{% if model.prompt == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                </td>
                 <td>
                     <input form="{{ f }}" type="hidden" name="enabled" value="0">
                     <input form="{{ f }}" type="checkbox" name="enabled" value="1" aria-label="Enabled"{% if model.enabled %} checked{% endif %}>
@@ -174,8 +179,12 @@
                 <select id="new_think" name="think"><option value="auto">Auto</option><option value="yes">On</option><option value="no">Off</option></select>
             </div>
             {% endif %}
+            <div class="field narrowField">
+                <label for="new_prompt">Prompt</label>
+                <select id="new_prompt" name="prompt"><option value="auto">Auto</option><option value="full">Full</option><option value="short">Short</option></select>
+            </div>
         </div>
-        <p class="hint">Auto: Ollama gets asked what the model supports, other APIs are assumed to handle both.{% if provider.type == 'ollama' %} Thinking off makes small models answer much sooner; chat titles and starter prompts never think.{% endif %}</p>
+        <p class="hint">Auto: Ollama gets asked what the model supports, other APIs are assumed to handle both.{% if provider.type == 'ollama' %} Thinking off makes small models answer much sooner; chat titles and starter prompts never think.{% endif %} Short prompt: half the instructions and no theme maker, so local models start answering much sooner. Auto is short for Ollama, full for the rest.</p>
         <button class="button" type="submit">Add model</button>
     </form>
 </section>

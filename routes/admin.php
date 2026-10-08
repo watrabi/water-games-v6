@@ -1134,6 +1134,7 @@ $router->group('/admin', function($router){
             "vision"=>in_array($_POST["vision"] ?? "", ["yes", "no"], true) ? $_POST["vision"] : "auto",
             "tools"=>in_array($_POST["tools"] ?? "", ["yes", "no"], true) ? $_POST["tools"] : "auto",
             "think"=>in_array($_POST["think"] ?? "", ["yes", "no"], true) ? $_POST["think"] : "auto",
+            "prompt"=>in_array($_POST["prompt"] ?? "", ["full", "short"], true) ? $_POST["prompt"] : "auto",
             "enabled"=>isset($_POST["enabled"]) ? (!empty($_POST["enabled"]) ? 1 : 0) : 1,
             "sort"=>(int) ($_POST["sort"] ?? 0),
         ];

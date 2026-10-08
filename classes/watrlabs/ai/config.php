@@ -156,7 +156,7 @@ class config {
                 $parts = explode("=", $entry, 2);
                 $name = trim($parts[0]);
 
-                $provider["models"][] = self::model_($provider, $type . ":" . $name, $name, isset($parts[1]) ? trim($parts[1]) : $name, "auto", "auto", "auto");
+                $provider["models"][] = self::model_($provider, $type . ":" . $name, $name, isset($parts[1]) ? trim($parts[1]) : $name, "auto", "auto", "auto", "auto");
             }
 
             $providers[$id] = $provider;
@@ -205,7 +205,7 @@ class config {
                 continue;
             }
 
-            $model = self::model_($providers[$providerId], "m" . $row->id, $row->name, $row->label ?: $row->name, $row->vision, $row->tools, $row->think ?? "auto");
+            $model = self::model_($providers[$providerId], "m" . $row->id, $row->name, $row->label ?: $row->name, $row->vision, $row->tools, $row->think ?? "auto", $row->prompt ?? "auto");
             $model["dbId"] = (int) $row->id;
             $model["enabled"] = (bool) $row->enabled;
             $model["sort"] = (int) $row->sort;
@@ -215,7 +215,7 @@ class config {
         return $providers;
     }
 
-    private static function model_(array $provider, string $id, string $name, string $label, $vision, $tools, $think){
+    private static function model_(array $provider, string $id, string $name, string $label, $vision, $tools, $think, $prompt){
         return [
             "id"=>$id,
             "provider"=>$provider["type"],
@@ -230,6 +230,7 @@ class config {
             "tools"=>in_array($tools, ["yes", "no"], true) ? $tools : "auto",
             // thinking before answering: auto leaves it to the model. small local models can think for minutes
             "think"=>in_array($think, ["yes", "no"], true) ? $think : "auto",
+            "prompt"=>in_array($prompt, ["full", "short"], true) ? $prompt : "auto",
             "enabled"=>true,
         ];
     }
@@ -314,6 +315,13 @@ class config {
         }
 
         return $caps;
+    }
+
+    // whether a model gets the short system prompt: no theme maker and condensed instructions.
+    // auto means short for ollama, since a local model on a CPU spends most of a first reply reading the prompt
+    static function shortPrompt(array $model){
+        $prompt = $model["prompt"] ?? "auto";
+        return $prompt === "auto" ? $model["provider"] === "ollama" : $prompt === "short";
     }
 
     // whether an ollama model can think at all. ollama refuses a think setting on models that can't

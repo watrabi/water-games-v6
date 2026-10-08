@@ -34,7 +34,18 @@ class artifacts {
     private int $at = 0;
 
     // the instructions that go in the system prompt
-    static function prompt(){
+    static function prompt(bool $short = false){
+        if($short){
+            return "# Artifacts\n"
+                . "When the user asks you to make something they'd keep or reuse (a web page, game, app, SVG, document, or 20+ lines of code), "
+                . "type it straight into your reply inside artifact tags instead of a code block. It's plain text, not a tool. The page shows a live preview:\n"
+                . "<artifact id=\"short-kebab-id\" type=\"html|svg|markdown|code\" title=\"Short title\" language=\"python\">\n"
+                . "the complete content, no code fences\n"
+                . "</artifact>\n"
+                . "type=\"html\" is one self-contained page with inline CSS and JS (libraries from cdnjs.cloudflare.com are fine); localStorage and cookies don't work in it. "
+                . "language is only for type=\"code\". To change one, write the whole thing again with the same id. Keep the text around it short.";
+        }
+
         // models with tools tend to go looking for an "artifact" tool, so say plainly that it's just text
         return "# Artifacts\n"
             . "Artifacts are NOT a tool and there is no artifact tool to call. An artifact is plain markup you type directly into your reply, "
