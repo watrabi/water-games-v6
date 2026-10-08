@@ -205,7 +205,7 @@ class groups {
 
     // ---------- messages ----------
 
-    public function send(int $me, int $groupId, string $body, ?int $imageId){
+    public function send(int $me, int $groupId, string $body, ?int $imageId, ?int $gameId = null){
         global $db;
 
         \watrlabs\users\moderation::requireUnmutedId($me);
@@ -214,7 +214,7 @@ class groups {
         $body = trim(str_replace("\r\n", "\n", $body));
         $body = preg_replace("/\n{3,}/", "\n\n", $body);
 
-        if($body === "" && !$imageId){
+        if($body === "" && !$imageId && !$gameId){
             throw new \InvalidArgumentException("Type something first.");
         }
         if(mb_strlen($body) > chat::MAX_LENGTH){
@@ -232,11 +232,14 @@ class groups {
             throw new \InvalidArgumentException("That image couldn't be found, try attaching it again.");
         }
 
+        chat::requireGame($gameId);
+
         $id = $db->table("chat_group_messages")->insert([
             "groupid"=>$groupId,
             "sender_id"=>$me,
             "body"=>$body !== "" ? chat::filter($body) : null,
             "image_id"=>$imageId ?: null,
+            "game_id"=>$gameId ?: null,
             "created"=>time(),
         ]);
         $db->table("chat_group_members")->where("groupid", $groupId)->where("userid", $me)->update(["last_read"=>$id]);
@@ -413,6 +416,7 @@ class groups {
             "system"=>(int) $row->sender_id === 0,
             "body"=>$deleted ? null : $row->body,
             "image"=>!$deleted && $row->image_id ? "/chat/images/" . (int) $row->image_id : null,
+            "game"=>!$deleted ? chat::gameCard($row->game_id ?? null) : null,
             "created"=>(int) $row->created,
             "deleted"=>$deleted,
         ];

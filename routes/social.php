@@ -49,10 +49,11 @@ $router->group('/api/v1/social', function($router){
         global $db;
         $friends = new friends();
         $last = $db->query("SELECT MAX(id) AS lastid FROM chat_messages WHERE sender_id = ? OR recipient_id = ?", [$me->id, $me->id])->get();
+        $status = \watrlabs\social\status::current($me);
 
         return [
             "status"=>"okay",
-            "me"=>["id"=>(int) $me->id, "username"=>$me->username],
+            "me"=>["id"=>(int) $me->id, "username"=>$me->username, "status"=>$status, "statusUntil"=>$status && $me->status_until ? (int) $me->status_until : null],
             "friends"=>$friends->list($me->id),
             "requests"=>$friends->requests($me->id),
             "blocked"=>$friends->blockedList($me->id),
@@ -303,6 +304,79 @@ $router->group('/api/v1/social', function($router){
         }
 
         return ["status"=>"okay", "message"=>"Thanks, a moderator will take a look."];
+    });
+
+    // a game sent to a friend or a group as a card, with an optional line ("join me")
+    $router->post("/share", function(){
+        $me = socialUser();
+        \watrlabs\watrkit\ratelimit::guard("share", $me, 20, 300);
+
+        $game = (int) ($_POST["game"] ?? 0);
+        $body = (string) ($_POST["body"] ?? "");
+        $sent = 0;
+
+        try {
+            if(!$game){
+                throw new \InvalidArgumentException("Pick a game to share.");
+            }
+            $targets = array_slice(array_filter(explode(",", (string) ($_POST["to"] ?? ""))), 0, 10);
+            if(!$targets){
+                throw new \InvalidArgumentException("Pick who to send it to.");
+            }
+            foreach($targets as $target){
+                [$kind, $id] = array_pad(explode(":", $target, 2), 2, "");
+                if(!ctype_digit($id)){
+                    continue;
+                }
+                if($kind === "dm"){
+                    (new chat())->send((int) $me->id, (int) $id, $body, null, $game);
+                    $sent++;
+                } elseif($kind === "group"){
+                    (new groups())->send((int) $me->id, (int) $id, $body, null, $game);
+                    $sent++;
+                }
+            }
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage(), 400) + ["sent"=>$sent];
+        }
+
+        if(!$sent){
+            return apiError("Pick who to send it to.");
+        }
+
+        return ["status"=>"okay", "sent"=>$sent];
+    });
+
+    // your status line. an empty text clears it
+    $router->post("/status", function(){
+        $me = socialUser();
+        \watrlabs\watrkit\ratelimit::guard("status", $me, 20, 300);
+
+        try {
+            $status = \watrlabs\social\status::set($me, (string) ($_POST["text"] ?? ""), (int) ($_POST["duration"] ?? 0));
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return ["status"=>"okay", "text"=>$status];
+    });
+
+    // friends of friends
+    $router->get("/suggestions", function(){
+        $me = socialUser();
+        return ["status"=>"okay", "people"=>(new friends())->suggestions((int) $me->id, 8)];
+    });
+
+    // reacting to something on a friend's feed (or your own)
+    $router->post("/activity/{id}/react", function($id){
+        $me = socialUser();
+        \watrlabs\watrkit\ratelimit::guard("react", $me, 60, 60);
+
+        try {
+            return ["status"=>"okay", "reactions"=>(new \watrlabs\social\reactions())->toggle($me, "activity", (int) $id, (string) ($_POST["emoji"] ?? ""))];
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
     });
 
     $router->post("/report/{id}", function($id){

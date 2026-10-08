@@ -170,7 +170,7 @@ class friends {
         global $db;
 
         $rows = $db->query(
-            "SELECT u.id, u.username, u.avatar, u.level, u.last_seen, u.playing_game_id, u.play_beat, u.share_activity, g.name AS playing_name, g.type AS playing_type
+            "SELECT u.id, u.username, u.avatar, u.level, u.last_seen, u.playing_game_id, u.play_beat, u.share_activity, u.status_text, u.status_until, g.name AS playing_name, g.type AS playing_type
              FROM friendships f
              INNER JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
              LEFT JOIN games g ON g.id = u.playing_game_id
@@ -201,6 +201,7 @@ class friends {
             "level"=>(int) $row->level,
             "playing"=>\watrlabs\games\playtime::nowPlaying($row) && $row->playing_name
                 ? ["id"=>(int) $row->playing_game_id, "name"=>$row->playing_name, "type"=>$row->playing_type] : null,
+            "status"=>status::current($row),
             "online"=>self::isOnline($row->last_seen) || in_array((int) $row->id, $connected, true),
             "lastSeen"=>$row->last_seen ? (int) $row->last_seen : null,
             "unread"=>$unread[(int) $row->id] ?? 0,
@@ -271,6 +272,105 @@ class friends {
         }
 
         return $results;
+    }
+
+    // the ids of everyone $userId is friends with
+    public function ids(int $userId): array {
+        global $db;
+
+        return array_map(fn($row) => (int) $row->id, $db->query(
+            "SELECT CASE WHEN requester_id = ? THEN addressee_id ELSE requester_id END AS id
+             FROM friendships WHERE (requester_id = ? OR addressee_id = ?) AND status = 'accepted'",
+            [$userId, $userId, $userId]
+        )->get());
+    }
+
+    // friends two people have in common
+    public function mutualIds(int $a, int $b): array {
+        return array_values(array_intersect($this->ids($a), $this->ids($b)));
+    }
+
+    // a profile's friends for the profile page, the ones you also know first. banned people are left out
+    public function friendsOf(int $userId, ?int $viewerId, int $limit = 12): array {
+        global $db;
+
+        $ids = $this->ids($userId);
+        if(!$ids){
+            return ["list"=>[], "mutual"=>0];
+        }
+
+        $mine = $viewerId && $viewerId !== $userId ? $this->ids($viewerId) : [];
+        $rows = $db->query(
+            "SELECT id, username, avatar, level FROM users WHERE banned = 0 AND id IN (" . implode(",", $ids) . ")"
+        )->get();
+
+        $list = array_map(fn($row) => [
+            "id"=>(int) $row->id,
+            "username"=>$row->username,
+            "avatar"=>$row->avatar,
+            "level"=>(int) $row->level,
+            "mutual"=>in_array((int) $row->id, $mine, true),
+            "isYou"=>(int) $row->id === $viewerId,
+        ], $rows);
+
+        usort($list, fn($a, $b) => [$b["isYou"], $b["mutual"], strtolower($a["username"])] <=> [$a["isYou"], $a["mutual"], strtolower($b["username"])]);
+
+        return [
+            "list"=>array_slice($list, 0, $limit),
+            "mutual"=>count(array_filter($list, fn($f) => $f["mutual"])),
+        ];
+    }
+
+    // friends of friends you haven't added, most friends in common first. people with a request
+    // either way, blocks either way, banned people and people who hide their activity are left out
+    public function suggestions(int $me, int $limit = 5): array {
+        global $db;
+
+        $mine = $this->ids($me);
+        if(!$mine){
+            return [];
+        }
+
+        $in = implode(",", $mine);
+        $counts = [];
+        foreach($db->query(
+            "SELECT requester_id, addressee_id FROM friendships
+             WHERE status = 'accepted' AND (requester_id IN ($in) OR addressee_id IN ($in))"
+        )->get() as $row){
+            foreach([(int) $row->requester_id, (int) $row->addressee_id] as $id){
+                if($id !== $me && !in_array($id, $mine, true)){
+                    $counts[$id] = ($counts[$id] ?? 0) + 1;
+                }
+            }
+        }
+
+        if(!$counts){
+            return [];
+        }
+
+        // anyone already asked (either way) or blocked (either way)
+        $skip = [];
+        foreach($db->query("SELECT requester_id AS a, addressee_id AS b FROM friendships WHERE requester_id = ? OR addressee_id = ?", [$me, $me])->get() as $row){
+            $skip[(int) $row->a] = $skip[(int) $row->b] = true;
+        }
+        foreach($db->query("SELECT blocker_id AS a, blocked_id AS b FROM blocks WHERE blocker_id = ? OR blocked_id = ?", [$me, $me])->get() as $row){
+            $skip[(int) $row->a] = $skip[(int) $row->b] = true;
+        }
+        $counts = array_diff_key($counts, $skip);
+        if(!$counts){
+            return [];
+        }
+
+        $users = [];
+        foreach($db->query(
+            "SELECT id, username, avatar, level FROM users WHERE banned = 0 AND share_activity = 1 AND id IN (" . implode(",", array_keys($counts)) . ")"
+        )->get() as $row){
+            $users[] = ["id"=>(int) $row->id, "username"=>$row->username, "avatar"=>$row->avatar, "level"=>(int) $row->level, "mutual"=>$counts[(int) $row->id]];
+        }
+
+        usort($users, fn($a, $b) => [$b["mutual"], strtolower($a["username"])] <=> [$a["mutual"], strtolower($b["username"])]);
+
+        return array_slice($users, 0, $limit);
     }
 
     static function isOnline($lastSeen){

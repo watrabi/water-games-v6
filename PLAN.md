@@ -307,3 +307,15 @@ Routes / pages:
 - 2026-10-08: the network page's library files have neutral paths: /network/s/core.js, sync.js, engine.wasm
   (Scramjet), link.js, link-worker.js (bare-mux), fast.mjs (epoxy), compat.mjs (libcurl). The connection setting is
   "fast" / "compat" (a saved "libcurl" becomes "compat"). The files' contents still name the libraries.
+- 2026-10-08: **social batch, built and tested locally, not committed or deployed.** Migration 20261019120000
+  (users.status_text/status_until, game_id on chat_messages + chat_group_messages, playtime (gameid, userid) index).
+  Share a game to friends/groups as a chat card (`POST /api/v1/social/share`, chat::gameCard), friends who played this
+  on the game page (playtime::friendsOn), status line in the chat tray (social/status.php, `POST /api/v1/social/status`),
+  profile friends + mutuals, recent activity and "You both play" (friends::friendsOf, activity::forUser,
+  playtime::inCommon), people you may know on /home (friends::suggestions), reactions on activity (kind "activity",
+  `POST /api/v1/social/activity/{id}/react`). Client side: public/assets/js/social.js (head script), chat.js, and
+  views/components/feed.twig (shared by home and profiles). Also fixed: `.reactions.empty` picked up the empty-state
+  box from base.css (dashed border + padding under every chat message and comment without reactions).
+  102 tests pass (13 new in tests/Database/SocialThreeTest.php). Clicked through in headless Chrome at 1440px and
+  390px with 4 test accounts (removed after), no page errors, no horizontal overflow.
+  **To ship:** `bin/deploy.sh` (runs the migration). No new env.

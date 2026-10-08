@@ -159,6 +159,40 @@ class playtime {
         return $db->table("playtime")->where("userid", $userId)->count();
     }
 
+    // friends who've played this game (and share their activity), most time first
+    public function friendsOn(int $userId, int $gameId, int $limit = 8){
+        global $db;
+
+        $ids = (new \watrlabs\social\friends())->ids($userId);
+        if(!$ids){
+            return [];
+        }
+
+        return $db->query(
+            "SELECT u.id, u.username, u.avatar, u.level, p.seconds, p.last_played
+             FROM playtime p INNER JOIN users u ON u.id = p.userid
+             WHERE p.gameid = ? AND u.banned = 0 AND u.share_activity = 1 AND u.id IN (" . implode(",", $ids) . ")
+             ORDER BY p.seconds DESC, p.last_played DESC LIMIT " . max(1, $limit),
+            [$gameId]
+        )->get();
+    }
+
+    // games two people have both played, by the time they've put in together
+    public function inCommon(int $a, int $b, int $limit = 6){
+        global $db;
+
+        return $db->query(
+            "SELECT g.id, g.type, g.name, g.gameIcon, g.plays, pa.seconds AS mine, pb.seconds AS theirs,
+                    (SELECT COUNT(*) FROM favorites f WHERE f.gameid = g.id) AS favorites
+             FROM playtime pa
+             INNER JOIN playtime pb ON pb.gameid = pa.gameid AND pb.userid = ?
+             INNER JOIN games g ON g.id = pa.gameid
+             WHERE pa.userid = ?
+             ORDER BY pa.seconds + pb.seconds DESC LIMIT " . max(1, $limit),
+            [$b, $a]
+        )->get();
+    }
+
     // what a person is playing right now, if they're sharing it and it's recent
     static function nowPlaying($row){
         if(empty($row->playing_game_id) || empty($row->share_activity) || (int) ($row->play_beat ?? 0) < time() - self::PRESENCE_FOR){

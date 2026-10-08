@@ -35,7 +35,7 @@ class chat {
 
     // ---------- messages ----------
 
-    public function send(int $me, int $other, string $body, ?int $imageId){
+    public function send(int $me, int $other, string $body, ?int $imageId, ?int $gameId = null){
         global $db;
 
         \watrlabs\users\moderation::requireUnmutedId($me);
@@ -46,7 +46,7 @@ class chat {
         $body = trim(str_replace("\r\n", "\n", $body));
         $body = preg_replace("/\n{3,}/", "\n\n", $body);
 
-        if($body === "" && !$imageId){
+        if($body === "" && !$imageId && !$gameId){
             throw new \InvalidArgumentException("Type something first.");
         }
 
@@ -63,11 +63,14 @@ class chat {
             throw new \InvalidArgumentException("That image couldn't be found, try attaching it again.");
         }
 
+        self::requireGame($gameId);
+
         $id = $db->table("chat_messages")->insert([
             "sender_id"=>$me,
             "recipient_id"=>$other,
             "body"=>$body !== "" ? self::filter($body) : null,
             "image_id"=>$imageId ?: null,
+            "game_id"=>$gameId ?: null,
             "created"=>time(),
         ]);
 
@@ -122,7 +125,7 @@ class chat {
     static function cleanEdit(string $body, $message): string {
         $body = trim(str_replace("\r\n", "\n", $body));
         $body = preg_replace("/\n{3,}/", "\n\n", $body);
-        if($body === "" && !$message->image_id){
+        if($body === "" && !$message->image_id && empty($message->game_id)){
             throw new \InvalidArgumentException("Type something, or delete the message instead.");
         }
         if(mb_strlen($body) > self::MAX_LENGTH){
@@ -238,6 +241,39 @@ class chat {
         ];
     }
 
+    // ---------- shared games ----------
+
+    private static array $cards = [];
+
+    static function requireGame(?int $gameId){
+        if($gameId && !self::gameCard($gameId)){
+            throw new \InvalidArgumentException("That game isn't on the site anymore.");
+        }
+    }
+
+    // what a shared game looks like in a chat: {id, name, type, icon, url}. null if it's gone
+    static function gameCard($gameId): ?array {
+        global $db;
+
+        $gameId = (int) $gameId;
+        if(!$gameId){
+            return null;
+        }
+
+        if(!array_key_exists($gameId, self::$cards)){
+            $game = $db->table("games")->select(["id", "name", "type", "gameIcon"])->where("id", $gameId)->first();
+            self::$cards[$gameId] = $game ? [
+                "id"=>(int) $game->id,
+                "name"=>$game->name,
+                "type"=>$game->type,
+                "icon"=>$game->gameIcon ?: null,
+                "url"=>($game->type === "app" ? "/apps/" : "/item/") . (int) $game->id,
+            ] : null;
+        }
+
+        return self::$cards[$gameId];
+    }
+
     static function touchPresence($user){
         global $db;
 
@@ -257,6 +293,7 @@ class chat {
             "to"=>(int) $row->recipient_id,
             "body"=>$deleted ? null : $row->body,
             "image"=>!$deleted && $row->image_id ? "/chat/images/" . (int) $row->image_id : null,
+            "game"=>!$deleted ? self::gameCard($row->game_id ?? null) : null,
             "created"=>(int) $row->created,
             "read"=>$row->read_at !== null,
             "deleted"=>$deleted,

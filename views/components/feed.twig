@@ -1,0 +1,18 @@
+{# activity items (home's "What's happening", profiles). social.js adds the reaction bars #}
+<ol class="feedList"{% if currentuser %} data-me="{{ canReact ? currentuser.id : '' }}" data-emoji="{{ emoji|json_encode }}"{% endif %}>
+    {% for item in feed %}
+    <li>
+        <span class="feedIcon"><i class="ph-bold {{ item.icon }}"></i></span>
+        <div class="feedBody">
+            <p>
+                {% if item.user and not hideName %}<a href="/users/{{ item.user.username|lower|url_encode }}">{{ item.user.username }}</a> {{ item.text }}{% elseif item.user %}{{ item.text|first|upper ~ item.text|slice(1) }}{% else %}{{ item.text }}:{% endif %}
+                {% if item.game %}<a href="/{{ item.game.type == 'app' ? 'apps' : 'item' }}/{{ item.game.id }}">{{ item.game.name }}</a>{% endif %}
+                <span class="muted feedTime">{{ item.created|ago }}</span>
+            </p>
+            {% if item.id is defined and currentuser and (canReact or item.reactions is not empty) %}
+            <div class="feedReact" data-id="{{ item.id }}" data-reactions="{{ item.reactions|json_encode }}"></div>
+            {% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ol>

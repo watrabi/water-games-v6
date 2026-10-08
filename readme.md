@@ -158,6 +158,20 @@ another branch. it never deletes files from the site.
 - achievements show on profiles (`classes/watrlabs/social/achievements.php` has the list)
 - `/home` has a feed of what friends did (favorites, comments, achievements, new games they tried), plus new games
 
+# playing together
+- **share a game**: the share button on a game page sends it to friends or groups (up to 10 at once) as a card in
+  the chat, with an optional line like "play this with me?". signed out, the same button copies the link
+- **friends who played this**: under the game, friends who've played it and how long (only people who share their activity)
+- **status**: "set a status" at the top of the chat tray. friends see it under your name in their tray, everyone sees
+  it on your profile. it can clear itself after an hour, 4 hours or a day. muted people can't set one, and it goes
+  through the chat filter
+- **profiles** (signed in, and only if the person shares their activity): their friends with the ones you share
+  marked "mutual", what they've done recently, and for your friends, the games you both play
+- **people you may know** on `/home`: friends of your friends, most friends in common first. leaves out anyone
+  you've already asked (or who asked you), blocks either way, and people who hide their activity
+- **feed reactions**: the same 8 emoji as comments, on items in "What's happening" and on profiles. only you and
+  your friends can react to your activity
+
 # friends + chat
 signed in people get a chat tray in the bottom left. they can find people by username, send friend requests, and
 message friends (only friends, like roblox). messages can have an image. it stays open on the same chat as you move

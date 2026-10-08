@@ -11,7 +11,8 @@
         {{ a.avatar(profile, 'large') }}
         <div>
             <h1>{{ profile.username }} <span class="levelBadge large" title="Level {{ profile.level }}">Lv {{ profile.level }}</span></h1>
-            <p class="muted">Joined {{ profile.registered|date("F Y") }} · {{ friendCount }} friend{{ friendCount == 1 ? '' : 's' }}</p>
+            <p class="muted">Joined {{ profile.registered|date("F Y") }} · {{ friendCount }} friend{{ friendCount == 1 ? '' : 's' }}{% if mutualCount %} · {{ mutualCount }} mutual{% endif %}</p>
+            {% if status %}<p class="profileStatus"><i class="ph-bold ph-chat-teardrop-dots"></i>{{ status }}</p>{% endif %}
             {% if profile.blurb %}<p class="blurb">{{ profile.blurb }}</p>{% endif %}
         </div>
         {% if currentuser and currentuser.id == profile.id %}
@@ -70,6 +71,58 @@
             {% endfor %}
         </ol>
     </section>
+    {% endif %}
+
+    {% if inCommon is not empty %}
+    <section>
+        <div class="sectionHeader">
+            <h2>You both play</h2>
+        </div>
+        <ul class="inCommon">
+            {% for game in inCommon %}
+            <li>
+                <a href="/{{ game.type == 'app' ? 'apps' : 'item' }}/{{ game.id }}">
+                    <span class="gameIcon small">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}</span>
+                    <span class="inCommonText">
+                        <span class="gameName">{{ game.name }}</span>
+                        <span class="muted">You {{ game.mine|playtime }} · {{ profile.username }} {{ game.theirs|playtime }}</span>
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if recentActivity is not empty or friends is not empty %}
+    <div class="profileSocial">
+        {% if recentActivity is not empty %}
+        <section>
+            <div class="sectionHeader">
+                <h2>Recently</h2>
+            </div>
+            {% include "components/feed.twig" with { feed: recentActivity, canReact: currentuser.id == profile.id or relation == 'friends', hideName: true } %}
+        </section>
+        {% endif %}
+        {% if friends is not empty %}
+        <section>
+            <div class="sectionHeader">
+                <h2>Friends <span class="muted">{{ friendCount }}</span></h2>
+            </div>
+            <ul class="friendGrid">
+                {% for friend in friends %}
+                <li>
+                    <a href="/users/{{ friend.username|lower|url_encode }}">
+                        {{ a.avatar(friend) }}
+                        <span class="friendGridName">{{ friend.isYou ? 'You' : friend.username }}</span>
+                        {% if friend.mutual %}<span class="friendGridTag">mutual</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </div>
     {% endif %}
 
     {% if collections is not empty %}

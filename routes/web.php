@@ -100,6 +100,8 @@ $router->get('/home', function(){
         "trending"=>$games->list("trending", null, 12),
         "newest"=>$games->list("newest", null, 6),
         "feed"=>(new activity())->feedFor($me, 12),
+        "suggestions"=>(new \watrlabs\social\friends())->suggestions($me, 4),
+        "emoji"=>\watrlabs\social\reactions::EMOJI,
         "playingNow"=>array_slice($playingNow, 0, 8),
         "totalPlaytime"=>$playtime->totalFor($me),
         "gotd"=>\watrlabs\games\featured::gameOfDay(),
@@ -206,6 +208,7 @@ function renderPlayer($id, $type){
         "isGotd"=>$type === "game" && \watrlabs\games\featured::gameOfDayId() === (int) $game->id,
         "scoresOn"=>$scoresOn,
         "challenges"=>$scoresOn && $currentuser ? (new \watrlabs\games\scores())->openChallenges((int) $currentuser->id, $game) : [],
+        "friendsPlayed"=>$currentuser ? (new playtime())->friendsOn((int) $currentuser->id, (int) $game->id, 8) : [],
         // what play.js needs: the tracker, cloud saves and fullscreen
         "playData"=>json_encode([
             "game"=>(int) $game->id,
@@ -337,6 +340,10 @@ $router->get("/users/{username}", function($username){
     // playtime is private unless they share their activity (you always see your own)
     $shares = $isMe || !empty($db->table("users")->select(["share_activity"])->where("id", $profile->id)->first()->share_activity);
 
+    // friends and recent activity are for signed in people, and only if they share their activity
+    $social = $shares && $currentuser;
+    $friendsOf = $social ? (new \watrlabs\social\friends())->friendsOf((int) $profile->id, (int) $currentuser->id, 12) : ["list"=>[], "mutual"=>0];
+
     echo $twig->render('profile.twig', [
         "profile"=>$profile,
         "favorites"=>$games->favoritesFor($profile->id, 24),
@@ -349,6 +356,12 @@ $router->get("/users/{username}", function($username){
         "friendCount"=>$friendCount,
         "streak"=>$shares ? \watrlabs\users\progress::currentStreak($profile) : 0,
         "collections"=>(new \watrlabs\games\collections())->listFor((int) $profile->id, !$isMe),
+        "status"=>\watrlabs\social\status::current($profile),
+        "friends"=>$friendsOf["list"],
+        "mutualCount"=>$friendsOf["mutual"],
+        "recentActivity"=>$social ? (new activity())->forUser((int) $profile->id, 8) : [],
+        "inCommon"=>$social && !$isMe && $relation === "friends" ? $playtime->inCommon((int) $currentuser->id, (int) $profile->id, 6) : [],
+        "emoji"=>\watrlabs\social\reactions::EMOJI,
     ]);
 });
 

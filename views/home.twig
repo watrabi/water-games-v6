@@ -120,6 +120,24 @@
             </section>
             {% endif %}
 
+            {% if suggestions is not empty %}
+            <section class="panel sidePanel">
+                <h2>People you may know</h2>
+                <ul class="personList">
+                    {% for person in suggestions %}
+                    <li>
+                        <a href="/users/{{ person.username|lower|url_encode }}">{{ a.avatar(person) }}</a>
+                        <span class="personText">
+                            <a href="/users/{{ person.username|lower|url_encode }}">{{ person.username }}</a>
+                            <span class="muted">{{ person.mutual }} mutual friend{{ person.mutual == 1 ? '' : 's' }}</span>
+                        </span>
+                        <button class="button small" type="button" data-add-friend="{{ person.id }}"><i class="ph-bold ph-user-plus"></i>Add</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
             <section class="panel sidePanel">
                 <h2>What's happening</h2>
                 {% if feed is empty %}
@@ -128,18 +146,7 @@
                         <p class="muted">Quiet in here. Add some friends from the chat tray and you'll see what they're up to.</p>
                     </div>
                 {% else %}
-                    <ol class="feedList">
-                        {% for item in feed %}
-                        <li>
-                            <span class="feedIcon"><i class="ph-bold {{ item.icon }}"></i></span>
-                            <p>
-                                {% if item.user %}<a href="/users/{{ item.user.username|lower|url_encode }}">{{ item.user.username }}</a> {{ item.text }}{% else %}{{ item.text }}:{% endif %}
-                                {% if item.game %}<a href="/{{ item.game.type == 'app' ? 'apps' : 'item' }}/{{ item.game.id }}">{{ item.game.name }}</a>{% endif %}
-                                <span class="muted feedTime">{{ item.created|ago }}</span>
-                            </p>
-                        </li>
-                        {% endfor %}
-                    </ol>
+                    {% include "components/feed.twig" with { feed: feed, canReact: true } %}
                 {% endif %}
             </section>
         </aside>

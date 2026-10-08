@@ -71,7 +71,55 @@ class activity {
 
         usort($items, fn($a, $b) => $b["created"] <=> $a["created"]);
 
-        return array_slice($items, 0, $limit);
+        return self::withReactions(array_slice($items, 0, $limit));
+    }
+
+    // one person's own recent activity, for their profile. the caller checks they share it
+    public function forUser(int $userId, int $limit = 8){
+        global $db;
+
+        $rows = $db->query(
+            "SELECT a.id, a.type, a.gameid, a.data, a.created, u.username, u.avatar, g.name AS game_name, g.type AS game_type, g.gameIcon
+             FROM activity a
+             INNER JOIN users u ON u.id = a.userid
+             LEFT JOIN games g ON g.id = a.gameid
+             WHERE a.userid = ? AND a.created > ?
+             ORDER BY a.id DESC LIMIT " . max(1, $limit),
+            [$userId, time() - self::KEEP_DAYS * 86400]
+        )->get();
+
+        return self::withReactions(array_values(array_filter(array_map([self::class, "shape"], $rows))));
+    }
+
+    // reactions on the items that have an activity row (new games don't)
+    private static function withReactions(array $items){
+        $summaries = reactions::summaries("activity", array_filter(array_map(fn($i) => $i["id"] ?? null, $items)));
+        foreach($items as &$item){
+            $item["reactions"] = isset($item["id"]) ? ($summaries[$item["id"]] ?? []) : null;
+        }
+        return $items;
+    }
+
+    // can $viewerId see this activity row? their own, or a friend who shares
+    static function visibleTo(int $activityId, int $viewerId): ?int {
+        global $db;
+
+        $row = $db->query(
+            "SELECT a.userid, u.share_activity FROM activity a INNER JOIN users u ON u.id = a.userid AND u.banned = 0 WHERE a.id = ?",
+            [$activityId]
+        )->first();
+        if(!$row){
+            return null;
+        }
+
+        $owner = (int) $row->userid;
+        if($owner === $viewerId){
+            return $owner;
+        }
+        if(!$row->share_activity || (new friends())->relation($viewerId, $owner) !== "friends"){
+            return null;
+        }
+        return $owner;
     }
 
     private static function shape($row){
@@ -105,6 +153,7 @@ class activity {
         }
 
         return [
+            "id"=>(int) $row->id,
             "kind"=>$row->type,
             "user"=>["username"=>$row->username, "avatar"=>$row->avatar],
             "text"=>$text,

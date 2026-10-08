@@ -35,6 +35,28 @@
         <label class="sr-only" for="chatSearch">Add friends by username</label>
         <input id="chatSearch" type="search" placeholder="Add friends by username" autocomplete="off" maxlength="20">
       </form>
+      {# your status line, friends see it under your name #}
+      <div class="chatStatus">
+        <button type="button" class="chatStatusShow" id="chatStatusShow" aria-expanded="false" aria-controls="chatStatusForm">
+          <i class="ph-bold ph-chat-teardrop-dots"></i><span id="chatStatusText">Set a status</span>
+        </button>
+        <form class="chatStatusForm" id="chatStatusForm" hidden>
+          <label class="sr-only" for="chatStatusInput">Your status</label>
+          <input id="chatStatusInput" maxlength="80" autocomplete="off" placeholder="What are you up to?">
+          <div class="chatStatusRow">
+            <label class="sr-only" for="chatStatusFor">Clear it after</label>
+            <select id="chatStatusFor">
+              <option value="3600">for an hour</option>
+              <option value="14400">for 4 hours</option>
+              <option value="86400" selected>for a day</option>
+              <option value="0">until I clear it</option>
+            </select>
+            <button type="button" class="chatSmall" id="chatStatusClear">Clear</button>
+            <button type="submit" class="chatSmall primary">Save</button>
+          </div>
+          <p class="chatNotice error" id="chatStatusError" hidden></p>
+        </form>
+      </div>
       <div class="chatList" id="chatResults" hidden></div>
       <div class="chatList" id="chatRequests"></div>
       <div class="chatList" id="chatGroups"></div>
@@ -92,4 +114,4 @@
     </form>
   </section>
 </div>
-<script src="/assets/js/chat.js?t=6" defer></script>
+<script src="/assets/js/chat.js?t=7" defer></script>

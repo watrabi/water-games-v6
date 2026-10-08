@@ -4,11 +4,11 @@ namespace watrlabs\social;
 
 use watrlabs\users\moderation;
 
-// emoji reactions on DMs, group messages and comments. a fixed set, so there's no free text to moderate
+// emoji reactions on DMs, group messages, comments and friends' activity. a fixed set, so there's no free text to moderate
 class reactions {
 
     const EMOJI = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👀", "🎉"];
-    const KINDS = ["dm", "group", "comment"];
+    const KINDS = ["dm", "group", "comment", "activity"];
 
     // can $userId see (and so react to) this item? returns who else should hear about it, or null
     private static function audience(string $kind, int $itemId, int $userId): ?array {
@@ -41,6 +41,12 @@ class reactions {
                 [$itemId]
             )->first();
             return $comment ? [] : null;
+        }
+
+        // the owner hears about it so their feed updates without a reload
+        if($kind === "activity"){
+            $owner = activity::visibleTo($itemId, $userId);
+            return $owner === null ? null : array_values(array_unique([$owner, $userId]));
         }
 
         return null;

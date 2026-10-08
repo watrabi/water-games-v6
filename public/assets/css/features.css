@@ -1825,8 +1825,12 @@ body.theater .player {
   }
 }
 
+/* .empty is also the empty-state box (base.css), which this isn't */
 .reactions.empty {
   margin-top: 2px;
+  padding: 0;
+  border: 0;
+  color: inherit;
 }
 
 .reactPicker {
@@ -1878,4 +1882,243 @@ body.theater .player {
 
 .leaderboard .sectionHeader {
   max-width: 560px;
+}
+
+/* ---------- social: feed reactions, suggestions, sharing, friends on profiles ---------- */
+
+.feedBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.feedBody .reactions {
+  margin-top: 4px;
+}
+
+.feedList li:hover .reactions.empty .reactAdd {
+  opacity: 1;
+}
+
+.personList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.personList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.personList .avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+}
+
+.personText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.personText a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personText .muted {
+  font-size: 12px;
+}
+
+.friendsPlayed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.friendsPlayed ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friendsPlayed a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background-color: var(--raised);
+  color: var(--text);
+}
+
+.friendsPlayed a:hover {
+  text-decoration: none;
+  outline: 1px solid var(--link);
+}
+
+.friendsPlayed .avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.friendsPlayed .muted {
+  font-size: 12px;
+}
+
+.shareList {
+  display: grid;
+  gap: 2px;
+  max-height: 300px;
+  margin: 12px 0 16px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.shareRow {
+  margin: 0;
+  padding: 6px 8px;
+}
+
+.shareRow:hover {
+  background-color: var(--raised);
+}
+
+.shareRow .avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.shareRowText {
+  display: grid;
+  min-width: 0;
+}
+
+.shareRowText .muted {
+  font-size: 12px;
+}
+
+.shareName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.profileStatus i {
+  color: var(--link);
+}
+
+.inCommon {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0 0 36px;
+  padding: 0;
+  list-style: none;
+}
+
+.inCommon a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background-color: var(--raised);
+  color: var(--text);
+}
+
+.inCommon a:hover {
+  text-decoration: none;
+  outline: 1px solid var(--link);
+}
+
+.inCommon .gameIcon.small {
+  width: 40px;
+  font-size: 16px;
+}
+
+.inCommonText {
+  display: grid;
+  min-width: 0;
+}
+
+.inCommonText .gameName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inCommonText .muted {
+  font-size: 12px;
+}
+
+.profileSocial {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 36px 40px;
+  margin-bottom: 36px;
+}
+
+/* the grid gap spaces these, side by side or stacked */
+.profileSocial > section + section {
+  margin-top: 0;
+}
+
+.friendGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 12px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friendGrid a {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: center;
+}
+
+.friendGrid .avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+}
+
+.friendGridName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friendGridTag {
+  padding: 0 5px;
+  background-color: color-mix(in srgb, var(--link) 18%, transparent);
+  color: var(--link);
+  font-size: 11px;
 }

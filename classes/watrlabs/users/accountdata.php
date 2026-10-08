@@ -27,6 +27,7 @@ class accountdata {
                 "username"=>$user->username,
                 "email"=>$user->email,
                 "blurb"=>$user->blurb,
+                "status"=>\watrlabs\social\status::current($user),
                 "registered"=>date("c", (int) $user->registered),
                 "theme"=>$user->theme,
                 "avatar"=>$user->avatar,
@@ -54,11 +55,12 @@ class accountdata {
                  WHERE f.requester_id = ? OR f.addressee_id = ?", [$userId, $userId, $userId]),
             "blocked"=>self::rows("SELECT u.username, b.created FROM blocks b INNER JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = ?", $id),
             "messages"=>self::rows(
-                "SELECT s.username AS sender, r.username AS recipient, m.body, m.image_id IS NOT NULL AS hadImage, m.created FROM chat_messages m
-                 LEFT JOIN users s ON s.id = m.sender_id LEFT JOIN users r ON r.id = m.recipient_id
+                "SELECT s.username AS sender, r.username AS recipient, m.body, m.image_id IS NOT NULL AS hadImage, sg.name AS sharedGame, m.created FROM chat_messages m
+                 LEFT JOIN users s ON s.id = m.sender_id LEFT JOIN users r ON r.id = m.recipient_id LEFT JOIN games sg ON sg.id = m.game_id
                  WHERE (m.sender_id = ? OR m.recipient_id = ?) AND m.deleted = 0 ORDER BY m.id", [$userId, $userId]),
             "groupMessages"=>self::rows(
-                "SELECT g.name AS groupName, m.body, m.created FROM chat_group_messages m INNER JOIN chat_groups g ON g.id = m.groupid
+                "SELECT g.name AS groupName, m.body, sg.name AS sharedGame, m.created FROM chat_group_messages m INNER JOIN chat_groups g ON g.id = m.groupid
+                 LEFT JOIN games sg ON sg.id = m.game_id
                  WHERE m.sender_id = ? AND m.deleted = 0 ORDER BY m.id", $id),
             "playlists"=>array_map(function($playlist){
                 $playlist["tracks"] = self::rows("SELECT t.title, t.artist FROM playlist_tracks pt INNER JOIN tracks t ON t.id = pt.trackid WHERE pt.playlistid = ? ORDER BY pt.position", [$playlist["id"]]);

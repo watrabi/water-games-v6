@@ -137,12 +137,17 @@ function updateBadge(){
 
 // ---------- home: requests, friends, search ----------
 
-// "Playing Slope", "Online", "Seen 5m ago"
-function friendStatus(friend){
+// "Playing Slope", their status line, "Online", "Seen 5m ago". the conversation header
+// has room for both the status and whether they're around
+function friendStatus(friend, long){
     if(friend.playing){
         return "Playing " + friend.playing.name;
     }
-    return friend.online ? "Online" : (friend.lastSeen ? "Seen " + timeAgo(friend.lastSeen) : "Offline");
+    let seen = friend.online ? "Online" : (friend.lastSeen ? "Seen " + timeAgo(friend.lastSeen) : "Offline");
+    if(friend.status){
+        return long ? seen + " · " + friend.status : friend.status;
+    }
+    return seen;
 }
 
 function groupAvatar(group){
@@ -230,7 +235,9 @@ function renderHome(){
             name.append(level);
         }
         text.append(name);
-        text.append(el("span", "chatMeta" + (friend.playing ? " playing" : ""), friendStatus(friend)));
+        let meta = el("span", "chatMeta" + (friend.playing ? " playing" : (friend.status ? " status" : "")), friendStatus(friend));
+        meta.title = friendStatus(friend, true);
+        text.append(meta);
         row.append(text);
 
         if(friend.unread){
@@ -295,6 +302,7 @@ function applyState(data){
     state.loaded = true;
     state.lastStateLoad = Date.now();
     state.realtime = data.realtime || null;
+    renderStatus();
     renderHome();
     connect();
 
@@ -385,6 +393,61 @@ document.getElementById("chatSearch").addEventListener("input", function() {
 
 document.getElementById("chatSearchForm").addEventListener("submit", e => e.preventDefault());
 
+// ---------- your status ----------
+
+let statusForm = document.getElementById("chatStatusForm");
+let statusShow = document.getElementById("chatStatusShow");
+
+function renderStatus(){
+    let text = state.me && state.me.status;
+    document.getElementById("chatStatusText").textContent = text || "Set a status";
+    statusShow.classList.toggle("set", !!text);
+    document.getElementById("chatStatusClear").hidden = !text;
+}
+
+function statusError(text){
+    let error = document.getElementById("chatStatusError");
+    error.textContent = text || "";
+    error.hidden = !text;
+}
+
+function toggleStatusForm(open){
+    statusForm.hidden = !open;
+    statusShow.hidden = open;
+    statusShow.setAttribute("aria-expanded", open ? "true" : "false");
+    statusError("");
+    if(open){
+        let input = document.getElementById("chatStatusInput");
+        input.value = state.me.status || "";
+        input.focus();
+        input.select();
+    }
+}
+
+function saveStatus(text){
+    let duration = document.getElementById("chatStatusFor").value;
+    return api("POST", "/api/v1/social/status", { text: text, duration: duration }).then(function(data) {
+        state.me.status = data.text;
+        renderStatus();
+        toggleStatusForm(false);
+        statusShow.focus();
+    }).catch(e => statusError(e.message));
+}
+
+statusShow.addEventListener("click", () => toggleStatusForm(true));
+document.getElementById("chatStatusClear").addEventListener("click", () => saveStatus(""));
+statusForm.addEventListener("submit", function(event) {
+    event.preventDefault();
+    saveStatus(document.getElementById("chatStatusInput").value);
+});
+statusForm.addEventListener("keydown", function(event) {
+    if(event.key === "Escape"){
+        event.stopPropagation();
+        toggleStatusForm(false);
+        statusShow.focus();
+    }
+});
+
 // ---------- conversation ----------
 
 function updateConvoHeader(){
@@ -398,7 +461,7 @@ function updateConvoHeader(){
     let friend = state.friends[state.convo];
     let name = friend ? friend.username : (state.convoName || "Chat");
     document.getElementById("chatTitle").textContent = name;
-    document.getElementById("chatSub").textContent = friend ? friendStatus(friend) : "";
+    document.getElementById("chatSub").textContent = friend ? friendStatus(friend, true) : "";
     document.getElementById("chatProfileLink").href = "/users/" + encodeURIComponent(name.toLowerCase());
 }
 
@@ -613,6 +676,9 @@ function messageNode(message, showName){
         if(message.body){
             bubble.append(el("p", "chatText", message.body));
         }
+        if(message.game){
+            bubble.append(gameCard(message.game));
+        }
         if(message.edited){
             bubble.append(el("span", "chatEdited", "edited"));
         }
@@ -673,6 +739,27 @@ function messageNode(message, showName){
     }
 
     return row;
+}
+
+// a game someone sent: its icon, name and a way in
+function gameCard(game){
+    let card = el("a", "chatGame");
+    card.href = game.url;
+
+    let icon = el("span", "gameIcon small", game.icon ? "" : game.name.charAt(0).toUpperCase());
+    if(game.icon){
+        let img = el("img");
+        img.src = game.icon;
+        img.alt = "";
+        img.loading = "lazy";
+        icon.append(img);
+    }
+
+    let text = el("span", "chatGameText");
+    text.append(el("span", "chatGameName", game.name));
+    text.append(el("span", "chatGameOpen", game.type === "app" ? "Open app" : "Play"));
+    card.append(icon, text);
+    return card;
 }
 
 // ---------- editing your own ----------

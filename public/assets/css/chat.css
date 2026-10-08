@@ -854,3 +854,109 @@ a.chatName {
     font-size: 10px;
     opacity: 0.7;
 }
+
+/* ---------- your status ---------- */
+
+.chatStatus {
+    margin: 0 10px 6px;
+}
+
+.chatStatusShow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px dashed var(--line-strong);
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chatStatusShow span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatStatusShow:hover {
+    border-color: var(--link);
+}
+
+.chatStatusShow.set {
+    border-style: solid;
+    color: var(--text);
+}
+
+.chatStatusShow i {
+    color: var(--link);
+}
+
+.chatStatusForm input {
+    padding: 7px 10px;
+    font-size: 14px;
+}
+
+.chatStatusRow {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.chatStatusRow select {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+}
+
+.chatMeta.status {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- a shared game ---------- */
+
+.chatGame {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 200px;
+    margin: 4px -4px 2px;
+    padding: 6px;
+    border: 1px solid var(--line-strong);
+    background-color: var(--surface);
+    color: var(--text);
+}
+
+.chatGame:hover {
+    border-color: var(--link);
+    text-decoration: none;
+}
+
+.chatGame .gameIcon.small {
+    flex-shrink: 0;
+    width: 40px;
+    font-size: 16px;
+}
+
+.chatGameText {
+    display: grid;
+    min-width: 0;
+}
+
+.chatGameName {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatGameOpen {
+    color: var(--link);
+    font-size: 12px;
+}

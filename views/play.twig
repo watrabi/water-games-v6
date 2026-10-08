@@ -45,6 +45,7 @@
             {% else %}
                 <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="ph-bold ph-heart"></i>Favorite</a>
             {% endif %}
+            <button class="button quiet" id="shareButton" title="{{ currentuser ? 'Send to friends' : 'Copy link' }}"><i class="ph-bold ph-share-fat"></i><span class="sr-only">{{ currentuser ? 'Send to friends' : 'Copy link' }}</span></button>
             {% if currentuser %}<button class="button quiet" id="collectButton" title="Add to a collection"><i class="ph-bold ph-folder-plus"></i><span class="sr-only">Add to a collection</span></button>{% endif %}
             <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="ph-bold ph-arrow-square-out"></i><span class="sr-only">Open in a new tab</span></a>
             <button class="button quiet" id="theaterButton" aria-pressed="false" title="Theater mode (T)"><i class="ph-bold ph-frame-corners"></i><span class="sr-only">Theater mode</span></button>
@@ -65,7 +66,35 @@
     <div class="notice challengeNotice"><i class="ph-bold ph-sword"></i><span><a href="/users/{{ c.username|lower|url_encode }}">{{ c.username }}</a> challenged you to beat <strong>{{ c.text }}</strong>. Good luck.</span></div>
     {% endfor %}
 
+    {% if friendsPlayed is not empty %}
+    <div class="friendsPlayed">
+        <span class="muted">Friends who've {{ isApp ? 'used' : 'played' }} this</span>
+        <ul>
+            {% for friend in friendsPlayed %}
+            <li><a href="/users/{{ friend.username|lower|url_encode }}" title="{{ friend.username }}{% if friend.seconds %}, {{ friend.seconds|playtime }}{% endif %}">{{ a.avatar(friend, 'small') }}<span>{{ friend.username }}</span>{% if friend.seconds %}<span class="muted">{{ friend.seconds|playtime }}</span>{% endif %}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     {% if currentuser %}
+    <dialog class="modal" id="shareDialog" aria-labelledby="shareTitle" data-game="{{ game.id }}">
+        <form method="dialog" id="shareForm">
+            <h2 id="shareTitle">Send {{ game.name }} to friends</h2>
+            <ul class="shareList" id="shareList"></ul>
+            <div class="field">
+                <label for="shareBody">Add a message <span class="muted">(optional)</span></label>
+                <input id="shareBody" maxlength="200" autocomplete="off" placeholder="{{ isApp ? 'Check this out' : 'Play this with me?' }}">
+            </div>
+            <div class="notice danger" id="shareError" role="alert" hidden></div>
+            <div class="modalActions">
+                <button type="button" class="button quiet" id="shareCopy"><i class="ph-bold ph-link"></i><span>Copy link</span></button>
+                <button type="button" class="button quiet" id="shareCancel">Cancel</button>
+                <button type="submit" class="button" id="shareSend">Send</button>
+            </div>
+        </form>
+    </dialog>
+
     <dialog class="modal" id="collectDialog" aria-labelledby="collectTitle">
         <form method="dialog" id="collectForm">
             <h2 id="collectTitle">Add {{ game.name }} to a collection</h2>
