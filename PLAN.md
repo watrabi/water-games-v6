@@ -256,3 +256,7 @@ Routes / pages:
   the lyrics API returned 500 for a few minutes until symfony/yaml was installed by hand with --ignore-platform-req=php.
   bin/deploy.sh now sets HOME itself, passes --ignore-platform-req=php, and runs composer **before** migrations and
   code, so a composer failure leaves the old site running.
+- 2026-10-08: Bloop (the pixel mascot from bloop-mascot.html) deployed (73edd66). He lives in public/assets/js/bloop.js
+  and is on the ai page header, every answer, the new chat screen and the guest/disabled pages; the loading dots are
+  replaced by him pondering, typing, using tools or writing. Checked in headless Chrome with a stubbed stream (the
+  extension wasn't connected); note headless --virtual-time-budget only runs a handful of animation frames.
