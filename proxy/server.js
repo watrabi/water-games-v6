@@ -86,13 +86,13 @@ function pkg(name, file){
 }
 
 const sources = {
-    "/network/s/scram/scramjet.all.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.all.js"),
-    "/network/s/scram/scramjet.sync.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.sync.js"),
-    "/network/s/scram/scramjet.wasm.wasm": pkg("@mercuryworkshop/scramjet", "dist/scramjet.wasm.wasm"),
-    "/network/s/baremux/index.js": pkg("@mercuryworkshop/bare-mux", "dist/index.js"),
-    "/network/s/baremux/worker.js": pkg("@mercuryworkshop/bare-mux", "dist/worker.js"),
-    "/network/s/epoxy/index.mjs": pkg("@mercuryworkshop/epoxy-transport", "dist/index.mjs"),
-    "/network/s/libcurl/index.mjs": pkg("@mercuryworkshop/libcurl-transport", "dist/index.mjs"),
+    "/network/s/core.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.all.js"),
+    "/network/s/sync.js": pkg("@mercuryworkshop/scramjet", "dist/scramjet.sync.js"),
+    "/network/s/engine.wasm": pkg("@mercuryworkshop/scramjet", "dist/scramjet.wasm.wasm"),
+    "/network/s/link.js": pkg("@mercuryworkshop/bare-mux", "dist/index.js"),
+    "/network/s/link-worker.js": pkg("@mercuryworkshop/bare-mux", "dist/worker.js"),
+    "/network/s/fast.mjs": pkg("@mercuryworkshop/epoxy-transport", "dist/index.mjs"),
+    "/network/s/compat.mjs": pkg("@mercuryworkshop/libcurl-transport", "dist/index.mjs"),
 };
 
 const types = { ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".wasm": "application/wasm", ".html": "text/html; charset=utf-8" };

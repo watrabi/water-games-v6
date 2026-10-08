@@ -3,8 +3,8 @@
 {% block headerIncludes %}
     <link rel="stylesheet" href="/assets/css/network.css?t=2">
     {# fetched while the page settles, so the first site opens without waiting on them #}
-    <link rel="prefetch" href="/network/s/scram/scramjet.wasm.wasm">
-    <link rel="prefetch" href="/network/s/epoxy/index.mjs?v={{ networkVersion }}">
+    <link rel="prefetch" href="/network/s/engine.wasm">
+    <link rel="prefetch" href="/network/s/fast.mjs?v={{ networkVersion }}">
 {% endblock %}
 {% block body %}
 <div class="page networkPage" id="networkPage">
@@ -41,8 +41,8 @@
                 <div class="field">
                     <label for="networkTransport">Connection</label>
                     <select id="networkTransport">
-                        <option value="epoxy">Fast (epoxy)</option>
-                        <option value="libcurl">Compatible (libcurl)</option>
+                        <option value="fast">Fast</option>
+                        <option value="compat">Compatible</option>
                     </select>
                     <p class="muted small">If a site won't load, try the other one.</p>
                 </div>
@@ -73,6 +73,6 @@
     <div class="notice danger" id="networkError" role="alert" hidden></div>
 </div>
 <script type="application/json" id="networkData">{{ networkData|raw }}</script>
-<script src="/assets/js/network.js?t=4" defer></script>
+<script src="/assets/js/network.js?t=5" defer></script>
 {% endblock %}
 {% block footer %}{% endblock %}

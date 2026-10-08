@@ -96,8 +96,8 @@ const engines = {
 };
 
 const transports = {
-    epoxy: "/network/s/epoxy/index.mjs" + V,
-    libcurl: "/network/s/libcurl/index.mjs" + V,
+    fast: "/network/s/fast.mjs" + V,
+    compat: "/network/s/compat.mjs" + V,
 };
 
 let page = document.getElementById("networkPage");
@@ -127,12 +127,14 @@ window.watrNetworkCleanup = function(){
 
 // ---------- settings (just this browser) ----------
 
-let settings = { engine: "ddg", transport: "epoxy" };
+let settings = { engine: "ddg", transport: "fast" };
 try {
     Object.assign(settings, JSON.parse(localStorage.getItem("wg_network") || "{}"));
 } catch (e) {}
 if(!engines[settings.engine]){ settings.engine = "ddg"; }
-if(!transports[settings.transport]){ settings.transport = "epoxy"; }
+// the setting used to be called by the libraries' names
+if(settings.transport === "libcurl"){ settings.transport = "compat"; }
+if(!transports[settings.transport]){ settings.transport = "fast"; }
 engineSelect.value = settings.engine;
 transportSelect.value = settings.transport;
 
@@ -172,7 +174,7 @@ async function setup(){
 
     // all at once: the two scripts download while the service worker installs
     let registering = navigator.serviceWorker.register("/network/sw.js", { scope: "/network/", updateViaCache: "none" });
-    await Promise.all([loadScript("/network/s/baremux/index.js" + V), loadScript("/network/s/scram/scramjet.all.js" + V)]);
+    await Promise.all([loadScript("/network/s/link.js" + V), loadScript("/network/s/core.js" + V)]);
 
     if(!state.controller){
         const { ScramjetController } = $scramjetLoadController();
@@ -181,14 +183,14 @@ async function setup(){
             codec: codec,
             files: {
                 // no ?v= on this one: Scramjet compares it to the bare path
-                wasm: "/network/s/scram/scramjet.wasm.wasm",
-                all: "/network/s/scram/scramjet.all.js" + V,
-                sync: "/network/s/scram/scramjet.sync.js" + V,
+                wasm: "/network/s/engine.wasm",
+                all: "/network/s/core.js" + V,
+                sync: "/network/s/sync.js" + V,
             },
         });
         await repairDb();
         await state.controller.init();
-        state.connection = new BareMux.BareMuxConnection("/network/s/baremux/worker.js" + V);
+        state.connection = new BareMux.BareMuxConnection("/network/s/link-worker.js" + V);
     }
 
     // a fresh token each visit (they last 12 hours), and whichever transport is picked
@@ -234,7 +236,7 @@ async function repairDb(){
 async function setTransport(){
     let key = settings.transport + "|" + config.wisp;
     if(state.transportKey !== key){
-        await state.connection.setTransport(transports[settings.transport], [settings.transport === "epoxy" ? { wisp: wispUrl() } : { websocket: wispUrl() }]);
+        await state.connection.setTransport(transports[settings.transport], [settings.transport === "fast" ? { wisp: wispUrl() } : { websocket: wispUrl() }]);
         state.transportKey = key;
         state.warmed.clear();
     }

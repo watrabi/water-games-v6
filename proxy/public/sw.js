@@ -1,7 +1,7 @@
 // the network's service worker, scoped to /network/ (the site's own /sw.js keeps everything else).
 // every request an opened page makes comes through here, and Scramjet rewrites it.
 // __VERSION__ is filled in by server.js, so the big script below can be cached forever
-importScripts("/network/s/scram/scramjet.all.js?v=__VERSION__");
+importScripts("/network/s/core.js?v=__VERSION__");
 
 // Scramjet's worker opens its database the moment it starts, without making the tables (only the page's
 // controller.init() makes them). when the worker gets there first (a slow chromebook does) the database is left
@@ -68,7 +68,7 @@ async function handle(event){
 // every opened page loads the rewriter with <script src="...wasm">, and gets back a script that sets
 // self.WASM to the wasm as base64. Scramjet builds that ~700KB string again for every page, one character at a
 // time. it never changes, so build it once and hand out the same text
-const WASM = "/network/s/scram/scramjet.wasm.wasm";
+const WASM = "/network/s/engine.wasm";
 let wasmScript = null;
 function rewriterScript(){
     if(!wasmScript){

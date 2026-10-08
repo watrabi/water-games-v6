@@ -304,3 +304,6 @@ Routes / pages:
 - 2026-10-08: the word "proxy" is gone from everything the browser gets: label/title "Network", ids and classes
   `network*`, files public/assets/js/network.js, public/assets/css/network.css, views/network.twig, and the text in
   sw.js / boot.html. Server-side names (proxy/ service, watrlabs\proxy, PROXY_* env, routes/proxy.php) stay.
+- 2026-10-08: the network page's library files have neutral paths: /network/s/core.js, sync.js, engine.wasm
+  (Scramjet), link.js, link-worker.js (bare-mux), fast.mjs (epoxy), compat.mjs (libcurl). The connection setting is
+  "fast" / "compat" (a saved "libcurl" becomes "compat"). The files' contents still name the libraries.
