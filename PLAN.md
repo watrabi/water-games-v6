@@ -293,3 +293,11 @@ Routes / pages:
   /play/{id}, /play/random and /games/{id} 301 to the new ones. /api/v1/play/... is unchanged. The games list's tab
   title and sidebar label are "Discover", and the game "Play" buttons say "Open". The vhost's /proxy locations were
   renamed to /network.
+- 2026-10-08: **sign in loop on a school Chromebook fixed and deployed** (f884a6d). The browser held a leftover
+  WATR-AUTH (not a session in the db, most likely from when APP_DOMAIN was different, so another Domain) and sent it
+  before the new one; $_COOKIE keeps only the first, so every page after login read the dead cookie. Every login
+  made a valid session that was never used (last_used == created). sessions::pickCookie() (called in init.php) picks
+  the value that's a real session when there are several and expires the strays (host only and parent domains).
+  Found with a temporary nginx log, /www/wwwlogs/watr-cookiecheck.log (map at the top of the vhost, school IPs
+  207.191.188.* only, logs the first 6 characters of each WATR-AUTH): **remove it once this is confirmed.**
+- 2026-10-08: proxied addresses are base64url (d2ae868), a Scramjet `codec` in proxy.js. Old readable ones decode.
