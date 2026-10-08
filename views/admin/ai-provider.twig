@@ -103,7 +103,7 @@
 
     {% if provider.models is not empty %}
     <table class="table modelTable">
-        <thead><tr><th>Model name</th><th>Label</th><th>Images</th><th>Tools</th><th>On</th><th>Order</th><th></th></tr></thead>
+        <thead><tr><th>Model name</th><th>Label</th><th>Images</th><th>Tools</th>{% if provider.type == 'ollama' %}<th>Thinking</th>{% endif %}<th>On</th><th>Order</th><th></th></tr></thead>
         <tbody>
         {% for model in provider.models %}
             {% set f = 'model' ~ model.dbId %}
@@ -120,6 +120,13 @@
                         {% for v, l in {auto: 'Auto', yes: 'Yes', no: 'No'} %}<option value="{{ v }}"{% if model.tools == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
                     </select>
                 </td>
+                {% if provider.type == 'ollama' %}
+                <td>
+                    <select form="{{ f }}" name="think" aria-label="Thinks before answering">
+                        {% for v, l in {auto: 'Auto', yes: 'On', no: 'Off'} %}<option value="{{ v }}"{% if model.think == v %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                </td>
+                {% endif %}
                 <td>
                     <input form="{{ f }}" type="hidden" name="enabled" value="0">
                     <input form="{{ f }}" type="checkbox" name="enabled" value="1" aria-label="Enabled"{% if model.enabled %} checked{% endif %}>
@@ -161,8 +168,14 @@
                 <label for="new_tools">Tools</label>
                 <select id="new_tools" name="tools"><option value="auto">Auto</option><option value="yes">Yes</option><option value="no">No</option></select>
             </div>
+            {% if provider.type == 'ollama' %}
+            <div class="field narrowField">
+                <label for="new_think">Thinking</label>
+                <select id="new_think" name="think"><option value="auto">Auto</option><option value="yes">On</option><option value="no">Off</option></select>
+            </div>
+            {% endif %}
         </div>
-        <p class="hint">Auto: Ollama gets asked what the model supports, other APIs are assumed to handle both.</p>
+        <p class="hint">Auto: Ollama gets asked what the model supports, other APIs are assumed to handle both.{% if provider.type == 'ollama' %} Thinking off makes small models answer much sooner; chat titles and starter prompts never think.{% endif %}</p>
         <button class="button" type="submit">Add model</button>
     </form>
 </section>

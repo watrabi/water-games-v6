@@ -156,7 +156,7 @@ class config {
                 $parts = explode("=", $entry, 2);
                 $name = trim($parts[0]);
 
-                $provider["models"][] = self::model_($provider, $type . ":" . $name, $name, isset($parts[1]) ? trim($parts[1]) : $name, "auto", "auto");
+                $provider["models"][] = self::model_($provider, $type . ":" . $name, $name, isset($parts[1]) ? trim($parts[1]) : $name, "auto", "auto", "auto");
             }
 
             $providers[$id] = $provider;
@@ -205,7 +205,7 @@ class config {
                 continue;
             }
 
-            $model = self::model_($providers[$providerId], "m" . $row->id, $row->name, $row->label ?: $row->name, $row->vision, $row->tools);
+            $model = self::model_($providers[$providerId], "m" . $row->id, $row->name, $row->label ?: $row->name, $row->vision, $row->tools, $row->think ?? "auto");
             $model["dbId"] = (int) $row->id;
             $model["enabled"] = (bool) $row->enabled;
             $model["sort"] = (int) $row->sort;
@@ -215,7 +215,7 @@ class config {
         return $providers;
     }
 
-    private static function model_(array $provider, string $id, string $name, string $label, $vision, $tools){
+    private static function model_(array $provider, string $id, string $name, string $label, $vision, $tools, $think){
         return [
             "id"=>$id,
             "provider"=>$provider["type"],
@@ -228,6 +228,8 @@ class config {
             "options"=>$provider["options"],
             "vision"=>in_array($vision, ["yes", "no"], true) ? $vision : "auto",
             "tools"=>in_array($tools, ["yes", "no"], true) ? $tools : "auto",
+            // thinking before answering: auto leaves it to the model. small local models can think for minutes
+            "think"=>in_array($think, ["yes", "no"], true) ? $think : "auto",
             "enabled"=>true,
         ];
     }
@@ -314,17 +316,22 @@ class config {
         return $caps;
     }
 
+    // whether an ollama model can think at all. ollama refuses a think setting on models that can't
+    static function canThink(array $model){
+        return $model["provider"] === "ollama" && !empty(self::ollamaCapabilities($model)["thinking"]);
+    }
+
     private static function ollamaCapabilities(array $model){
         $cacheFile = __DIR__ . "/../../../storage/cache/ai-ollama-" . md5($model["url"] . "|" . $model["name"]) . ".json";
 
         if(is_file($cacheFile) && filemtime($cacheFile) > time() - 600){
             $cached = json_decode(file_get_contents($cacheFile), true);
-            if(is_array($cached)){
+            if(is_array($cached) && isset($cached["thinking"])){
                 return $cached;
             }
         }
 
-        $caps = ["vision"=>false, "tools"=>false];
+        $caps = ["vision"=>false, "tools"=>false, "thinking"=>false];
         $headers = ["Content-Type: application/json"];
         if($model["key"]){
             $headers[] = "Authorization: Bearer " . $model["key"];
@@ -348,6 +355,7 @@ class config {
             $caps = [
                 "vision"=>in_array("vision", $list, true),
                 "tools"=>in_array("tools", $list, true),
+                "thinking"=>in_array("thinking", $list, true),
             ];
 
             try {

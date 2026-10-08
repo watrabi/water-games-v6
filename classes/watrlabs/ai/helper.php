@@ -25,6 +25,7 @@ class helper {
 
         // no thinking and a short answer, whatever the model is set up with for chatting
         $model["options"] = array_merge($model["options"], ["effort"=>null, "thinking"=>null, "fallbacks"=>"false"]);
+        $model["think"] = "no";
         if($model["provider"] === "anthropic"){
             $model["options"]["max_tokens"] = 1024;
         }

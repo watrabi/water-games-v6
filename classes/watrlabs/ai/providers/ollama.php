@@ -31,6 +31,11 @@ class ollama extends provider {
             ], $tools);
         }
 
+        // only sent to models that can think, ollama errors on the rest
+        if(($this->model["think"] ?? "auto") !== "auto" && config::canThink($this->model)){
+            $body["think"] = $this->model["think"] === "yes";
+        }
+
         if($keepAlive = config::option($this->model, "keep_alive")){
             $body["keep_alive"] = $keepAlive;
         }
