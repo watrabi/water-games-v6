@@ -12,7 +12,7 @@
 <section class="panel">
     <div class="sectionHeader">
         <h2>Providers</h2>
-        <a class="button" href="/admin/ai/providers/new"><i class="fa-solid fa-plus"></i>Add provider</a>
+        <a class="button" href="/admin/ai/providers/new"><i class="ph-bold ph-plus"></i>Add provider</a>
     </div>
     <p class="muted">Each one is a server that speaks one of the three APIs: Ollama, Anthropic's or OpenAI's (OpenRouter, LM Studio, vLLM, Groq and most others use OpenAI's).</p>
 
@@ -73,9 +73,22 @@
     <fieldset class="field checkGroup">
         <legend>Tools the AI can use</legend>
         {% for key, label in toolNames %}
-            <label class="checkRow"><input type="checkbox" name="tools[]" value="{{ key }}"{% if key in s.tools %} checked{% endif %}><span>{{ label }}{% if key == 'fetch' %} <span class="muted">(only public addresses)</span>{% endif %}</span></label>
+            <label class="checkRow"><input type="checkbox" name="tools[]" value="{{ key }}"{% if key in s.tools %} checked{% endif %}><span>{{ label }}{% if key == 'fetch' %} <span class="muted">(only public addresses)</span>{% elseif key == 'exa' and not s.exa_key %} <span class="muted">(needs an Exa key below)</span>{% endif %}</span></label>
         {% endfor %}
     </fieldset>
+
+    <div class="field">
+        <label for="exa_key">Exa API key <span class="muted">(for web search)</span></label>
+        <input id="exa_key" name="exa_key" type="password" autocomplete="off" class="mono" placeholder="{{ s.exa_key ? 'Saved, leave blank to keep it' : 'Paste a key from dashboard.exa.ai' }}">
+        <p class="hint">Get one at <a href="https://dashboard.exa.ai/api-keys" target="_blank" rel="noopener">dashboard.exa.ai</a>. Each search the AI runs uses your Exa credit.{% if s.exa_key and not s.exa_key_stored %} Using EXA_API_KEY from .env.{% endif %}</p>
+        {% if s.exa_key_stored %}<label class="checkRow"><input type="checkbox" name="exa_key_clear" value="1"><span>Remove the saved key</span></label>{% endif %}
+    </div>
+
+    <div class="field">
+        <label for="ai_name">Assistant name</label>
+        <input id="ai_name" name="ai_name" maxlength="40" value="{{ aiName }}" placeholder="Bloop">
+        <p class="hint">What it calls itself and what the AI page calls it. Its personality is a little water blob either way.</p>
+    </div>
 
     <div class="field">
         <label for="system_prompt">Extra instructions <span class="muted">(optional)</span></label>

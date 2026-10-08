@@ -5,6 +5,7 @@ use watrlabs\authentication\security;
 use watrlabs\games\games;
 use watrlabs\users\users;
 use watrlabs\music\music;
+use watrlabs\watrkit\uploads;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -109,13 +110,64 @@ $router->group('/api/v1/music', function($router) {
         return ["status"=>"okay"];
     });
 
+    $router->post("/upload", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in to upload music.", 401);
+        }
+
+        // over post_max_size php throws the whole body away, so there's nothing to look at
+        if(empty($_FILES) && (int) ($_SERVER["CONTENT_LENGTH"] ?? 0) > 0){
+            return apiError("That file is bigger than the server allows.", 413);
+        }
+
+        try {
+            $track = (new music())->upload((int) $currentuser->id, $_POST);
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return [
+            "status"=>"okay",
+            "track"=>["id"=>(int) $track->id, "title"=>$track->title, "artist"=>$track->artist, "src"=>$track->filePath, "cover"=>$track->coverPath],
+            "lyrics"=>$track->lyrics === null ? "none" : ($track->lyricsSynced ? "synced" : "plain"),
+        ];
+    });
+
+    $router->post("/{id}/delete", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        if(!ctype_digit((string) $id) || !(new music())->deleteTrack((int) $id, $currentuser)){
+            return apiError("You can only delete tracks you uploaded.", 403);
+        }
+
+        return ["status"=>"okay"];
+    });
+
+    // the player asks for these whenever a track starts
+    $router->get("/{id}/lyrics", function($id){
+        $music = new music();
+        $track = ctype_digit((string) $id) ? $music->get((int) $id) : null;
+
+        if(!$track){
+            return apiError("That track doesn't exist.", 404);
+        }
+
+        return ["status"=>"okay"] + $music->lyricsFor($track);
+    });
+
 });
 
 $router->post("/api/v1/theme", function(){
     global $currentuser;
 
     $theme = $_POST["theme"] ?? "auto";
-    if($theme !== "auto" && !\watrlabs\watrkit\themes::exists($theme)){
+    if(!is_string($theme) || !\watrlabs\watrkit\themes::usable($currentuser, $theme)){
         return apiError("That theme doesn't exist.");
     }
 
@@ -131,6 +183,25 @@ $router->post("/api/v1/theme", function(){
     }
 
     return ["status"=>"okay", "theme"=>$theme];
+});
+
+// a theme someone made for themselves
+$router->post("/api/v1/themes/custom/{id}/delete", function($id){
+    global $currentuser;
+
+    if(!$currentuser){
+        return apiError("You need to be signed in.", 401);
+    }
+
+    if(!ctype_digit($id) || !\watrlabs\watrkit\userthemes::delete((int) $currentuser->id, (int) $id)){
+        return apiError("That theme doesn't exist.", 404);
+    }
+
+    if(($_COOKIE["wg_theme"] ?? "") === \watrlabs\watrkit\userthemes::PREFIX . $id){
+        setcookie("wg_theme", "auto", ["expires"=>time() + 31536000, "path"=>"/", "samesite"=>"Lax"]);
+    }
+
+    return ["status"=>"okay"];
 });
 
 $router->group('/api/v1/account', function($router) {
@@ -152,6 +223,42 @@ $router->group('/api/v1/account', function($router) {
         $users->update($currentuser->id, ["blurb"=>$blurb]);
 
         return ["status"=>"okay", "message"=>"Blurb saved."];
+    });
+
+    $router->post("/avatar", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        if(!uploads::sent("avatar")){
+            return apiError(empty($_FILES) && (int) ($_SERVER["CONTENT_LENGTH"] ?? 0) > 0 ? "Pictures have to be under 5MB." : "Pick a picture first.");
+        }
+
+        try {
+            $path = uploads::storeAvatar("avatar");
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        uploads::delete($currentuser->avatar ?? null);
+        (new users())->update($currentuser->id, ["avatar"=>$path]);
+
+        return ["status"=>"okay", "message"=>"Profile picture saved.", "avatar"=>$path];
+    });
+
+    $router->post("/avatar/remove", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        uploads::delete($currentuser->avatar ?? null);
+        (new users())->update($currentuser->id, ["avatar"=>null]);
+
+        return ["status"=>"okay", "message"=>"Profile picture removed."];
     });
 
     $router->post("/password", function(){

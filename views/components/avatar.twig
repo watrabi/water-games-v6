@@ -1,0 +1,4 @@
+{# profile picture, or the first letter of their name if they haven't set one #}
+{% macro avatar(user, size) %}
+<span class="avatar{% if size %} {{ size }}{% endif %}">{% if user.avatar %}<img src="{{ user.avatar }}" alt="">{% else %}{{ user.username|first|upper }}{% endif %}</span>
+{%- endmacro %}

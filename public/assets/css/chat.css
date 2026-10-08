@@ -15,6 +15,13 @@ body.has-player .chatTray {
     bottom: 80px;
 }
 
+/* on narrow screens the lyrics panel is full width, so the tray steps aside while it's open */
+@media (max-width: 800px) {
+    body.lyrics-open .chatTray {
+        display: none;
+    }
+}
+
 .chatToggle {
     position: relative;
     display: inline-flex;

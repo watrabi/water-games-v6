@@ -56,6 +56,19 @@ class tools {
                     "required"=>["location"],
                 ],
             ],
+            "exa"=>[
+                "name"=>"web_search",
+                "description"=>"Search the web and get back the best matching pages with their text. Use it for news, recent events, prices, facts you're not sure of, or anything that may have changed since your training. Cite the pages you use as Markdown links.",
+                "schema"=>[
+                    "type"=>"object",
+                    "properties"=>[
+                        "query"=>["type"=>"string", "description"=>"What to search for. A full question or description works better than a few keywords."],
+                        "num_results"=>["type"=>"integer", "minimum"=>1, "maximum"=>10, "description"=>"How many pages to get back, 1 to 10. Defaults to 5."],
+                        "since"=>["type"=>"string", "description"=>"Only pages published on or after this date (YYYY-MM-DD). Use for news or anything recent."],
+                    ],
+                    "required"=>["query"],
+                ],
+            ],
             "fetch"=>[
                 "name"=>"fetch_webpage",
                 "description"=>"Download a public web page and return its readable text. Use when the user gives you a link or asks about a specific page.",
@@ -94,6 +107,7 @@ class tools {
                 case "search_site": return [self::searchSite($input), false];
                 case "get_weather": return [self::weather($input), false];
                 case "fetch_webpage": return [self::fetchPage($input), false];
+                case "web_search": return [self::webSearch($input), false];
             }
         } catch (\Throwable $e) {
             return [$e->getMessage(), true];
@@ -170,6 +184,79 @@ class tools {
         }
 
         return "Results (link paths are relative to the site):\n" . implode("\n", $lines);
+    }
+
+    private static function webSearch(array $input){
+        $query = self::stringInput($input, "query");
+        if(mb_strlen($query) > 500){
+            throw new \InvalidArgumentException("Keep the search under 500 characters.");
+        }
+
+        $count = (int) ($input["num_results"] ?? 5);
+        $count = max(1, min(10, $count ?: 5));
+
+        $body = [
+            "query"=>$query,
+            "type"=>"auto",
+            "numResults"=>$count,
+            // fewer characters per page when there are more pages, so the whole thing stays a sensible size
+            "contents"=>["text"=>["maxCharacters"=>$count > 5 ? 1200 : 2000]],
+        ];
+
+        $since = self::stringInput($input, "since", false);
+        if($since){
+            $date = \DateTime::createFromFormat("!Y-m-d", $since);
+            if(!$date){
+                throw new \InvalidArgumentException("'since' should look like 2026-01-31.");
+            }
+            $body["startPublishedDate"] = $date->format("Y-m-d\\TH:i:s.000\\Z");
+        }
+
+        $ch = curl_init("https://api.exa.ai/search");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER=>true,
+            CURLOPT_POST=>true,
+            CURLOPT_POSTFIELDS=>json_encode($body),
+            CURLOPT_HTTPHEADER=>["Content-Type: application/json", "x-api-key: " . config::exaKey()],
+            CURLOPT_CONNECTTIMEOUT=>5,
+            CURLOPT_TIMEOUT=>25,
+            CURLOPT_USERAGENT=>"WaterGames/1.0",
+        ]);
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if($response === false || $status === 0){
+            throw new \RuntimeException("The search service didn't answer, try again later.");
+        }
+        if($status === 401 || $status === 403){
+            throw new \RuntimeException("Web search isn't set up right (the Exa key was refused). Tell the user search is unavailable.");
+        }
+        if($status === 429){
+            throw new \RuntimeException("Too many searches right now, try again in a bit.");
+        }
+        if($status !== 200){
+            throw new \RuntimeException("The search failed (HTTP $status).");
+        }
+
+        $results = json_decode($response, true)["results"] ?? [];
+        if(!$results){
+            return "No results for \"$query\".";
+        }
+
+        $out = "Web results for \"$query\":\n";
+        foreach($results as $i => $result){
+            $out .= "\n[" . ($i + 1) . "] " . trim($result["title"] ?? "Untitled") . "\n" . ($result["url"] ?? "") . "\n";
+            if(!empty($result["publishedDate"])){
+                $out .= "Published " . substr($result["publishedDate"], 0, 10) . "\n";
+            }
+            $text = trim(preg_replace('/\s+/u', " ", (string) ($result["text"] ?? "")));
+            if($text !== ""){
+                $out .= $text . "\n";
+            }
+        }
+
+        return $out;
     }
 
     private static function weather(array $input){

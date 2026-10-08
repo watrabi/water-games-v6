@@ -170,6 +170,18 @@ $router->get("/music", function(){
     ]);
 });
 
+$router->get("/music/upload", function(){
+    global $twig;
+    global $currentuser;
+
+    requireAccount();
+
+    echo $twig->render('music-upload.twig', [
+        "uploads"=>(new music())->uploadsBy((int) $currentuser->id),
+        "perDay"=>music::UPLOADS_PER_DAY,
+    ]);
+});
+
 $router->get("/favorites", function(){
     global $twig;
     global $currentuser;

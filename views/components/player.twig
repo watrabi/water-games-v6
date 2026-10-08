@@ -1,24 +1,37 @@
 {# filled in by music.js, stays hidden until something has been played #}
 <div id="musicPlayer" class="musicPlayer" role="region" aria-label="Music player" hidden>
+  {# lyrics.js fills this in, synced lyrics follow the song and you can click a line to jump there #}
+  <section class="lyricsPanel" id="lyricsPanel" aria-label="Lyrics" hidden>
+    <div class="lyricsHead">
+      <div class="lyricsHeadText">
+        <span class="lyricsLabel">Lyrics</span>
+        <span class="lyricsSong" id="lyricsSong"></span>
+      </div>
+      <button class="playerButton" id="lyricsClose" aria-label="Hide lyrics"><i class="ph-bold ph-x"></i></button>
+    </div>
+    <div class="lyricsBody" id="lyricsBody" tabindex="-1"></div>
+    <p class="lyricsCredit">From <a href="https://lrclib.net" target="_blank" rel="noopener">LRCLIB</a></p>
+  </section>
   <input class="playerSeek" id="playerSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
   <div class="playerInner">
     <a class="playerNow" href="/music">
-      <span class="playerCover" id="playerCover"><i class="fa-solid fa-music"></i></span>
+      <span class="playerCover" id="playerCover"><i class="ph-bold ph-music-notes"></i></span>
       <span class="playerText">
         <span class="playerTitle" id="playerTitle"></span>
         <span class="playerArtist" id="playerArtist"></span>
       </span>
     </a>
     <div class="playerControls">
-      <button class="playerButton" id="playerPrev" aria-label="Previous track"><i class="fa-solid fa-backward-step"></i></button>
-      <button class="playerButton main" id="playerToggle" aria-label="Play"><i class="fa-solid fa-play"></i></button>
-      <button class="playerButton" id="playerNext" aria-label="Next track"><i class="fa-solid fa-forward-step"></i></button>
+      <button class="playerButton" id="playerPrev" aria-label="Previous track"><i class="ph-bold ph-skip-back"></i></button>
+      <button class="playerButton main" id="playerToggle" aria-label="Play"><i class="ph-bold ph-play"></i></button>
+      <button class="playerButton" id="playerNext" aria-label="Next track"><i class="ph-bold ph-skip-forward"></i></button>
     </div>
     <div class="playerTime"><span id="playerCurrent">0:00</span> / <span id="playerDuration">0:00</span></div>
+    <button class="playerButton" id="playerLyrics" aria-label="Lyrics" aria-pressed="false" aria-controls="lyricsPanel" title="Lyrics"><i class="ph-bold ph-microphone-stage"></i></button>
     <div class="playerVolume">
-      <button class="playerButton" id="playerMute" aria-label="Mute"><i class="fa-solid fa-volume-high"></i></button>
+      <button class="playerButton" id="playerMute" aria-label="Mute"><i class="ph-bold ph-speaker-high"></i></button>
       <input type="range" id="playerVolume" min="0" max="100" value="80" aria-label="Volume">
     </div>
-    <button class="playerButton" id="playerClose" aria-label="Close player"><i class="fa-solid fa-xmark"></i></button>
+    <button class="playerButton" id="playerClose" aria-label="Close player"><i class="ph-bold ph-x"></i></button>
   </div>
 </div>

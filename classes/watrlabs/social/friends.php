@@ -150,7 +150,7 @@ class friends {
         global $db;
 
         $rows = $db->query(
-            "SELECT u.id, u.username, u.last_seen FROM friendships f
+            "SELECT u.id, u.username, u.avatar, u.last_seen FROM friendships f
              INNER JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
              WHERE (f.requester_id = ? OR f.addressee_id = ?) AND f.status = 'accepted' AND u.banned = 0",
             [$me, $me, $me]
@@ -175,6 +175,7 @@ class friends {
         $friends = array_map(fn($row) => [
             "id"=>(int) $row->id,
             "username"=>$row->username,
+            "avatar"=>$row->avatar,
             "online"=>self::isOnline($row->last_seen) || in_array((int) $row->id, $connected, true),
             "lastSeen"=>$row->last_seen ? (int) $row->last_seen : null,
             "unread"=>$unread[(int) $row->id] ?? 0,
@@ -193,18 +194,18 @@ class friends {
         global $db;
 
         $incoming = $db->query(
-            "SELECT u.id, u.username, f.created FROM friendships f INNER JOIN users u ON u.id = f.requester_id
+            "SELECT u.id, u.username, u.avatar, f.created FROM friendships f INNER JOIN users u ON u.id = f.requester_id
              WHERE f.addressee_id = ? AND f.status = 'pending' AND u.banned = 0 ORDER BY f.created DESC",
             [$me]
         )->get();
 
         $outgoing = $db->query(
-            "SELECT u.id, u.username, f.created FROM friendships f INNER JOIN users u ON u.id = f.addressee_id
+            "SELECT u.id, u.username, u.avatar, f.created FROM friendships f INNER JOIN users u ON u.id = f.addressee_id
              WHERE f.requester_id = ? AND f.status = 'pending' ORDER BY f.created DESC",
             [$me]
         )->get();
 
-        $shape = fn($row) => ["id"=>(int) $row->id, "username"=>$row->username];
+        $shape = fn($row) => ["id"=>(int) $row->id, "username"=>$row->username, "avatar"=>$row->avatar];
 
         return ["incoming"=>array_map($shape, $incoming), "outgoing"=>array_map($shape, $outgoing)];
     }
@@ -212,8 +213,8 @@ class friends {
     public function blockedList(int $me){
         global $db;
 
-        return array_map(fn($row) => ["id"=>(int) $row->id, "username"=>$row->username], $db->query(
-            "SELECT u.id, u.username FROM blocks b INNER JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = ? ORDER BY u.username",
+        return array_map(fn($row) => ["id"=>(int) $row->id, "username"=>$row->username, "avatar"=>$row->avatar], $db->query(
+            "SELECT u.id, u.username, u.avatar FROM blocks b INNER JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = ? ORDER BY u.username",
             [$me]
         )->get());
     }
@@ -227,7 +228,7 @@ class friends {
         }
 
         $rows = $db->table("users")
-            ->select(["id", "username"])
+            ->select(["id", "username", "avatar"])
             ->where("username", "LIKE", addcslashes($query, "%_\\") . "%")
             ->where("banned", 0)
             ->where("id", "!=", $me)
@@ -241,7 +242,7 @@ class friends {
             if($relation === "blockedby"){
                 continue; // don't show people who blocked you
             }
-            $results[] = ["id"=>(int) $row->id, "username"=>$row->username, "relation"=>$relation];
+            $results[] = ["id"=>(int) $row->id, "username"=>$row->username, "avatar"=>$row->avatar, "relation"=>$relation];
         }
 
         return $results;

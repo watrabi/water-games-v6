@@ -151,6 +151,9 @@ class themes {
         }
 
         $pref = self::preference($user);
+        if($pref !== "auto" && ($custom = self::custom($user, $pref))){
+            return ["theme"=>$custom, "pref"=>$pref, "auto"=>false];
+        }
         if($pref !== "auto" && self::exists($pref)){
             return ["theme"=>self::get($pref), "pref"=>$pref, "auto"=>false];
         }
@@ -160,6 +163,22 @@ class themes {
 
     static function preference($user){
         $pref = ($user && !empty($user->theme)) ? $user->theme : ($_COOKIE["wg_theme"] ?? "auto");
-        return self::exists($pref) ? $pref : "auto";
+        return self::exists($pref) || self::custom($user, $pref) ? $pref : "auto";
+    }
+
+    // one of this person's own themes ("custom-12"), shaped like the others. null if it isn't theirs
+    static function custom($user, $pref){
+        $id = userthemes::idFrom($pref);
+        if(!$user || !$id){
+            return null;
+        }
+
+        $row = userthemes::get((int) $user->id, $id);
+        return $row ? userthemes::asTheme($row) : null;
+    }
+
+    // whether this person can switch to this theme id
+    static function usable($user, $id){
+        return $id === "auto" || self::exists($id) || self::custom($user, $id) !== null;
     }
 }

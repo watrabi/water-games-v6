@@ -1,11 +1,39 @@
 {% extends "models/base.twig" %}
+{% import "components/avatar.twig" as a %}
 {% block pageName %}Settings{% endblock %}
 {% block body %}
-<div class="page narrow">
+<div class="page settingsPage">
     <div class="pageHeader">
         <div>
             <h1>Settings</h1>
             <p>Signed in as {{ currentuser.username }}. <a href="/users/{{ currentuser.username|lower|url_encode }}">View your profile</a></p>
+        </div>
+    </div>
+
+    <div class="settingsLayout">
+    {# vertical tabs, the url hash (#appearance etc.) picks which one is open #}
+    <div class="settingsTabs" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
+        {% for key, tab in {profile: ['Profile', 'ph-user'], appearance: ['Appearance', 'ph-palette'], security: ['Password', 'ph-lock'], account: ['Account', 'ph-door-open']} %}
+        <button type="button" role="tab" class="settingsTab" id="tab-{{ key }}" data-tab="{{ key }}" aria-controls="panel-{{ key }}" aria-selected="{{ loop.first ? 'true' : 'false' }}"{% if not loop.first %} tabindex="-1"{% endif %}>
+            <i class="ph-bold {{ tab[1] }}" aria-hidden="true"></i><span>{{ tab[0] }}</span>
+        </button>
+        {% endfor %}
+    </div>
+
+    <div class="settingsPanels">
+    <section role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" tabindex="0">
+    <div class="panel" id="avatarPanel">
+        <h2>Profile picture</h2>
+        <p class="muted">Shows up next to your name around the site. Gets cropped to a square.</p>
+        <div class="notice" id="avatarMsg" role="status" hidden></div>
+        <div class="avatarEdit">
+            <span id="avatarPreview">{{ a.avatar(currentuser, 'large') }}</span>
+            <div class="avatarButtons">
+                <label class="button" for="avatarInput"><i class="ph-bold ph-image"></i>{{ currentuser.avatar ? 'Change picture' : 'Upload picture' }}</label>
+                <button class="button quiet" type="button" id="avatarRemove"{% if not currentuser.avatar %} hidden{% endif %}>Remove</button>
+                <p class="hint">JPEG, PNG, GIF or WebP, under 5MB.</p>
+            </div>
+            <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/gif,image/webp" class="sr-only">
         </div>
     </div>
 
@@ -20,6 +48,9 @@
         </div>
         <button class="button" type="submit">Save blurb</button>
     </form>
+    </section>
+
+    <section role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" tabindex="0" hidden>
 
     <form class="panel" id="themeForm">
         <h2>Appearance</h2>
@@ -29,7 +60,7 @@
             <legend class="sr-only">Theme</legend>
             <label class="themeOption">
                 <input type="radio" name="theme" value="auto"{% if themePref == 'auto' %} checked{% endif %}>
-                <span class="themeSwatch auto" aria-hidden="true"><i class="fa-solid fa-calendar-days"></i></span>
+                <span class="themeSwatch auto" aria-hidden="true"><i class="ph-bold ph-calendar-dots"></i></span>
                 <span class="themeName">Site default</span>
                 <span class="themeNote">Follows the seasons</span>
             </label>
@@ -41,13 +72,26 @@
                 <span class="themeNote">{{ item.description }}</span>
             </label>
             {% endfor %}
+            {% for item in customThemes %}
+            <label class="themeOption">
+                <input type="radio" name="theme" value="{{ item.id }}"{% if themePref == item.id %} checked{% endif %}>
+                <span class="themeSwatch" aria-hidden="true">{% for color in item.swatch %}<span style="background-color: {{ color }}"></span>{% endfor %}</span>
+                <span class="themeName">{{ item.name }}</span>
+                <span class="themeNote">Yours, made with {{ aiName }}</span>
+                <button type="button" class="themeDelete" data-delete-theme="{{ item.dbid }}" aria-label="Delete {{ item.name }}" title="Delete"><i class="ph-bold ph-trash"></i></button>
+            </label>
+            {% endfor %}
         </fieldset>
+        {% if aiEnabled and not customThemes %}<p class="muted">Want your own? Ask <a href="/ai">{{ aiName }}</a> to make you a theme, like “a purple space theme”.</p>{% endif %}
         <label class="checkRow">
             <input type="checkbox" name="effects" id="effectsToggle"{% if effectsOn %} checked{% endif %}>
             <span>Seasonal effects, like snow at Christmas</span>
         </label>
         <button class="button" type="submit">Save appearance</button>
     </form>
+    </section>
+
+    <section role="tabpanel" id="panel-security" aria-labelledby="tab-security" tabindex="0" hidden>
 
     <form class="panel" id="passwordForm">
         <h2>Password</h2>
@@ -69,12 +113,24 @@
         </div>
         <button class="button" type="submit">Change password</button>
     </form>
+    </section>
+
+    <section role="tabpanel" id="panel-account" aria-labelledby="tab-account" tabindex="0" hidden>
+    <div class="panel">
+        <h2>Your music</h2>
+        <p class="muted">Songs you've uploaded, and where to add more.</p>
+        <a class="button quiet" href="/music/upload"><i class="ph-bold ph-upload-simple"></i>Manage uploads</a>
+    </div>
+
 
     <div class="panel">
         <h2>Sign out</h2>
         <p class="muted">Ends your session on this device.</p>
         <a class="button quiet" href="/auth/logout">Sign out</a>
     </div>
+    </section>
+    </div>
+    </div>
 </div>
-<script src="/assets/js/settings.js?t=3" defer></script>
+<script src="/assets/js/settings.js?t=6" defer></script>
 {% endblock %}

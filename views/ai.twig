@@ -1,8 +1,8 @@
 {% extends "models/base.twig" %}
-{% block pageName %}{{ chat ? chat.title : 'AI' }}{% endblock %}
+{% block pageName %}{{ chat ? chat.title : aiName }}{% endblock %}
 {% block bodyClass %}{{ state == 'ready' ? 'aiBody' : '' }}{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/ai.css?t=3">
+<link rel="stylesheet" href="/assets/css/ai.css?t=5">
 {% if state == 'ready' %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" integrity="sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.12/marked.min.js" integrity="sha512-rCQgmUulW6f6QegOvTntKKb5IAoxTpGVCdWqYjkXEpzAns6XUFs8NKVqWe+KQpctp/EoRSFSuykVputqknLYMg==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
@@ -20,8 +20,8 @@
         <img src="/assets/images/BlobEmoji/blobsleeping.png" alt="">
         <div>
             <p class="code">Not set up</p>
-            <h1>The AI is switched off.</h1>
-            <p class="muted">Check back later.</p>
+            <h1>{{ aiName }} is napping.</h1>
+            <p class="muted">The AI chat is switched off right now. Check back later.</p>
             <a class="button" href="/games">Go play something</a>
         </div>
     </div>
@@ -31,8 +31,8 @@
     <div class="statusPage">
         <img src="/assets/images/BlobEmoji/blobwizard.png" alt="">
         <div>
-            <p class="code">AI</p>
-            <h1>Sign in to chat.</h1>
+            <p class="code">{{ aiName }}</p>
+            <h1>Sign in to chat with {{ aiName }}.</h1>
             <p class="muted">Chats get saved to your account so you can pick them back up later.</p>
             <a class="button" href="/auth/sign-in">Sign in</a>
             <a class="button quiet" href="/auth/sign-up">Make an account</a>
@@ -42,7 +42,9 @@
 {% else %}
 <div class="aiPage">
     <aside class="aiChats" id="aiChats" aria-label="Saved chats">
-        <a class="button" href="/ai"><i class="fa-solid fa-plus"></i>New chat</a>
+        <a class="button" href="/ai"><i class="ph-bold ph-plus"></i>New chat</a>
+        <a class="aiLibraryLink" href="/ai/artifacts"><i class="ph-bold ph-shapes"></i>Artifacts</a>
+        {% if aiMemory %}<a class="aiLibraryLink" href="/ai/memory"><i class="ph-bold ph-brain"></i>Memory</a>{% endif %}
         <nav class="aiChatList" id="aiChatList">
             {% for item in chatList %}
                 <a href="/ai/{{ item.id }}" data-id="{{ item.id }}"{% if chat and chat.id == item.id %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a>
@@ -55,24 +57,24 @@
 
     <section class="aiMain">
         <header class="aiHeader">
-            <button class="aiIconButton" id="aiChatsToggle" aria-label="Show saved chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
+            <button class="aiIconButton" id="aiChatsToggle" aria-label="Show saved chats"><i class="ph-bold ph-clock-counter-clockwise"></i></button>
             <h1 id="aiTitle">{{ chat ? chat.title : 'New chat' }}</h1>
             <input id="aiTitleInput" maxlength="120" aria-label="Chat title" hidden>
             <div class="aiHeaderActions" id="aiHeaderActions"{% if not chat %} hidden{% endif %}>
-                <button class="aiIconButton" id="aiRename" aria-label="Rename chat" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                <button class="aiIconButton" id="aiDelete" aria-label="Delete chat" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                <button class="aiIconButton" id="aiRename" aria-label="Rename chat" title="Rename"><i class="ph-bold ph-pencil-simple"></i></button>
+                <button class="aiIconButton" id="aiDelete" aria-label="Delete chat" title="Delete"><i class="ph-bold ph-trash"></i></button>
             </div>
         </header>
 
         <div class="aiLog" id="aiLog" aria-live="polite">
             <div class="aiIntro" id="aiIntro"{% if chat %} hidden{% endif %}>
                 <img src="/assets/images/BlobEmoji/blobwizard.png" alt="" width="64" height="64">
-                <h2>What do you want to know?</h2>
-                <p class="muted">It can search the site for games, do math, check the weather and look at pictures you attach.</p>
+                <h2>Hey, I'm {{ aiName }}!</h2>
+                <p class="muted">I'm the little water blob who lives here. I can find you games on the site, check the weather, look at pictures you attach, and make web pages, games and drawings you can open right here.</p>
                 <div class="aiSuggestions">
                     <button type="button" data-prompt="Find me a good racing game on here">Find me a good racing game on here</button>
                     <button type="button" data-prompt="What's the weather in Tokyo right now?">What's the weather in Tokyo right now?</button>
-                    <button type="button" data-prompt="What's 18% of 2,450, rounded to 2 decimals?">What's 18% of 2,450?</button>
+                    <button type="button" data-prompt="Make me a snake game I can play in the browser">Make me a snake game</button>
                 </div>
             </div>
         </div>
@@ -80,9 +82,9 @@
         <form class="aiComposer" id="aiComposer">
             <div class="aiAttachments" id="aiAttachments" hidden></div>
             <label class="sr-only" for="aiInput">Message</label>
-            <textarea id="aiInput" rows="1" placeholder="Message the AI" maxlength="20000"></textarea>
+            <textarea id="aiInput" rows="1" placeholder="Message {{ aiName }}" maxlength="20000"></textarea>
             <div class="aiComposerBar">
-                <button type="button" class="aiIconButton" id="aiAttach" aria-label="Attach images" title="Attach images"><i class="fa-solid fa-image"></i></button>
+                <button type="button" class="aiIconButton" id="aiAttach" aria-label="Attach images" title="Attach images"><i class="ph-bold ph-image"></i></button>
                 <input type="file" id="aiFile" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
                 <label class="sr-only" for="aiModel">Model</label>
                 <select id="aiModel">
@@ -91,12 +93,41 @@
                     {% endfor %}
                 </select>
                 <span class="aiHint" id="aiHint"></span>
-                <button type="submit" class="button" id="aiSend"><i class="fa-solid fa-arrow-up"></i><span>Send</span></button>
+                <button type="submit" class="button" id="aiSend"><i class="ph-bold ph-arrow-up"></i><span>Send</span></button>
             </div>
         </form>
     </section>
+
+    {# filled in by ai.js. previews run in a sandboxed iframe with no access to this site #}
+    <aside class="aiArtifactPanel" id="aiArtifactPanel" aria-label="Artifact" hidden>
+        <header class="aiArtifactHead">
+            <div class="aiArtifactHeadText">
+                <h2 id="aiArtifactTitle"></h2>
+                <span id="aiArtifactMeta"></span>
+            </div>
+            <label class="sr-only" for="aiArtifactVersion">Version</label>
+            <select id="aiArtifactVersion" hidden></select>
+            <button class="aiIconButton" id="aiArtifactClose" aria-label="Close"><i class="ph-bold ph-x"></i></button>
+        </header>
+        <div class="aiArtifactBar">
+            <div class="aiArtifactTabs" id="aiArtifactTabs" role="tablist" aria-label="View">
+                <button type="button" role="tab" data-view="preview" aria-selected="true">Preview</button>
+                <button type="button" role="tab" data-view="code" aria-selected="false">Code</button>
+            </div>
+            <div class="aiArtifactActions">
+                <button class="aiIconButton small" id="aiArtifactCopy" aria-label="Copy" title="Copy"><i class="ph-bold ph-copy"></i></button>
+                <button class="aiIconButton small" id="aiArtifactDownload" aria-label="Download" title="Download"><i class="ph-bold ph-download-simple"></i></button>
+                <a class="aiIconButton small" id="aiArtifactNewTab" target="_blank" rel="noopener" aria-label="Open in a new tab" title="Open in a new tab" hidden><i class="ph-bold ph-arrow-square-out"></i></a>
+            </div>
+        </div>
+        <div class="aiArtifactBody">
+            <iframe id="aiArtifactFrame" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+            <div class="aiText aiArtifactDoc" id="aiArtifactDoc" hidden></div>
+            <pre class="aiArtifactCode" id="aiArtifactCode" hidden><code></code></pre>
+        </div>
+    </aside>
 </div>
 <script id="aiData" type="application/json">{{ aiData|raw }}</script>
-<script src="/assets/js/ai.js?t=4" defer></script>
+<script src="/assets/js/ai.js?t=9" defer></script>
 {% endif %}
 {% endblock %}

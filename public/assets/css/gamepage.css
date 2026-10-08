@@ -179,15 +179,15 @@
 
 .track:hover .trackNumber::before,
 .track.current .trackNumber::before {
-    font-family: "Font Awesome 7 Free", "Font Awesome 6 Free";
-    font-weight: 900;
-    content: "\f04b";
+    font-family: "Phosphor-Bold";
+    font-weight: normal;
+    content: "\e3d0";
     font-size: 12px;
     color: var(--text);
 }
 
 .track.playing .trackNumber::before {
-    content: "\f04c";
+    content: "\e39e";
     color: var(--link);
 }
 
@@ -237,6 +237,160 @@
 .trackDuration {
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+/* ---------- upload page ---------- */
+
+.dropZone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 28px 16px;
+    border: 1px dashed var(--line-strong);
+    background-color: var(--raised);
+    color: var(--text);
+    font-size: 15px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.dropZone:hover, .dropZone.over, .dropZone:focus-within {
+    border-color: var(--link);
+}
+
+.dropZone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.dropZone > i {
+    font-size: 26px;
+    color: var(--muted);
+}
+
+.dropZone.chosen > i {
+    color: var(--link);
+}
+
+.dropText {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.dropZone .hint {
+    margin: 0;
+}
+
+.uploadDetails {
+    display: flex;
+    gap: 20px;
+}
+
+.coverField {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.fieldLabel {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.uploadCover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 132px;
+    height: 132px;
+    overflow: hidden;
+    background-color: var(--raised);
+    color: var(--muted);
+    font-size: 36px;
+}
+
+.uploadCover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.coverButtons {
+    display: flex;
+    gap: 6px;
+}
+
+.uploadFields {
+    flex: 1;
+    min-width: 0;
+}
+
+.uploadFields .hint {
+    margin-top: 0;
+}
+
+.uploadProgress {
+    height: 4px;
+    margin-bottom: 14px;
+    background-color: var(--line);
+}
+
+.uploadProgress span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background-color: var(--link);
+    transition: width 0.2s;
+}
+
+.uploadList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+}
+
+.uploadList li {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.uploadList [data-delete].really {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+@media (max-width: 560px) {
+    .uploadDetails {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .coverField {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .coverField .fieldLabel {
+        width: 100%;
+    }
+
+    .uploadCover {
+        width: 88px;
+        height: 88px;
+        font-size: 26px;
+    }
 }
 
 @media (max-width: 560px) {

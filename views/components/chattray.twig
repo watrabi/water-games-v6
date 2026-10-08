@@ -1,31 +1,31 @@
 {# friends + chat tray, bottom left. chat.js fills it in #}
 <div class="chatTray" id="chatTray">
   <button type="button" class="chatToggle" id="chatToggle" aria-expanded="false" aria-controls="chatPanel">
-    <i class="fa-solid fa-comments"></i><span class="chatToggleLabel">Chat</span>
+    <i class="ph-bold ph-chats"></i><span class="chatToggleLabel">Chat</span>
     <span class="chatBadge" id="chatBadge" hidden></span>
   </button>
 
   <section class="chatPanel" id="chatPanel" aria-label="Chat" hidden>
     <header class="chatHead">
-      <button type="button" class="chatIcon" id="chatBack" aria-label="Back to friends" hidden><i class="fa-solid fa-arrow-left"></i></button>
+      <button type="button" class="chatIcon" id="chatBack" aria-label="Back to friends" hidden><i class="ph-bold ph-arrow-left"></i></button>
       <div class="chatTitle">
         <span id="chatTitle">Friends</span>
         <span class="chatSub" id="chatSub"></span>
       </div>
       <details class="chatMenu" id="chatMenu" hidden>
-        <summary class="chatIcon" aria-label="More options"><i class="fa-solid fa-ellipsis"></i></summary>
+        <summary class="chatIcon" aria-label="More options"><i class="ph-bold ph-dots-three"></i></summary>
         <div class="chatMenuItems">
           <a id="chatProfileLink" href="#">View profile</a>
           <button type="button" data-convo-act="remove">Unfriend</button>
           <button type="button" data-convo-act="block">Block</button>
         </div>
       </details>
-      <button type="button" class="chatIcon" id="chatClose" aria-label="Close chat"><i class="fa-solid fa-minus"></i></button>
+      <button type="button" class="chatIcon" id="chatClose" aria-label="Close chat"><i class="ph-bold ph-minus"></i></button>
     </header>
 
     <div class="chatView" id="chatHome">
       <form class="chatSearch" id="chatSearchForm" role="search">
-        <i class="fa-solid fa-user-plus"></i>
+        <i class="ph-bold ph-user-plus"></i>
         <label class="sr-only" for="chatSearch">Add friends by username</label>
         <input id="chatSearch" type="search" placeholder="Add friends by username" autocomplete="off" maxlength="20">
       </form>
@@ -40,11 +40,11 @@
       <form class="chatComposer" id="chatComposer">
         <div class="chatAttachment" id="chatAttachment" hidden></div>
         <div class="chatComposerRow">
-          <button type="button" class="chatIcon" id="chatImageButton" aria-label="Send an image"><i class="fa-solid fa-image"></i></button>
+          <button type="button" class="chatIcon" id="chatImageButton" aria-label="Send an image"><i class="ph-bold ph-image"></i></button>
           <input type="file" id="chatFile" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
           <label class="sr-only" for="chatInput">Message</label>
           <textarea id="chatInput" rows="1" maxlength="1000" placeholder="Message"></textarea>
-          <button type="submit" class="chatIcon chatSend" id="chatSend" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button>
+          <button type="submit" class="chatIcon chatSend" id="chatSend" aria-label="Send"><i class="ph-bold ph-paper-plane-right"></i></button>
         </div>
       </form>
     </div>
@@ -65,4 +65,4 @@
     </form>
   </section>
 </div>
-<script src="/assets/js/chat.js?t=2" defer></script>
+<script src="/assets/js/chat.js?t=4" defer></script>

@@ -1,9 +1,10 @@
+{% import "components/avatar.twig" as a %}
 <header id="navbar">
-  <button id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="sidebar"><i class="fa-solid fa-bars"></i></button>
+  <button id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="sidebar"><i class="ph-bold ph-list"></i></button>
   <a href="{{ currentuser ? '/home' : '/' }}" id="branding">Water <em>Games</em>{% if theme.emoji %}<span class="brandEmoji" aria-hidden="true">{{ theme.emoji }}</span>{% endif %}</a>
 
   <form id="navSearch" action="/games" method="get" role="search">
-    <i class="fa-solid fa-magnifying-glass"></i>
+    <i class="ph-bold ph-magnifying-glass"></i>
     <label class="sr-only" for="navSearchInput">Search games</label>
     <input id="navSearchInput" type="search" name="q" placeholder="Search games" value="{{ search ?? '' }}" autocomplete="off">
   </form>
@@ -15,9 +16,12 @@
     {% else %}
       <div class="dropdown" id="userMenu">
         <button class="navUser" aria-haspopup="true" aria-expanded="false">
-          <span class="avatar">{{ currentuser.username|first|upper }}</span>
+          <span class="navAvatar" id="navAvatar">
+            {{ a.avatar(currentuser) }}
+            {% if openReports %}<span class="reportBadge" title="{{ openReports }} report{{ openReports == 1 ? '' : 's' }} to review">{{ openReports > 9 ? '9+' : openReports }}<span class="sr-only"> report{{ openReports == 1 ? '' : 's' }} to review</span></span>{% endif %}
+          </span>
           <span class="navUsername">{{ currentuser.username }}</span>
-          <i class="fa-solid fa-chevron-down"></i>
+          <i class="ph-bold ph-caret-down"></i>
         </button>
         <div class="dropdown-content">
           <a class="dropdownItem" href="/users/{{ currentuser.username|lower|url_encode }}">Profile</a>
@@ -25,6 +29,7 @@
           <a class="dropdownItem" href="/settings">Settings</a>
           {% if currentuser.admin %}
           <a class="dropdownItem" href="/admin">Admin panel</a>
+          {% if openReports %}<a class="dropdownItem reportItem" href="/admin/reports">Reports to review <span class="reportCount">{{ openReports }}</span></a>{% endif %}
           {% endif %}
           <hr>
           <a class="dropdownItem" href="/auth/logout">Sign out</a>

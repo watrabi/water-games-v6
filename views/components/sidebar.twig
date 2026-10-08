@@ -5,20 +5,20 @@
 {% import _self as nav %}
 <nav id="sidebar" aria-label="Main">
   {% if currentuser %}
-    {{ nav.item('/home', 'fa-solid fa-house', 'Home', here) }}
+    {{ nav.item('/home', 'ph-bold ph-house', 'Home', here) }}
   {% else %}
-    {{ nav.item('/', 'fa-solid fa-house', 'Home', here) }}
+    {{ nav.item('/', 'ph-bold ph-house', 'Home', here) }}
   {% endif %}
-  {{ nav.item('/games', 'fa-solid fa-gamepad', 'Games', here, '/games/') }}
-  {{ nav.item('/apps', 'fa-solid fa-table-cells-large', 'Apps', here, '/apps/') }}
-  {{ nav.item('/music', 'fa-solid fa-music', 'Music', here) }}
+  {{ nav.item('/games', 'ph-bold ph-game-controller', 'Games', here, '/games/') }}
+  {{ nav.item('/apps', 'ph-bold ph-squares-four', 'Apps', here, '/apps/') }}
+  {{ nav.item('/music', 'ph-bold ph-music-notes', 'Music', here) }}
   {% if aiEnabled %}
-    {{ nav.item('/ai', 'fa-regular fa-comments', 'AI', here, '/ai/') }}
+    {{ nav.item('/ai', 'ph-bold ph-chats', 'AI', here, '/ai/') }}
   {% endif %}
   {% if currentuser %}
-    {{ nav.item('/favorites', 'fa-solid fa-heart', 'Favorites', here) }}
+    {{ nav.item('/favorites', 'ph-bold ph-heart', 'Favorites', here) }}
   {% endif %}
 
   <p class="sidebarHeading">Coming later</p>
-  <a class="sidebarItem later{{ here == '/proxy' ? ' active' : '' }}" href="/proxy"><i class="fa-brands fa-chrome"></i>Proxy<span class="tag">soon</span></a>
+  <a class="sidebarItem later{{ here == '/proxy' ? ' active' : '' }}" href="/proxy"><i class="ph-bold ph-google-chrome-logo"></i>Proxy<span class="tag">soon</span></a>
 </nav>

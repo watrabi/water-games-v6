@@ -247,18 +247,18 @@ $router->group('/admin', function($router){
         $search = trim($_GET["q"] ?? "");
         $page = adminPage();
 
-        $query = $db->table("tracks");
+        $query = $db->table("tracks")->leftJoin("users", "users.id", "=", "tracks.uploader_id");
         if($search !== ""){
             $like = "%" . addcslashes($search, "%_\\") . "%";
             $query->where(function($q) use ($like){
-                $q->where("title", "LIKE", $like)->orWhere("artist", "LIKE", $like);
+                $q->where("tracks.title", "LIKE", $like)->orWhere("tracks.artist", "LIKE", $like)->orWhere("users.username", "LIKE", $like);
             });
         }
 
         $total = $query->count();
 
         adminRender("music", "music", [
-            "rows"=>$query->orderBy("id", "DESC")->limit(50)->offset(($page - 1) * 50)->get(),
+            "rows"=>$query->select(["tracks.*", "users.username"])->orderBy("tracks.id", "DESC")->limit(50)->offset(($page - 1) * 50)->get(),
             "search"=>$search,
             "page"=>$page,
             "pages"=>max(1, (int) ceil($total / 50)),
@@ -337,11 +337,16 @@ $router->group('/admin', function($router){
             if($existing->coverPath && $existing->coverPath !== $track->coverPath){
                 uploads::delete($existing->coverPath);
             }
+            // a different song now, so look its lyrics up again on the next play
+            if($existing->title !== $values["title"] || $existing->artist !== $values["artist"] || $existing->duration != $values["duration"]){
+                $values += ["lyrics"=>null, "lyricsSynced"=>0, "lyricsChecked"=>null];
+            }
             $db->table("tracks")->where("id", $existing->id)->update($values);
             adminRedirect("/admin/music/" . $existing->id, "saved");
         }
 
         $values["plays"] = 0;
+        $values["created"] = time();
         $newId = $db->table("tracks")->insert($values);
         adminRedirect("/admin/music/" . $newId, "created");
     });
@@ -580,7 +585,9 @@ $router->group('/admin', function($router){
                 "enabled"=>filter_var(aiconfig::setting("ai_enabled", "AI_ENABLED", false), FILTER_VALIDATE_BOOLEAN),
                 "daily_limit"=>aiconfig::dailyLimit(),
                 "daily_uploads"=>aiconfig::dailyUploads(),
-                "tools"=>aiconfig::tools(),
+                "tools"=>aiconfig::toolsPicked(),
+                "exa_key"=>(bool) aiconfig::exaKey(),
+                "exa_key_stored"=>(bool) settings::get("ai_exa_key"),
                 "system_prompt"=>aiconfig::systemExtra(),
                 "default_model"=>$default["id"] ?? null,
             ],
@@ -600,7 +607,16 @@ $router->group('/admin', function($router){
         // an empty string would fall back to .env, so "none" is stored as a comma
         settings::set("ai_tools", $tools ? implode(",", $tools) : ",");
 
+        settings::set("ai_name", mb_substr(trim($_POST["ai_name"] ?? ""), 0, 40));
         settings::set("ai_system_prompt", mb_substr(trim($_POST["system_prompt"] ?? ""), 0, 4000));
+
+        // stored encrypted like provider keys, a blank field keeps the one we have
+        $exaKey = trim($_POST["exa_key"] ?? "");
+        if($exaKey !== ""){
+            settings::set("ai_exa_key", (new encryption())->encrypt($exaKey));
+        } elseif(!empty($_POST["exa_key_clear"])){
+            settings::set("ai_exa_key", "");
+        }
 
         $default = $_POST["default_model"] ?? "";
         if(aiconfig::model($default)){

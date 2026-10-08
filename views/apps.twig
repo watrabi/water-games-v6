@@ -12,7 +12,7 @@
             <p>Useful stuff that isn't a game. {{ apps|length }} {{ apps|length == 1 ? 'app' : 'apps' }}{% if search %} · <a href="/apps">clear search</a>{% endif %}</p>
         </div>
         <form class="inlineSearch" action="/apps" method="get" role="search">
-            <i class="fa-solid fa-magnifying-glass"></i>
+            <i class="ph-bold ph-magnifying-glass"></i>
             <label class="sr-only" for="appSearch">Search apps</label>
             <input id="appSearch" type="search" name="q" placeholder="Search apps" value="{{ search }}">
         </form>

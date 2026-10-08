@@ -24,8 +24,43 @@ const toolLabels = {
     calculate: ["Calculating", "Calculated"],
     search_site: ["Searching the site", "Searched the site"],
     get_weather: ["Checking the weather", "Checked the weather"],
-    fetch_webpage: ["Reading the page", "Read a page"]
+    fetch_webpage: ["Reading the page", "Read a page"],
+    web_search: ["Searching the web", "Searched the web"],
+    remember: ["Saving to memory", "Saved to memory"],
+    update_memory: ["Updating a memory", "Updated a memory"],
+    forget_memory: ["Forgetting", "Forgot something"],
+    search_past_chats: ["Looking through past chats", "Looked through past chats"],
+    create_theme: ["Making a theme", "Made a theme"],
+    edit_theme: ["Changing the theme", "Changed the theme"],
+    use_theme: ["Switching themes", "Switched themes"]
 };
+
+// a theme the ai just made or switched to: redraw the page in it without reloading
+function applyTheme(event){
+    let html = document.documentElement;
+    let style = document.getElementById("customTheme");
+
+    if(event.css){
+        if(!style){
+            style = document.createElement("style");
+            style.id = "customTheme";
+            document.head.append(style);
+        }
+        style.textContent = event.css;
+    }
+
+    html.dataset.theme = event.id;
+    if(event.effect){
+        html.dataset.effect = event.effect;
+    } else {
+        delete html.dataset.effect;
+    }
+
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if(meta && event.color){
+        meta.setAttribute("content", event.color);
+    }
+}
 
 // ---------- small helpers ----------
 
@@ -79,22 +114,38 @@ function renderMarkdown(target, text){
     });
 }
 
-// highlighting + copy buttons, done once a block of text is finished
-function finishMarkdown(target){
+// code blocks get their bar (language, copy) and highlighting on every render, not just at the end,
+// so they look the same while they're still streaming in. final adds the preview button for html / svg
+function decorateCode(target, final){
     target.querySelectorAll("pre > code").forEach(function(code) {
         let pre = code.parentElement;
         if(pre.parentElement.classList.contains("aiCode")){
             return;
         }
 
-        if(window.hljs){
+        let language = (code.className.match(/language-([\w+#-]+)/) || [])[1] || "";
+
+        if(window.hljs && (!language || hljs.getLanguage(language))){
             hljs.highlightElement(code);
         }
 
-        let language = (code.className.match(/language-([\w+#-]+)/) || [])[1] || "code";
         let wrap = el("div", "aiCode");
         let bar = el("div", "aiCodeBar");
-        bar.append(el("span", "", language));
+        bar.append(el("span", "aiCodeLang", language || "code"));
+
+        let buttons = el("span", "aiCodeButtons");
+        let previewType = codePreviewType(language, code.textContent);
+        if(final && previewType){
+            let preview = el("button", "aiCopy", "Preview");
+            preview.type = "button";
+            preview.addEventListener("click", function() {
+                openArtifact({
+                    title: previewType === "svg" ? "SVG preview" : "HTML preview",
+                    type: previewType, content: code.textContent, complete: true, transient: true
+                });
+            });
+            buttons.append(preview);
+        }
 
         let copy = el("button", "aiCopy", "Copy");
         copy.type = "button";
@@ -104,11 +155,500 @@ function finishMarkdown(target){
                 setTimeout(function() { copy.textContent = "Copy"; }, 1500);
             });
         });
-        bar.append(copy);
+        buttons.append(copy);
+        bar.append(buttons);
 
         pre.replaceWith(wrap);
         wrap.append(bar, pre);
     });
+}
+
+function finishMarkdown(target){
+    decorateCode(target, true);
+}
+
+function codePreviewType(language, text){
+    language = language.toLowerCase();
+    if(language === "html" || ((language === "xml" || language === "") && /^\s*(<!doctype html|<html)/i.test(text))){
+        return "html";
+    }
+    if(language === "svg" || (language === "xml" && /<svg\b/i.test(text))){
+        return "svg";
+    }
+    return null;
+}
+
+// ---------- artifacts ----------
+// the model writes <artifact id=".." type=".." title="..">content</artifact> into its answer.
+// the text gets split into markdown and artifact parts, and each artifact becomes a card that opens the side panel
+
+const artifactIcons = { html: "ph-globe", svg: "ph-shapes", markdown: "ph-file-text", code: "ph-code" };
+const artifactNames = { html: "Web page", svg: "SVG", markdown: "Document", code: "Code" };
+
+// same rules as artifacts::slug on the server
+function artifactSlug(text){
+    let slug = String(text || "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase().slice(0, 64);
+    return slug || "artifact";
+}
+
+function artifactAttrs(raw){
+    let attrs = {};
+    let decode = el("textarea");
+    raw.replace(/([a-zA-Z_-]+)\s*=\s*("([^"]*)"|'([^']*)')/g, function(_, name, __, double, single) {
+        decode.innerHTML = double !== undefined ? double : single;
+        attrs[name.toLowerCase()] = decode.value;
+    });
+    return attrs;
+}
+
+function artifactType(attrs, content){
+    let type = (attrs.type || "").toLowerCase();
+    let language = (attrs.language || "").toLowerCase();
+    if(artifactIcons[type]){
+        return type;
+    }
+    if(["text/html", "page", "website"].includes(type) || language === "html" || /^\s*(<!doctype html|<html)/i.test(content)){
+        return "html";
+    }
+    if(type === "image/svg+xml" || language === "svg" || /^\s*(<\?xml[^>]*>\s*)?<svg\b/i.test(content)){
+        return "svg";
+    }
+    if(["md", "document", "text/markdown"].includes(type) || ["md", "markdown"].includes(language)){
+        return "markdown";
+    }
+    return "code";
+}
+
+// drop a code fence the model wrapped around the content anyway (even half written)
+function artifactContent(content, complete){
+    content = content.replace(/^\r?\n/, "");
+    // half of an opening fence, wait for the rest of the line
+    if(!complete && /^\s*`{1,3}[\w+#-]*[ \t]*$/.test(content)){
+        return "";
+    }
+    let open = content.match(/^\s*```[\w+#-]*[ \t]*\r?\n/);
+    if(open){
+        content = content.slice(open[0].length);
+        content = content.replace(/\r?\n?\s*`{1,3}\s*$/, "");
+    }
+    return complete ? content.replace(/\r?\n$/, "") : content;
+}
+
+// while streaming, don't show the start of a tag before we know what it is
+function holdBack(text, token){
+    for(let k = Math.min(token.length - 1, text.length); k > 0; k--){
+        if(text.endsWith(token.slice(0, k))){
+            return text.slice(0, -k);
+        }
+    }
+    return text;
+}
+
+function splitArtifacts(raw, live){
+    let parts = [];
+    let pattern = /<artifact\b([^>]*)>/g;
+    let pos = 0;
+
+    while(true){
+        pattern.lastIndex = pos;
+        let match = pattern.exec(raw);
+
+        if(!match){
+            let rest = raw.slice(pos);
+            if(live){
+                let partial = rest.lastIndexOf("<artifact");
+                rest = partial !== -1 && rest.indexOf(">", partial) === -1 ? rest.slice(0, partial) : holdBack(rest, "<artifact");
+            }
+            parts.push({ kind: "md", text: rest });
+            break;
+        }
+
+        parts.push({ kind: "md", text: raw.slice(pos, match.index) });
+
+        let bodyStart = match.index + match[0].length;
+        let close = raw.indexOf("</artifact>", bodyStart);
+        let complete = close !== -1;
+        let content = complete ? raw.slice(bodyStart, close) : raw.slice(bodyStart);
+        if(!complete && live){
+            content = holdBack(content, "</artifact>");
+        }
+
+        let attrs = artifactAttrs(match[1]);
+        content = artifactContent(content, complete);
+        let title = (attrs.title || "").trim() || "Untitled";
+        let type = artifactType(attrs, content);
+
+        parts.push({
+            kind: "artifact",
+            ref: artifactSlug(attrs.id || title),
+            title: title,
+            type: type,
+            language: type === "code" ? (attrs.language || "").toLowerCase() : "",
+            version: attrs.version ? parseInt(attrs.version, 10) : null,
+            content: content,
+            complete: complete,
+            writing: !complete && live
+        });
+
+        if(!complete){
+            break;
+        }
+        pos = close + "</artifact>".length;
+    }
+
+    return parts;
+}
+
+function artifactMeta(part){
+    let kind = part.type === "code" && part.language ? part.language : artifactNames[part.type];
+    let lines = part.content ? part.content.split("\n").length : 0;
+    if(part.writing){
+        return "Writing… " + lines + " line" + (lines === 1 ? "" : "s");
+    }
+    if(!part.complete && !part.transient){
+        return kind + " · unfinished";
+    }
+    return kind + (part.version ? " · v" + part.version : "");
+}
+
+function setIfChanged(node, key, value){
+    if(node[key] !== value){
+        node[key] = value;
+    }
+}
+
+// cards are reused between renders so a click while it's still streaming isn't lost.
+// the artifact lives on card.artifact (card.part is taken, it's the DOM's own property for ::part())
+function artifactCard(part, existing){
+    let card = existing;
+    if(!card){
+        card = el("button", "aiArtifact");
+        card.type = "button";
+        let icon = el("span", "aiArtifactIcon");
+        icon.append(el("i"));
+        let text = el("span", "aiArtifactText");
+        text.append(el("span", "aiArtifactTitle"), el("span", "aiArtifactMeta"));
+        card.append(icon, text, el("span", "aiArtifactOpen", "Open"));
+        card.addEventListener("click", function() {
+            openArtifact(card.artifact, card);
+        });
+    }
+
+    // a version the server told us about after the text was written
+    if(!part.version && card.artifact && card.artifact.version && card.artifact.ref === part.ref){
+        part.version = card.artifact.version;
+    }
+
+    card.artifact = part;
+    card.dataset.ref = part.ref;
+    card.classList.toggle("writing", part.writing);
+    setIfChanged(card.querySelector(".aiArtifactIcon"), "className", "aiArtifactIcon " + part.type);
+    setIfChanged(card.querySelector(".aiArtifactIcon i"), "className", part.writing ? "ph-bold ph-circle-notch spin" : "ph-bold " + artifactIcons[part.type]);
+    setIfChanged(card.querySelector(".aiArtifactTitle"), "textContent", part.title);
+    setIfChanged(card.querySelector(".aiArtifactMeta"), "textContent", artifactMeta(part));
+    card.setAttribute("aria-label", "Open " + part.title);
+
+    if(artifactPanel.card === card){
+        showArtifact(part, card, true);
+    }
+    return card;
+}
+
+// markdown and artifact cards for one text segment. once there's an artifact in it, each part gets its
+// own slot that's updated in place: the cards never leave the page, so their spinner doesn't restart and a
+// click while it's streaming isn't lost, and markdown that hasn't changed isn't re-rendered
+function renderSegment(segment, live){
+    let parts = splitArtifacts(segment.raw, live);
+
+    if(parts.length === 1 && !segment.slots){
+        renderMarkdown(segment.el, parts[0].text);
+        decorateCode(segment.el, !live);
+        return;
+    }
+
+    if(!segment.slots){
+        segment.slots = [];
+        segment.el.replaceChildren();
+    }
+
+    parts.forEach(function(part, i) {
+        let slot = segment.slots[i];
+
+        // parts only ever get added at the end, but if the shape changed start the slots over
+        if(slot && slot.kind !== part.kind){
+            segment.slots.splice(i).forEach(s => s.el.remove());
+            slot = null;
+        }
+
+        if(!slot){
+            slot = { kind: part.kind, el: part.kind === "md" ? el("div", "aiMdPart") : null, text: null, final: false };
+            if(part.kind === "artifact"){
+                slot.el = artifactCard(part, null);
+            }
+            segment.el.append(slot.el);
+            segment.slots[i] = slot;
+        }
+
+        if(part.kind === "md"){
+            // the final render adds the preview buttons, so it always runs once
+            if(slot.text !== part.text || (!live && !slot.final)){
+                slot.text = part.text;
+                slot.final = !live;
+                renderMarkdown(slot.el, part.text);
+                decorateCode(slot.el, !live);
+            }
+            return;
+        }
+
+        artifactCard(part, slot.el);
+
+        // the first time a new one starts writing, open it on screens with room for the panel
+        if(part.writing && !slot.el.autoOpened){
+            slot.el.autoOpened = true;
+            if(window.matchMedia("(min-width: 1100px)").matches && !artifactPanel.pinnedByUser){
+                openArtifact(part, slot.el, true);
+            }
+        }
+    });
+
+    // text that was held back (half a tag) can make the list shorter again
+    segment.slots.splice(parts.length).forEach(s => s.el.remove());
+}
+
+// "copy answer" gets the artifacts as normal code blocks
+function plainAnswer(raw){
+    return raw.replace(/<artifact\b([^>]*)>([\s\S]*?)(<\/artifact>|$)/g, function(_, attrs, content) {
+        let parsed = artifactAttrs(attrs);
+        let type = artifactType(parsed, content);
+        let language = type === "code" ? (parsed.language || "") : (type === "markdown" ? "markdown" : type);
+        return "```" + language + "\n" + artifactContent(content, true) + "\n```";
+    });
+}
+
+// ---------- the artifact panel ----------
+
+const artifactPanel = {
+    root: document.getElementById("aiArtifactPanel"),
+    frame: document.getElementById("aiArtifactFrame"),
+    doc: document.getElementById("aiArtifactDoc"),
+    code: document.getElementById("aiArtifactCode"),
+    card: null,
+    part: null,
+    view: null,        // "preview" | "code"
+    viewChosen: false, // they picked a tab themselves
+    previewed: null,   // content the preview was last built from
+    pinnedByUser: false,
+    highlightTimer: null
+};
+
+function canPreview(part){
+    return part.type !== "code";
+}
+
+// other cards in this chat with the same id are the other versions
+function artifactVersions(part){
+    return Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === part.ref && !part.transient);
+}
+
+function openArtifact(part, card, automatic){
+    if(!automatic){
+        artifactPanel.pinnedByUser = false;
+    }
+    artifactPanel.viewChosen = false;
+    artifactPanel.previewed = null;
+    artifactPanel.view = null;
+    showArtifact(part, card || null, false);
+    artifactPanel.root.hidden = false;
+    document.querySelector(".aiPage").classList.add("artifactOpen");
+    if(!automatic){
+        document.getElementById("aiArtifactClose").focus({ preventScroll: true });
+    }
+}
+
+function closeArtifact(){
+    artifactPanel.root.hidden = true;
+    artifactPanel.card = null;
+    artifactPanel.part = null;
+    artifactPanel.frame.srcdoc = "";
+    artifactPanel.pinnedByUser = true; // don't pop it open again on this page unless they ask
+    document.querySelector(".aiPage").classList.remove("artifactOpen");
+}
+
+function setArtifactView(view){
+    artifactPanel.view = view;
+    document.querySelectorAll("#aiArtifactTabs [data-view]").forEach(function(tab) {
+        tab.setAttribute("aria-selected", tab.dataset.view === view ? "true" : "false");
+    });
+    renderArtifactBody();
+}
+
+// update: true when the same artifact got more text (streaming), so keep the scroll and tab
+function showArtifact(part, card, update){
+    artifactPanel.part = part;
+    artifactPanel.card = card;
+
+    document.getElementById("aiArtifactTitle").textContent = part.title;
+    document.getElementById("aiArtifactMeta").textContent = artifactMeta(part);
+
+    let previewable = canPreview(part);
+    document.getElementById("aiArtifactTabs").hidden = !previewable;
+
+    // still writing: watch the code come in, then flip to the preview once it's done
+    let view = artifactPanel.view;
+    if(!artifactPanel.viewChosen || !view){
+        view = previewable && !part.writing ? "preview" : "code";
+    }
+    if(!previewable){
+        view = "code";
+    }
+
+    let open = document.getElementById("aiArtifactNewTab");
+    let saved = !!(part.version && ai.chatId && !part.transient);
+    open.hidden = !saved || !previewable;
+    if(saved){
+        open.href = "/ai/artifacts/" + ai.chatId + "/" + part.ref + "/" + part.version;
+    }
+
+    let select = document.getElementById("aiArtifactVersion");
+    let versions = card ? artifactVersions(part) : [];
+    select.replaceChildren();
+    select.hidden = versions.length < 2;
+    versions.forEach(function(other, i) {
+        let option = el("option", "", other.artifact.version ? "v" + other.artifact.version : "Draft " + (i + 1));
+        option.value = i;
+        option.selected = other === card;
+        select.append(option);
+    });
+    select.versions = versions;
+
+    if(view !== artifactPanel.view){
+        setArtifactView(view);
+    } else {
+        renderArtifactBody(update);
+    }
+}
+
+function renderArtifactBody(update){
+    let part = artifactPanel.part;
+    if(!part){
+        return;
+    }
+
+    let preview = artifactPanel.view === "preview";
+    artifactPanel.frame.hidden = !preview || part.type === "markdown";
+    artifactPanel.doc.hidden = !preview || part.type !== "markdown";
+    artifactPanel.code.hidden = preview;
+
+    if(preview){
+        // rebuilding the iframe restarts whatever's running in it, so only when the content changed
+        if(artifactPanel.previewed === part.content){
+            return;
+        }
+        artifactPanel.previewed = part.content;
+
+        if(part.type === "markdown"){
+            renderMarkdown(artifactPanel.doc, part.content);
+            decorateCode(artifactPanel.doc, false);
+            artifactPanel.frame.srcdoc = "";
+        } else if(part.type === "svg"){
+            artifactPanel.frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;height:100%;background:#fff}body{display:grid;place-items:center}svg{max-width:100%;max-height:100vh;height:auto}</style></head><body>' + part.content + "</body></html>";
+        } else {
+            artifactPanel.frame.srcdoc = part.content;
+        }
+        return;
+    }
+
+    // code view: plain text right away, colours a moment later (highlighting every frame is slow for big files)
+    let code = artifactPanel.code.querySelector("code");
+    let box = artifactPanel.code;
+    let stick = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    code.className = "";
+    code.textContent = part.content;
+    if(update && stick){
+        box.scrollTop = box.scrollHeight;
+    } else if(!update){
+        box.scrollTop = 0;
+    }
+
+    clearTimeout(artifactPanel.highlightTimer);
+    artifactPanel.highlightTimer = setTimeout(function() {
+        if(!window.hljs || artifactPanel.part !== part || artifactPanel.view !== "code"){
+            return;
+        }
+        let language = part.type === "code" ? part.language : (part.type === "svg" ? "xml" : part.type);
+        if(language && hljs.getLanguage(language)){
+            code.className = "language-" + language;
+            hljs.highlightElement(code);
+        }
+    }, part.writing ? 400 : 0);
+}
+
+document.querySelectorAll("#aiArtifactTabs [data-view]").forEach(function(tab) {
+    tab.addEventListener("click", function() {
+        artifactPanel.viewChosen = true;
+        setArtifactView(tab.dataset.view);
+    });
+});
+
+document.getElementById("aiArtifactClose").addEventListener("click", closeArtifact);
+
+artifactPanel.root.addEventListener("keydown", function(event) {
+    if(event.key === "Escape"){
+        closeArtifact();
+    }
+});
+
+document.getElementById("aiArtifactVersion").addEventListener("change", function() {
+    let card = this.versions && this.versions[this.value];
+    if(card){
+        artifactPanel.previewed = null;
+        showArtifact(card.artifact, card, false);
+    }
+});
+
+document.getElementById("aiArtifactCopy").addEventListener("click", function() {
+    let button = this;
+    if(!artifactPanel.part){
+        return;
+    }
+    navigator.clipboard.writeText(artifactPanel.part.content).then(function() {
+        button.innerHTML = '<i class="ph-bold ph-check"></i>';
+        setTimeout(function() { button.innerHTML = '<i class="ph-bold ph-copy"></i>'; }, 1500);
+    });
+});
+
+// a blob download never runs the file, it only saves it
+document.getElementById("aiArtifactDownload").addEventListener("click", function() {
+    let part = artifactPanel.part;
+    if(!part){
+        return;
+    }
+    let extensions = { html: "html", svg: "svg", markdown: "md" };
+    let codeExtensions = { python: "py", javascript: "js", typescript: "ts", css: "css", json: "json", java: "java", c: "c", cpp: "cpp", csharp: "cs", go: "go", rust: "rs", ruby: "rb", bash: "sh", shell: "sh", sql: "sql", lua: "lua", php: "php" };
+    let ext = part.type === "code" ? (codeExtensions[part.language] || "txt") : extensions[part.type];
+    let mime = { html: "text/html", svg: "image/svg+xml" }[part.type] || "text/plain";
+    let url = URL.createObjectURL(new Blob([part.content], { type: mime + ";charset=utf-8" }));
+    let link = el("a");
+    link.href = url;
+    link.download = artifactSlug(part.ref || part.title) + "." + ext;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+// the server saved one: give the newest card with that id and no version its number
+function artifactSaved(event){
+    let cards = Array.from(log.querySelectorAll(".aiArtifact")).filter(c => c.artifact && c.artifact.ref === event.ref && !c.artifact.version);
+    let card = cards[0];
+    if(!card){
+        return;
+    }
+    card.artifact.version = event.version;
+    card.querySelector(".aiArtifactMeta").textContent = artifactMeta(card.artifact);
+    if(artifactPanel.card === card){
+        showArtifact(card.artifact, card, true);
+    }
 }
 
 // ---------- building messages ----------
@@ -170,28 +710,30 @@ function addText(turn, text, live){
     segment.raw += text;
 
     if(!live){
-        renderMarkdown(segment.el, segment.raw);
-        finishMarkdown(segment.el);
+        renderSegment(segment, false);
         return;
     }
 
-    // re-render at most once a frame while streaming
+    // re-render at most once a frame while streaming, less often once it's long (it's re-parsed every time)
     if(!segment.queued){
         segment.queued = true;
-        requestAnimationFrame(function() {
-            segment.queued = false;
+        let wait = segment.raw.length > 6000 ? 120 : 0;
+        setTimeout(function() {
+            requestAnimationFrame(function() {
+                segment.queued = false;
 
-            // closeText already did the final render, rendering again would wipe the code block extras
-            if(segment.closed){
-                return;
-            }
+                // closeText already did the final render
+                if(segment.closed){
+                    return;
+                }
 
-            let stick = nearBottom();
-            renderMarkdown(segment.el, segment.raw);
-            if(stick){
-                scrollDown(true);
-            }
-        });
+                let stick = nearBottom();
+                renderSegment(segment, true);
+                if(stick){
+                    scrollDown(true);
+                }
+            });
+        }, wait);
     }
 }
 
@@ -199,8 +741,7 @@ function closeText(turn){
     if(turn.text){
         let segment = turn.text;
         segment.closed = true;
-        renderMarkdown(segment.el, segment.raw);
-        finishMarkdown(segment.el);
+        renderSegment(segment, false);
         turn.text = null;
     }
 }
@@ -250,7 +791,7 @@ function toolChip(turn, id, name, live){
     let labels = toolLabels[name] || ["Using " + name, "Used " + name];
     let details = el("details", "aiTool" + (live ? " running" : ""));
     let summary = el("summary");
-    let icon = el("i", live ? "fa-solid fa-circle-notch fa-spin" : "fa-solid fa-wrench");
+    let icon = el("i", live ? "ph-bold ph-circle-notch spin" : "ph-bold ph-wrench");
     let label = el("span", "", live ? labels[0] + "..." : labels[1]);
     summary.append(icon, label);
 
@@ -280,7 +821,7 @@ function toolResult(turn, id, content, isError){
 
     chip.el.classList.remove("running");
     chip.el.classList.toggle("failed", !!isError);
-    chip.icon.className = isError ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-check";
+    chip.icon.className = isError ? "ph-bold ph-warning" : "ph-bold ph-check";
     chip.label.textContent = isError ? chip.labels[1] + " (failed)" : chip.labels[1];
     chip.body.append(el("pre", "aiToolResult", content));
 }
@@ -299,12 +840,12 @@ function turnActions(turn, isLast){
     copy.type = "button";
     copy.title = "Copy";
     copy.setAttribute("aria-label", "Copy answer");
-    copy.innerHTML = '<i class="fa-regular fa-copy"></i>';
+    copy.innerHTML = '<i class="ph-bold ph-copy"></i>';
     copy.addEventListener("click", function() {
-        let text = turn.allText.map(s => s.raw).join("\n\n");
+        let text = turn.allText.map(s => plainAnswer(s.raw)).join("\n\n");
         navigator.clipboard.writeText(text).then(function() {
-            copy.innerHTML = '<i class="fa-solid fa-check"></i>';
-            setTimeout(function() { copy.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 1500);
+            copy.innerHTML = '<i class="ph-bold ph-check"></i>';
+            setTimeout(function() { copy.innerHTML = '<i class="ph-bold ph-copy"></i>'; }, 1500);
         });
     });
     bar.append(copy);
@@ -314,7 +855,7 @@ function turnActions(turn, isLast){
         again.type = "button";
         again.title = "Regenerate";
         again.setAttribute("aria-label", "Regenerate answer");
-        again.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+        again.innerHTML = '<i class="ph-bold ph-arrow-clockwise"></i>';
         again.addEventListener("click", regenerate);
         bar.append(again);
     }
@@ -391,7 +932,7 @@ function renderSaved(messages){
 function setStreaming(on){
     ai.streaming = on;
     sendButton.classList.toggle("stop", on);
-    sendButton.querySelector("i").className = on ? "fa-solid fa-stop" : "fa-solid fa-arrow-up";
+    sendButton.querySelector("i").className = on ? "ph-bold ph-stop" : "ph-bold ph-arrow-up";
     sendButton.querySelector("span").textContent = on ? "Stop" : "Send";
     updateSendState();
 }
@@ -492,6 +1033,12 @@ function send(options){
             case "notice":
                 addNotice(turn, event.text);
                 break;
+            case "artifact":
+                artifactSaved(event);
+                break;
+            case "theme":
+                applyTheme(event);
+                break;
             case "refused":
                 // the partial answer from a declined response doesn't count
                 turn.body.querySelectorAll(".aiText").forEach(n => n.remove());
@@ -583,7 +1130,7 @@ function send(options){
         // tools that never got a result (stopped mid way)
         turn.body.querySelectorAll(".aiTool.running").forEach(function(chip) {
             chip.classList.remove("running");
-            chip.querySelector("i").className = "fa-solid fa-xmark";
+            chip.querySelector("i").className = "ph-bold ph-x";
         });
 
         if(!turn.body.children.length){
@@ -705,7 +1252,7 @@ function makeThumb(item){
     let remove = el("button", "aiThumbRemove");
     remove.type = "button";
     remove.setAttribute("aria-label", "Remove image");
-    remove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    remove.innerHTML = '<i class="ph-bold ph-x"></i>';
     remove.addEventListener("click", function() {
         ai.attachments = ai.attachments.filter(a => a !== item);
         thumb.remove();

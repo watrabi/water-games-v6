@@ -1,0 +1,148 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Memory{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/ai.css?t=6">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>Memory</h1>
+            <p><a href="/ai">Back to {{ aiName }}</a> · Things {{ aiName }} remembers about you between chats. Only you (and {{ aiName }}) can see them. Delete anything you don't want it to keep.</p>
+        </div>
+    </div>
+
+    <div class="notice" id="memoryMsg" role="status" hidden></div>
+
+    <label class="checkRow memoryToggle"><input type="checkbox" id="memoryOn"{% if memoryOn %} checked{% endif %}><span>Let {{ aiName }} remember things about me</span></label>
+    <p class="muted memoryOffNote" id="memoryOffNote"{% if memoryOn %} hidden{% endif %}>Memory is off. {{ aiName }} won't see or save any of these until you switch it back on.</p>
+
+    <form class="memoryAdd" id="memoryAdd">
+        <label class="sr-only" for="memoryText">Add a memory</label>
+        <input id="memoryText" maxlength="{{ maxChars }}" placeholder="Add something yourself, e.g. “Call me Wave”" autocomplete="off">
+        <button class="button" type="submit">Add</button>
+    </form>
+
+    <p class="muted memoryCount"><span id="memoryCount">{{ memories|length }}</span> of {{ maxMemories }} saved</p>
+
+    {% if memories is empty %}
+        <div id="memoryEmpty">{{ g.empty('blobwizard', 'Nothing yet.', 'Tell ' ~ aiName|e ~ ' things like your favourite games or what to call you, or say “remember that...”, and it shows up here.') }}</div>
+    {% endif %}
+    <ul class="artifactLibrary memoryList" id="memoryList">
+        {% for item in memories %}
+        <li data-id="{{ item.id }}">
+            <span class="artifactIcon"><i class="ph-bold ph-brain" aria-hidden="true"></i></span>
+            <span class="artifactInfo">
+                <span class="memoryText">{{ item.content }}</span>
+                <span class="artifactMeta">{{ item.updated|date('M j, Y') }}</span>
+            </span>
+            <span class="artifactButtons">
+                <button class="button quiet small" type="button" data-delete>Delete</button>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <button class="button quiet small memoryClear" type="button" id="memoryClear"{% if memories is empty %} hidden{% endif %}>Forget everything</button>
+</div>
+<script>
+(function(){
+    let list = document.getElementById("memoryList");
+    let msg = $("#memoryMsg");
+    let count = document.getElementById("memoryCount");
+    let clear = document.getElementById("memoryClear");
+
+    function refreshCount(){
+        count.textContent = list.children.length;
+        clear.hidden = !list.children.length;
+        let empty = document.getElementById("memoryEmpty");
+        if(empty){
+            empty.hidden = list.children.length > 0;
+        }
+    }
+
+    // second click confirms, no browser dialog
+    function confirmClick(button, label){
+        if(button.classList.contains("really")){
+            return true;
+        }
+        button.classList.add("really");
+        button.textContent = "Really?";
+        setTimeout(() => { button.classList.remove("really"); button.textContent = label; }, 4000);
+        return false;
+    }
+
+    function row(id, content){
+        let li = document.createElement("li");
+        li.dataset.id = id;
+        li.innerHTML = '<span class="artifactIcon"><i class="ph-bold ph-brain" aria-hidden="true"></i></span>'
+            + '<span class="artifactInfo"><span class="memoryText"></span><span class="artifactMeta">Just now</span></span>'
+            + '<span class="artifactButtons"><button class="button quiet small" type="button" data-delete>Delete</button></span>';
+        li.querySelector(".memoryText").textContent = content;
+        return li;
+    }
+
+    list.addEventListener("click", function(event) {
+        let button = event.target.closest("[data-delete]");
+        if(!button || !confirmClick(button, "Delete")){
+            return;
+        }
+
+        let item = button.closest("li");
+        button.disabled = true;
+        $.post("/api/v1/ai/memories/" + item.dataset.id + "/delete").done(function() {
+            item.remove();
+            refreshCount();
+        }).fail(function(xhr) {
+            button.disabled = false;
+            showNotice(msg, apiMessage(xhr));
+        });
+    });
+
+    document.getElementById("memoryAdd").addEventListener("submit", function(event) {
+        event.preventDefault();
+        let input = document.getElementById("memoryText");
+        let text = input.value.trim();
+        if(!text){
+            return;
+        }
+
+        $.post("/api/v1/ai/memories/add", { content: text }).done(function(data) {
+            list.prepend(row(data.id, data.content));
+            input.value = "";
+            msg.prop("hidden", true);
+            refreshCount();
+        }).fail(function(xhr) {
+            showNotice(msg, apiMessage(xhr));
+        });
+    });
+
+    clear.addEventListener("click", function() {
+        if(!confirmClick(clear, "Forget everything")){
+            return;
+        }
+
+        $.post("/api/v1/ai/memories/clear").done(function() {
+            list.innerHTML = "";
+            clear.classList.remove("really");
+            clear.textContent = "Forget everything";
+            refreshCount();
+        }).fail(function(xhr) {
+            showNotice(msg, apiMessage(xhr));
+        });
+    });
+
+    let toggle = document.getElementById("memoryOn");
+    toggle.addEventListener("change", function() {
+        let on = toggle.checked;
+        $.post("/api/v1/ai/memories/toggle", { on: on ? 1 : 0 }).done(function() {
+            document.getElementById("memoryOffNote").hidden = on;
+        }).fail(function(xhr) {
+            toggle.checked = !on;
+            showNotice(msg, apiMessage(xhr));
+        });
+    });
+})();
+</script>
+{% endblock %}

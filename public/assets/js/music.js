@@ -79,7 +79,7 @@ function renderTrack(){
     if(track.cover){
         $("<img>", { src: track.cover, alt: "" }).appendTo(cover);
     } else {
-        cover.append('<i class="fa-solid fa-music"></i>');
+        cover.append('<i class="ph-bold ph-music-notes"></i>');
     }
 
     $("#playerNext").prop("disabled", music.index >= music.queue.length - 1);
@@ -94,7 +94,7 @@ function renderPlayState(){
     let playing = !music.audio.paused;
     $("#playerToggle")
         .attr("aria-label", playing ? "Pause" : "Play")
-        .find("i").attr("class", "fa-solid " + (playing ? "fa-pause" : "fa-play"));
+        .find("i").attr("class", "ph-bold " + (playing ? "ph-pause" : "ph-play"));
     $(document).trigger("music:state", [playing]);
 }
 
@@ -103,8 +103,8 @@ function renderVolume(){
     music.audio.muted = music.muted;
     $("#playerVolume").val(Math.round(music.volume * 100));
 
-    let icon = music.muted || music.volume === 0 ? "fa-volume-xmark" : (music.volume < 0.5 ? "fa-volume-low" : "fa-volume-high");
-    $("#playerMute").attr("aria-label", music.muted ? "Unmute" : "Mute").find("i").attr("class", "fa-solid " + icon);
+    let icon = music.muted || music.volume === 0 ? "ph-speaker-x" : (music.volume < 0.5 ? "ph-speaker-low" : "ph-speaker-high");
+    $("#playerMute").attr("aria-label", music.muted ? "Unmute" : "Mute").find("i").attr("class", "ph-bold " + icon);
 }
 
 // loads the track at index. countPlay is false when restoring after a page change
@@ -156,6 +156,12 @@ window.watrMusic = {
         }
     },
     current: currentTrack,
+    audio: music.audio,
+    seek: function(seconds){
+        if(currentTrack()){
+            music.audio.currentTime = Math.max(0, seconds);
+        }
+    },
     isPlaying: function(){
         return !music.audio.paused;
     }

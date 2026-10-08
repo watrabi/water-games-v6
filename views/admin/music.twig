@@ -9,11 +9,11 @@
     </div>
     <div class="headerActions">
         <form class="inlineSearch" method="get">
-            <i class="fa-solid fa-magnifying-glass"></i>
+            <i class="ph-bold ph-magnifying-glass"></i>
             <label class="sr-only" for="adminSearch">Search</label>
-            <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Title or artist">
+            <input id="adminSearch" type="search" name="q" value="{{ search }}" placeholder="Title, artist or uploader">
         </form>
-        <a class="button" href="/admin/music/new"><i class="fa-solid fa-plus"></i>Add track</a>
+        <a class="button" href="/admin/music/new"><i class="ph-bold ph-plus"></i>Add track</a>
     </div>
 </div>
 
@@ -22,14 +22,16 @@
 {% else %}
 <table class="table">
     <thead>
-        <tr><th></th><th>Title</th><th>Artist</th><th class="right">Length</th><th class="right">Plays</th><th></th></tr>
+        <tr><th></th><th>Title</th><th>Artist</th><th>Uploaded by</th><th>Lyrics</th><th class="right">Length</th><th class="right">Plays</th><th></th></tr>
     </thead>
     <tbody>
     {% for row in rows %}
         <tr>
-            <td class="thumbCell"><span class="adminThumb">{% if row.coverPath %}<img src="{{ row.coverPath }}" alt="">{% else %}<i class="fa-solid fa-music"></i>{% endif %}</span></td>
+            <td class="thumbCell"><span class="adminThumb">{% if row.coverPath %}<img src="{{ row.coverPath }}" alt="">{% else %}<i class="ph-bold ph-music-notes"></i>{% endif %}</span></td>
             <td><a href="/admin/music/{{ row.id }}">{{ row.title }}</a></td>
             <td class="muted">{{ row.artist ?: '–' }}</td>
+            <td>{% if row.username %}<a href="/users/{{ row.username|lower|url_encode }}">{{ row.username }}</a>{% else %}<span class="muted">Admin</span>{% endif %}</td>
+            <td class="muted">{% if row.lyrics is not null %}{{ row.lyricsSynced ? 'Synced' : 'Plain' }}{% elseif row.lyricsChecked %}None found{% else %}–{% endif %}</td>
             <td class="right muted">{% if row.duration %}{{ row.duration // 60 }}:{{ '%02d'|format(row.duration % 60) }}{% else %}–{% endif %}</td>
             <td class="right">{{ row.plays|number_format }}</td>
             <td class="rowActions">{{ m.deleteButton('/admin/music/' ~ row.id ~ '/delete', '“' ~ row.title ~ '”') }}</td>

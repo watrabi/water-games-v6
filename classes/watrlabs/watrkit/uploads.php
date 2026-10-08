@@ -2,7 +2,7 @@
 
 namespace watrlabs\watrkit;
 
-// files the admin panel uploads (game icons, track covers, music), saved under public/uploads
+// uploaded files (game icons, track covers, music, profile pictures), saved under public/uploads
 class uploads {
 
     const IMAGES = ["image/jpeg"=>"jpg", "image/png"=>"png", "image/gif"=>"gif", "image/webp"=>"webp"];
@@ -84,7 +84,7 @@ class uploads {
 
     // removes a file we uploaded earlier (anything outside /uploads/ is left alone)
     static function delete(?string $path){
-        if(!$path || !preg_match('#^/uploads/(icons|covers|music)/[a-f0-9]+\.[a-z0-9]+$#', $path)){
+        if(!$path || !preg_match('#^/uploads/(icons|covers|music|avatars)/[a-f0-9]+\.[a-z0-9]+$#', $path)){
             return;
         }
 
@@ -92,5 +92,56 @@ class uploads {
         if(is_file($file)){
             unlink($file);
         }
+    }
+
+    // profile pictures get cropped to a square and re-saved, which also drops anything hiding in the
+    // file (like a photo's GPS location). animated gifs end up as their first frame
+    static function storeAvatar(string $field): string {
+        $file = $_FILES[$field];
+
+        if($file["error"] === UPLOAD_ERR_INI_SIZE || $file["error"] === UPLOAD_ERR_FORM_SIZE || ($file["error"] === UPLOAD_ERR_OK && $file["size"] > 5 * 1024 * 1024)){
+            throw new \InvalidArgumentException("Pictures have to be under 5MB.");
+        }
+        if($file["error"] !== UPLOAD_ERR_OK){
+            throw new \InvalidArgumentException("The upload didn't go through.");
+        }
+
+        $info = self::imageInfo($file["tmp_name"]);
+        if(!$info || !isset(self::IMAGES[$info["mime"]])){
+            throw new \InvalidArgumentException("Pictures have to be JPEG, PNG, GIF or WebP.");
+        }
+        if($info[0] * $info[1] > 40000000){
+            throw new \InvalidArgumentException("That picture is too big, try a smaller one.");
+        }
+
+        try {
+            $source = imagecreatefromstring(file_get_contents($file["tmp_name"]));
+        } catch (\Throwable $e) {
+            $source = false;
+        }
+        if(!$source){
+            throw new \InvalidArgumentException("Couldn't read that picture.");
+        }
+
+        $side = min(imagesx($source), imagesy($source));
+        $size = min(256, $side);
+        $avatar = imagecreatetruecolor($size, $size);
+        imagealphablending($avatar, false);
+        imagesavealpha($avatar, true);
+        imagecopyresampled($avatar, $source, 0, 0, intdiv(imagesx($source) - $side, 2), intdiv(imagesy($source) - $side, 2), $size, $size, $side, $side);
+
+        $dir = __DIR__ . "/../../../public/uploads/avatars";
+        if(!is_dir($dir)){
+            mkdir($dir, 0755, true);
+        }
+
+        $name = bin2hex(random_bytes(12)) . ".webp";
+        $saved = imagewebp($avatar, "$dir/$name", 85);
+
+        if(!$saved){
+            throw new \RuntimeException("Couldn't save the picture. Is public/uploads writable?");
+        }
+
+        return "/uploads/avatars/$name";
     }
 }

@@ -54,11 +54,21 @@ class openai extends provider {
 
                 foreach($message["content"] as $block){
                     if($block["type"] === "tool_use"){
-                        $calls[] = [
+                        $call = [
                             "id"=>$block["id"],
                             "type"=>"function",
                             "function"=>["name"=>$block["name"], "arguments"=>json_encode((object) $block["input"])],
                         ];
+
+                        // gemini 3 refuses tool calls sent back without the thought signature it gave us
+                        if(!empty($block["extra_content"])){
+                            $call["extra_content"] = $block["extra_content"];
+                        } elseif($this->isGoogle()){
+                            // calls made by another model have none, google documents this value for that case
+                            $call["extra_content"] = ["google"=>["thought_signature"=>"skip_thought_signature_validator"]];
+                        }
+
+                        $calls[] = $call;
                     }
                 }
 
@@ -162,11 +172,19 @@ class openai extends provider {
             if(isset($call["function"]["arguments"])){
                 $this->calls[$index]["arguments"] .= $call["function"]["arguments"];
             }
+
+            if(!empty($call["extra_content"]) && is_array($call["extra_content"])){
+                $this->calls[$index]["extra_content"] = array_replace_recursive($this->calls[$index]["extra_content"] ?? [], $call["extra_content"]);
+            }
         }
 
         if(!empty($choice["finish_reason"])){
             $this->finishReason = $choice["finish_reason"];
         }
+    }
+
+    private function isGoogle(){
+        return str_contains($this->model["url"], "generativelanguage.googleapis.com");
     }
 
     private function closeReasoning(){
@@ -200,6 +218,10 @@ class openai extends provider {
 
                 if(!is_array($input)){
                     $block["invalid_input"] = true;
+                }
+
+                if(!empty($call["extra_content"])){
+                    $block["extra_content"] = $call["extra_content"];
                 }
 
                 $blocks[] = $block;

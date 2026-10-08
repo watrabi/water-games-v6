@@ -1,10 +1,11 @@
 {% extends "models/base.twig" %}
 {% import "components/games.twig" as g %}
+{% import "components/avatar.twig" as a %}
 {% block pageName %}{{ profile.username }}{% endblock %}
 {% block body %}
 <div class="page">
     <div class="profileHeader">
-        <span class="avatar large">{{ profile.username|first|upper }}</span>
+        {{ a.avatar(profile, 'large') }}
         <div>
             <h1>{{ profile.username }}</h1>
             <p class="muted">Joined {{ profile.registered|date("F Y") }} · {{ friendCount }} friend{{ friendCount == 1 ? '' : 's' }}</p>
@@ -15,7 +16,7 @@
         {% elseif currentuser and relation and relation != 'blockedby' %}
             <div class="friendActions" id="friendActions" data-id="{{ profile.id }}" data-username="{{ profile.username }}" data-relation="{{ relation }}">
                 {% if relation == 'friends' %}
-                    <button class="button" type="button" data-chat><i class="fa-solid fa-comment"></i>Message</button>
+                    <button class="button" type="button" data-chat><i class="ph-bold ph-chat-circle"></i>Message</button>
                 {% elseif relation == 'incoming' %}
                     <button class="button" type="button" data-act="accept">Accept friend request</button>
                     <button class="button quiet" type="button" data-act="decline">Decline</button>
@@ -24,11 +25,11 @@
                 {% elseif relation == 'blocked' %}
                     <button class="button quiet" type="button" data-act="unblock">Unblock</button>
                 {% else %}
-                    <button class="button" type="button" data-act="request"><i class="fa-solid fa-user-plus"></i>Add friend</button>
+                    <button class="button" type="button" data-act="request"><i class="ph-bold ph-user-plus"></i>Add friend</button>
                 {% endif %}
                 {% if relation != 'blocked' %}
                 <details class="moreMenu">
-                    <summary class="button quiet" aria-label="More"><i class="fa-solid fa-ellipsis"></i></summary>
+                    <summary class="button quiet" aria-label="More"><i class="ph-bold ph-dots-three"></i></summary>
                     <div class="moreMenuItems">
                         {% if relation == 'friends' %}<button type="button" data-act="remove" data-confirm="Unfriend {{ profile.username }}?">Unfriend</button>{% endif %}
                         <button type="button" data-act="block" data-confirm="Block {{ profile.username }}? They won't be able to message you or send you friend requests.">Block</button>

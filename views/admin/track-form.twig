@@ -36,7 +36,7 @@
     <div class="field">
         <label for="coverPath">Cover <span class="muted">(optional)</span></label>
         <div class="fileRow">
-            <span class="adminThumb large" id="coverPreview">{% if track.coverPath %}<img src="{{ track.coverPath }}" alt="">{% else %}<i class="fa-solid fa-music"></i>{% endif %}</span>
+            <span class="adminThumb large" id="coverPreview">{% if track.coverPath %}<img src="{{ track.coverPath }}" alt="">{% else %}<i class="ph-bold ph-music-notes"></i>{% endif %}</span>
             <div class="fileInputs">
                 <input id="coverPath" name="coverPath" value="{{ track.coverPath }}" class="mono" placeholder="/music-files/covers/low-tide.jpg">
                 <input type="file" name="coverFile" accept="image/png,image/jpeg,image/gif,image/webp" data-preview="#coverPreview" aria-label="Upload a cover">

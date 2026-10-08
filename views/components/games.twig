@@ -9,7 +9,7 @@
       {% endif %}
     </span>
     <p class="gameName" title="{{ game.name }}">{{ game.name }}</p>
-    <p class="gameMeta">{{ game.plays|compact }} {{ game.type == 'app' ? (game.plays == 1 ? 'open' : 'opens') : (game.plays == 1 ? 'play' : 'plays') }}{% if game.favorites %} · {{ game.favorites|compact }} <i class="fa-solid fa-heart" aria-label="favorites"></i>{% endif %}</p>
+    <p class="gameMeta">{{ game.plays|compact }} {{ game.type == 'app' ? (game.plays == 1 ? 'open' : 'opens') : (game.plays == 1 ? 'play' : 'plays') }}{% if game.favorites %} · {{ game.favorites|compact }} <i class="ph-bold ph-heart" aria-label="favorites"></i>{% endif %}</p>
   </a>
 {% endmacro %}
 

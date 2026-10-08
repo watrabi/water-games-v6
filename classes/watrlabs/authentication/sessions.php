@@ -67,14 +67,21 @@ class sessions {
     }
 
     private function setCookie($value, $expires){
-        setcookie($_ENV["COOKIE_NAME"], $value, [
+        $options = [
             "expires"=>$expires,
             "path"=>"/",
-            "domain"=>"." . $_ENV["APP_DOMAIN"], // jank but ok
             "secure"=>!empty($_SERVER["HTTPS"]) || ($_SERVER["HTTP_X_FORWARDED_PROTO"] ?? "") === "https",
             "httponly"=>true,
             "samesite"=>"Lax",
-        ]);
+        ];
+
+        // browsers drop cookies for ".localhost" or an ip, so those stay host-only
+        $domain = preg_replace('/:\d+$/', '', $_ENV["APP_DOMAIN"] ?? "");
+        if($domain !== "" && $domain !== "localhost" && !filter_var($domain, FILTER_VALIDATE_IP)){
+            $options["domain"] = "." . $domain; // jank but ok
+        }
+
+        setcookie($_ENV["COOKIE_NAME"], $value, $options);
     }
 
     // destroys a session

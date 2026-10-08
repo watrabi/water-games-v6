@@ -181,11 +181,18 @@ body.aiBody #main {
     overflow-wrap: anywhere;
 }
 
-.aiText > :first-child {
+/* markdown around an artifact sits in its own wrapper, it lays out as if the wrapper wasn't there */
+.aiMdPart {
+    display: contents;
+}
+
+.aiText > :first-child,
+.aiText > .aiMdPart:first-child > :first-child {
     margin-top: 0;
 }
 
-.aiText > :last-child {
+.aiText > :last-child,
+.aiText > .aiMdPart:last-child > :last-child {
     margin-bottom: 0;
 }
 
@@ -328,9 +335,9 @@ body.aiBody #main {
 }
 
 .aiThinking summary::before {
-    content: "\f0da";
-    font-family: "Font Awesome 7 Free", "Font Awesome 6 Free";
-    font-weight: 900;
+    content: "\e13a";
+    font-family: "Phosphor-Bold";
+    font-weight: normal;
     font-size: 11px;
     transition: transform 0.15s;
 }
@@ -618,11 +625,354 @@ body.aiBody #main {
     cursor: pointer;
 }
 
+.aiCodeButtons {
+    display: flex;
+    gap: 2px;
+}
+
+.aiLibraryLink {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -6px;
+    padding: 7px 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.aiLibraryLink:hover {
+    background-color: var(--raised);
+    color: var(--text);
+    text-decoration: none;
+}
+
+/* ---------- artifacts: a card in the answer, the panel on the right ---------- */
+
+.aiArtifact {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 0 0.8em;
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    background-color: var(--surface);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.aiArtifact:hover {
+    border-color: var(--link);
+}
+
+.aiArtifactIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    background-color: var(--raised);
+    color: var(--link);
+    font-size: 16px;
+}
+
+.aiArtifactText {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.aiArtifactTitle {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aiArtifactMeta {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.aiArtifactOpen {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--link);
+}
+
+.aiArtifact.writing .aiArtifactOpen {
+    color: var(--muted);
+}
+
+.aiPage.artifactOpen {
+    grid-template-columns: 240px minmax(0, 1fr) minmax(380px, 1.1fr);
+}
+
+.aiArtifactPanel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-left: 1px solid var(--line);
+    background-color: var(--surface);
+}
+
+.aiArtifactHead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 8px 8px 8px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.aiArtifactHeadText {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.aiArtifactHeadText h2 {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#aiArtifactMeta {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+#aiArtifactVersion {
+    width: auto;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.aiArtifactBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px 6px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.aiArtifactTabs {
+    display: flex;
+    padding: 2px;
+    border: 1px solid var(--line);
+}
+
+.aiArtifactTabs[hidden] + .aiArtifactActions {
+    margin-left: auto;
+}
+
+.aiArtifactTabs button {
+    padding: 4px 14px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.aiArtifactTabs button[aria-selected=true] {
+    background-color: var(--raised);
+    color: var(--text);
+}
+
+.aiArtifactActions {
+    display: flex;
+    gap: 2px;
+}
+
+.aiArtifactBody {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+/* previews are drawn on white, that's what a page with no styles of its own expects */
+#aiArtifactFrame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: #fff;
+}
+
+#aiArtifactFrame[hidden] {
+    display: none;
+}
+
+.aiArtifactDoc {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.aiArtifactCode {
+    height: 100%;
+    margin: 0;
+    padding: 14px 16px;
+    overflow: auto;
+    background-color: var(--code-bg);
+    font-size: 13px;
+    line-height: 1.5;
+    tab-size: 4;
+}
+
+.aiArtifactCode code,
+.aiArtifactCode .hljs {
+    padding: 0;
+    background: none;
+}
+
+/* no room for three columns, the panel covers the chat instead */
+@media (max-width: 1100px) {
+    .aiPage.artifactOpen {
+        grid-template-columns: 240px minmax(0, 1fr);
+    }
+
+    .aiArtifactPanel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 13;
+        width: min(100%, 720px);
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35);
+    }
+}
+
+/* ---------- artifact library (/ai/artifacts) ---------- */
+
+.artifactLibrary {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+}
+
+.artifactLibrary li {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.artifactLibrary .artifactIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background-color: var(--raised);
+    color: var(--link);
+    font-size: 17px;
+}
+
+.artifactInfo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.artifactTitle {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.artifactMeta {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.artifactButtons {
+    display: flex;
+    gap: 6px;
+}
+
+.artifactButtons .really {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+@media (max-width: 560px) {
+    .artifactLibrary li {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+
+    .artifactButtons {
+        grid-column: 2;
+    }
+}
+
+/* ---------- memory (/ai/memory) ---------- */
+
+.memoryToggle {
+    margin-bottom: 6px;
+}
+
+.memoryOffNote {
+    margin: 0 0 14px;
+}
+
+.memoryAdd {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0 8px;
+}
+
+.memoryAdd input {
+    flex: 1;
+    min-width: 0;
+}
+
+.memoryCount {
+    margin: 0 0 10px;
+    font-size: 13px;
+}
+
+.memoryList .memoryText {
+    overflow-wrap: anywhere;
+}
+
+.memoryClear {
+    margin-top: 16px;
+}
+
+.memoryClear.really {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
 /* ---------- small screens ---------- */
 
 @media (max-width: 800px) {
-    .aiPage {
+    .aiPage,
+    .aiPage.artifactOpen {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aiArtifactPanel {
+        width: 100%;
+        box-shadow: none;
     }
 
     .aiChats {

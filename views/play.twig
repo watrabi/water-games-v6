@@ -25,13 +25,13 @@
         <div class="playActions">
             {% if currentuser %}
                 <button class="button quiet{{ favorited ? ' on' : '' }}" id="favoriteButton" data-id="{{ game.id }}" aria-pressed="{{ favorited ? 'true' : 'false' }}">
-                    <i class="fa-{{ favorited ? 'solid' : 'regular' }} fa-heart"></i><span>{{ favorited ? 'Favorited' : 'Favorite' }}</span>
+                    <i class="{{ favorited ? 'ph-fill' : 'ph-bold' }} ph-heart"></i><span>{{ favorited ? 'Favorited' : 'Favorite' }}</span>
                 </button>
             {% else %}
-                <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="fa-regular fa-heart"></i>Favorite</a>
+                <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="ph-bold ph-heart"></i>Favorite</a>
             {% endif %}
-            <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span class="sr-only">Open in a new tab</span></a>
-            <button class="button" id="fullscreenButton"><i class="fa-solid fa-expand"></i>Fullscreen</button>
+            <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="ph-bold ph-arrow-square-out"></i><span class="sr-only">Open in a new tab</span></a>
+            <button class="button" id="fullscreenButton"><i class="ph-bold ph-arrows-out"></i>Fullscreen</button>
         </div>
     </div>
     <div class="notice danger" id="playError" role="alert" hidden></div>
@@ -53,5 +53,5 @@
     </section>
     {% endif %}
 </div>
-<script src="/assets/js/play.js?t=2" defer></script>
+<script src="/assets/js/play.js?t=3" defer></script>
 {% endblock %}

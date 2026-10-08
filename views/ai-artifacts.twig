@@ -1,0 +1,76 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Artifacts{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/ai.css?t=5">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>Artifacts</h1>
+            <p><a href="/ai">Back to {{ aiName }}</a> · Pages, drawings, docs and code {{ aiName }} made for you. Ask it to change one in the same chat and it saves a new version.</p>
+        </div>
+    </div>
+
+    <div class="notice" id="artifactsMsg" role="status" hidden></div>
+
+    {% if artifacts is empty %}
+        {{ g.empty('blobwizard', 'Nothing yet.', 'Ask the AI to <a href="/ai">make a web page, a game or a drawing</a> and it shows up here.') }}
+    {% else %}
+        {% set icons = {html: 'ph-globe', svg: 'ph-shapes', markdown: 'ph-file-text', code: 'ph-code'} %}
+        {% set names = {html: 'Web page', svg: 'SVG', markdown: 'Document', code: 'Code'} %}
+        <ul class="artifactLibrary" id="artifactLibrary">
+            {% for item in artifacts %}
+            {% set base = '/ai/artifacts/' ~ item.chatid ~ '/' ~ item.ref ~ '/' ~ item.latest %}
+            <li data-id="{{ item.id }}">
+                <span class="artifactIcon {{ item.type }}"><i class="ph-bold {{ icons[item.type] ?? 'ph-code' }}" aria-hidden="true"></i></span>
+                <span class="artifactInfo">
+                    <span class="artifactTitle">{{ item.title }}</span>
+                    <span class="artifactMeta">{{ item.type == 'code' and item.language ? item.language : names[item.type] }} · v{{ item.latest }}{% if item.versions > 1 %} ({{ item.versions }} versions){% endif %} · <a href="/ai/{{ item.chatid }}">{{ item.chatTitle }}</a> · {{ item.updated|date('M j, Y') }}</span>
+                </span>
+                <span class="artifactButtons">
+                    <a class="button quiet small" href="{{ base }}" target="_blank" rel="noopener">{{ item.type in ['html', 'svg'] ? 'Open' : 'View' }}</a>
+                    <a class="button quiet small" href="{{ base }}?download=1" data-reload aria-label="Download {{ item.title }}"><i class="ph-bold ph-download-simple"></i></a>
+                    <button class="button quiet small" type="button" data-delete>Delete</button>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+<script>
+(function(){
+    let list = document.getElementById("artifactLibrary");
+    if(!list){
+        return;
+    }
+
+    // second click confirms, no browser dialog
+    list.addEventListener("click", function(event) {
+        let button = event.target.closest("[data-delete]");
+        if(!button){
+            return;
+        }
+        if(!button.classList.contains("really")){
+            button.classList.add("really");
+            button.textContent = "Really delete?";
+            setTimeout(() => { button.classList.remove("really"); button.textContent = "Delete"; }, 4000);
+            return;
+        }
+
+        let row = button.closest("li");
+        button.disabled = true;
+        $.post("/api/v1/ai/artifacts/" + row.dataset.id + "/delete").done(function() {
+            row.remove();
+            if(!list.children.length && window.watrNav){
+                window.watrNav.reload();
+            }
+        }).fail(function(xhr) {
+            button.disabled = false;
+            showNotice($("#artifactsMsg"), apiMessage(xhr));
+        });
+    });
+})();
+</script>
+{% endblock %}

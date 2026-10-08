@@ -37,8 +37,8 @@ try {
         'database'  => $_ENV["DB_NAME"],
         'username'  => $_ENV["DB_USER"],
         'password'  => $_ENV["DB_PASS"],
-        'charset'   => 'utf8',
-        'collation' => 'utf8_unicode_ci',
+        'charset'   => 'utf8mb4', // plain utf8 in mysql is 3 bytes, emoji need 4
+        'collation' => 'utf8mb4_unicode_ci',
         'prefix'    => '', // if you have a prefix for all your tables.
         'options'   => [
             PDO::ATTR_EMULATE_PREPARES => false,
@@ -81,12 +81,18 @@ $twig->addGlobal('currentuser', $currentuser);
 $twig->addGlobal('path', strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/', '/')) ?: '/');
 
 $twig->addGlobal('aiEnabled', \watrlabs\ai\config::enabled());
+$twig->addGlobal('aiName', \watrlabs\ai\config::name());
+$twig->addGlobal('aiMemory', in_array('memory', \watrlabs\ai\config::tools(), true));
+
+// red badge on an admin's avatar while there are chat reports to look at
+$twig->addGlobal('openReports', $currentuser && !empty($currentuser->admin) ? \watrlabs\social\chat::openReports() : 0);
 
 // themes: which one to draw with, what the person picked, and the list for pickers
 $themeState = \watrlabs\watrkit\themes::resolve($currentuser);
 $twig->addGlobal('theme', $themeState["theme"]);
 $twig->addGlobal('themePref', $themeState["pref"]);
 $twig->addGlobal('themes', \watrlabs\watrkit\themes::all());
+$twig->addGlobal('customThemes', $currentuser ? array_map([\watrlabs\watrkit\userthemes::class, 'asTheme'], \watrlabs\watrkit\userthemes::list((int) $currentuser->id)) : []);
 $twig->addGlobal('effectsOn', ($_COOKIE["wg_effects"] ?? "on") !== "off");
 
 // the strip under the navbar: an admin announcement, or a seasonal greeting

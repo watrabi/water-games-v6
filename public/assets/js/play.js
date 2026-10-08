@@ -16,7 +16,7 @@ $("#fullscreenButton").on("click", function() {
 
 function setFavorited(favorited){
     favoriteButton.toggleClass("on", favorited).attr("aria-pressed", favorited);
-    favoriteButton.find("i").attr("class", (favorited ? "fa-solid" : "fa-regular") + " fa-heart");
+    favoriteButton.find("i").attr("class", (favorited ? "ph-fill" : "ph-bold") + " ph-heart");
     favoriteButton.find("span").text(favorited ? "Favorited" : "Favorite");
 }
 

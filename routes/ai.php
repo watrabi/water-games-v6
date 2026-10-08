@@ -2,6 +2,8 @@
 use watrlabs\ai\config;
 use watrlabs\ai\chats;
 use watrlabs\ai\assistant;
+use watrlabs\ai\artifacts;
+use watrlabs\ai\memories;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 
@@ -102,6 +104,152 @@ function aiPage(?int $chatId){
 
 $router->get("/ai", function(){
     return aiPage(null);
+});
+
+// everything the ai has made for you
+$router->get("/ai/artifacts", function(){
+    global $twig;
+    global $currentuser;
+
+    requireAccount();
+
+    echo $twig->render('ai-artifacts.twig', [
+        "artifacts"=>(new artifacts())->listFor((int) $currentuser->id),
+    ]);
+});
+
+// one artifact on its own. this is our domain, so it's served with a CSP sandbox: the page gets an opaque
+// origin and can't read cookies, call the api or touch the rest of the site, same as the iframe preview
+$router->get("/ai/artifacts/{chat}/{ref}/{version}", function($chat, $ref, $version){
+    global $currentuser;
+    global $router;
+
+    if(!$currentuser || !ctype_digit($chat) || !ctype_digit($version) || !preg_match('/^[a-z0-9-]{1,64}$/', $ref)){
+        return $router->return_status(404);
+    }
+
+    $artifact = (new artifacts())->find((int) $currentuser->id, (int) $chat, $ref, (int) $version);
+    if(!$artifact){
+        return $router->return_status(404);
+    }
+
+    $types = [
+        "html"=>["text/html; charset=utf-8", "html"],
+        "svg"=>["image/svg+xml; charset=utf-8", "svg"],
+        "markdown"=>["text/plain; charset=utf-8", "md"],
+        "code"=>["text/plain; charset=utf-8", "txt"],
+    ];
+    [$mime, $ext] = $types[$artifact->type] ?? $types["code"];
+
+    if(!empty($_GET["download"])){
+        $codeExt = ["python"=>"py", "javascript"=>"js", "typescript"=>"ts", "php"=>"php", "css"=>"css", "json"=>"json", "java"=>"java",
+            "c"=>"c", "cpp"=>"cpp", "csharp"=>"cs", "go"=>"go", "rust"=>"rs", "ruby"=>"rb", "bash"=>"sh", "shell"=>"sh", "sql"=>"sql", "lua"=>"lua"];
+        if($artifact->type === "code" && isset($codeExt[$artifact->language])){
+            $ext = $codeExt[$artifact->language];
+        }
+        header('Content-Disposition: attachment; filename="' . $artifact->ref . "." . $ext . '"');
+        $mime = $artifact->type === "html" ? "text/html; charset=utf-8" : $mime;
+    }
+
+    header("Content-Type: " . $mime);
+    header("Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads");
+    header("X-Content-Type-Options: nosniff");
+    header("Referrer-Policy: no-referrer");
+    header("Cache-Control: private, no-store");
+    echo $artifact->content;
+    exit;
+});
+
+$router->post("/api/v1/ai/artifacts/{id}/delete", function($id){
+    global $currentuser;
+
+    if(!$currentuser){
+        return apiError("You need to be signed in.", 401);
+    }
+
+    if(!ctype_digit($id) || !(new artifacts())->delete((int) $currentuser->id, (int) $id)){
+        return apiError("That artifact doesn't exist.", 404);
+    }
+
+    return ["status"=>"okay"];
+});
+
+// what the ai remembers about you, and the switch to turn it off
+$router->get("/ai/memory", function(){
+    global $twig;
+    global $currentuser;
+    global $router;
+
+    requireAccount();
+
+    if(!in_array("memory", config::tools(), true)){
+        return $router->return_status(404);
+    }
+
+    echo $twig->render('ai-memory.twig', [
+        "memories"=>memories::list((int) $currentuser->id),
+        "memoryOn"=>memories::isOn((int) $currentuser->id),
+        "maxMemories"=>memories::MAX_MEMORIES,
+        "maxChars"=>memories::MAX_CHARS,
+    ]);
+});
+
+$router->group('/api/v1/ai/memories', function($router) {
+
+    $router->post("/add", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        try {
+            $id = memories::add((int) $currentuser->id, (string) ($_POST["content"] ?? ""));
+        } catch (\InvalidArgumentException | \LengthException $e) {
+            return apiError($e->getMessage());
+        }
+
+        $memory = memories::get((int) $currentuser->id, $id);
+        return ["status"=>"okay", "id"=>$id, "content"=>$memory->content];
+    });
+
+    $router->post("/{id}/delete", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        if(!ctype_digit($id) || !memories::delete((int) $currentuser->id, (int) $id)){
+            return apiError("That memory doesn't exist.", 404);
+        }
+
+        return ["status"=>"okay"];
+    });
+
+    $router->post("/clear", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        memories::clear((int) $currentuser->id);
+        return ["status"=>"okay"];
+    });
+
+    $router->post("/toggle", function(){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        $on = !empty($_POST["on"]) && $_POST["on"] !== "0";
+        memories::setOn((int) $currentuser->id, $on);
+        return ["status"=>"okay", "on"=>$on];
+    });
+
 });
 
 $router->get("/ai/{id}", function($id){

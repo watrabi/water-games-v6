@@ -94,8 +94,15 @@ function clock(seconds){
     return date.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + time;
 }
 
-function avatar(name, online){
-    let wrap = el("span", "chatAvatar", name.charAt(0).toUpperCase());
+// profile picture if they have one, otherwise their first letter
+function avatar(name, online, picture){
+    let wrap = el("span", "chatAvatar", picture ? "" : name.charAt(0).toUpperCase());
+    if(picture){
+        let img = el("img");
+        img.src = picture;
+        img.alt = "";
+        wrap.append(img);
+    }
     if(online !== undefined){
         wrap.append(el("span", "chatDot" + (online ? " on" : "")));
     }
@@ -129,7 +136,7 @@ function renderHome(){
         requests.append(el("h4", "chatHeading", "Friend requests"));
         state.requests.incoming.forEach(function(person) {
             let row = el("div", "chatRow");
-            row.append(avatar(person.username), el("span", "chatName", person.username));
+            row.append(avatar(person.username, undefined, person.avatar), el("span", "chatName", person.username));
             let actions = el("span", "chatRowActions");
             actions.append(
                 button("Accept", "chatSmall primary", () => friendAction(person.id, "accept")),
@@ -155,7 +162,7 @@ function renderHome(){
         let friend = state.friends[id];
         let row = el("button", "chatRow chatFriend" + (friend.unread ? " unread" : ""));
         row.type = "button";
-        row.append(avatar(friend.username, friend.online));
+        row.append(avatar(friend.username, friend.online, friend.avatar));
 
         let text = el("span", "chatRowText");
         text.append(el("span", "chatName", friend.username));
@@ -175,7 +182,7 @@ function renderHome(){
         pending.append(el("summary", "", state.requests.outgoing.length + " request" + (state.requests.outgoing.length === 1 ? "" : "s") + " you sent"));
         state.requests.outgoing.forEach(function(person) {
             let row = el("div", "chatRow");
-            row.append(avatar(person.username), el("span", "chatName", person.username));
+            row.append(avatar(person.username, undefined, person.avatar), el("span", "chatName", person.username));
             let actions = el("span", "chatRowActions");
             actions.append(button("Cancel", "chatSmall", () => friendAction(person.id, "cancel")));
             row.append(actions);
@@ -189,7 +196,7 @@ function renderHome(){
         blocked.append(el("summary", "", state.blocked.length + " blocked"));
         state.blocked.forEach(function(person) {
             let row = el("div", "chatRow");
-            row.append(avatar(person.username), el("span", "chatName", person.username));
+            row.append(avatar(person.username, undefined, person.avatar), el("span", "chatName", person.username));
             let actions = el("span", "chatRowActions");
             actions.append(button("Unblock", "chatSmall", () => friendAction(person.id, "unblock")));
             row.append(actions);
@@ -264,7 +271,7 @@ document.getElementById("chatSearch").addEventListener("input", function() {
                 let row = el("div", "chatRow");
                 let link = el("a", "chatName", person.username);
                 link.href = "/users/" + encodeURIComponent(person.username.toLowerCase());
-                row.append(avatar(person.username), link);
+                row.append(avatar(person.username, undefined, person.avatar), link);
 
                 let actions = el("span", "chatRowActions");
                 let refresh = () => document.getElementById("chatSearch").dispatchEvent(new Event("input"));
@@ -447,7 +454,7 @@ function messageNode(message){
         flag.type = "button";
         flag.title = "Report";
         flag.setAttribute("aria-label", "Report this message");
-        flag.innerHTML = '<i class="fa-regular fa-flag"></i>';
+        flag.innerHTML = '<i class="ph-bold ph-flag"></i>';
         flag.addEventListener("click", () => openReport(message, flag));
         row.append(flag);
     }
@@ -655,7 +662,7 @@ function showAttachment(item){
     img.alt = "";
     let remove = button("", "chatRemoveImage", clearAttachment);
     remove.setAttribute("aria-label", "Remove image");
-    remove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    remove.innerHTML = '<i class="ph-bold ph-x"></i>';
     box.append(img, el("span", "chatMeta", item.uploading ? "Uploading..." : "Ready to send"), remove);
 }
 
@@ -746,7 +753,7 @@ tray.report.addEventListener("submit", function(event) {
         current.button.classList.add("reported");
         current.button.disabled = true;
         current.button.title = "Reported";
-        current.button.innerHTML = '<i class="fa-solid fa-flag"></i>';
+        current.button.innerHTML = '<i class="ph-fill ph-flag"></i>';
         flash(data.message);
     }).catch(function(error) {
         alert(error.message);

@@ -68,6 +68,7 @@ class chats {
         }
 
         $db->table("ai_messages")->where("chatid", $chatId)->delete();
+        (new artifacts())->deleteChat($chatId);
         $db->table("ai_chats")->where("id", $chatId)->where("userid", $userId)->delete();
     }
 
@@ -115,6 +116,7 @@ class chats {
         }
 
         $db->table("ai_messages")->where("chatid", $chatId)->where("id", ">", $last->id)->delete();
+        (new artifacts())->forgetMessagesAfter($chatId, (int) $last->id);
         return true;
     }
 

@@ -297,6 +297,17 @@ function swap(doc){
     } else {
         delete html.dataset.effect;
     }
+    // someone's own theme comes as a style block in the head, which doesn't get swapped, so copy it over
+    let customTheme = doc.getElementById("customTheme");
+    if(customTheme){
+        let ours = document.getElementById("customTheme");
+        if(!ours){
+            ours = document.createElement("style");
+            ours.id = "customTheme";
+            document.head.append(ours);
+        }
+        ours.textContent = customTheme.textContent;
+    }
     let themeColor = doc.querySelector('meta[name="theme-color"]');
     let ourColor = document.querySelector('meta[name="theme-color"]');
     if(themeColor && ourColor){
@@ -361,6 +372,15 @@ async function go(href, options){
 
         document.dispatchEvent(new CustomEvent("watr:leave"));
         swap(doc);
+
+        // the top bar stays put between pages, so bring the report badge and admin menu up to date
+        ["navAvatar", "userMenu"].forEach(function(id) {
+            let fresh = id === "navAvatar" ? doc.getElementById(id) : doc.querySelector("#userMenu .dropdown-content");
+            let current = id === "navAvatar" ? document.getElementById(id) : document.querySelector("#userMenu .dropdown-content");
+            if(fresh && current){
+                current.innerHTML = fresh.innerHTML;
+            }
+        });
 
         // redirects (like /home -> /auth/sign-in) end up at a different url
         let finalUrl = (response.url || target.href).split("#")[0] + target.hash;

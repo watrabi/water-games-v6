@@ -24,7 +24,7 @@ class users {
         global $db;
 
         return $db->table("users")
-            ->select(["id", "username", "blurb", "registered"])
+            ->select(["id", "username", "blurb", "registered", "avatar"])
             ->where("username", $username)
             ->first();
     }

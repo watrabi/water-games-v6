@@ -182,6 +182,28 @@ img.emoji {
   margin-left: auto;
 }
 
+/* ---------- icons ---------- */
+
+/* phosphor's glyphs sit a touch high next to text, and it has no spinner class of its own */
+.ph-bold, .ph-fill {
+  vertical-align: -0.125em;
+}
+
+.spin {
+  display: inline-block;
+  animation: iconSpin 0.9s linear infinite;
+}
+
+@keyframes iconSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2.5s;
+  }
+}
+
 /* ---------- buttons + inputs ---------- */
 
 .button, button.button {
@@ -224,6 +246,12 @@ img.emoji {
 .button[disabled] {
   opacity: 0.6;
   cursor: default;
+}
+
+.button.small {
+  margin: 0;
+  padding: 5px 10px;
+  font-size: 13px;
 }
 
 input, textarea {
@@ -370,6 +398,53 @@ label {
   font-weight: 700;
   font-size: 15px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* open chat reports, only admins ever get one */
+.navAvatar {
+  position: relative;
+  display: inline-flex;
+}
+
+.reportBadge {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--surface);
+  box-sizing: content-box;
+  background-color: var(--danger);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.dropdownItem.reportItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reportCount {
+  min-width: 18px;
+  padding: 0 5px;
+  background-color: var(--danger);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.avatar img, .chatAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar.large {
@@ -870,11 +945,259 @@ section + section {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+#playerLyrics {
   margin-left: auto;
+}
+
+#playerLyrics.on {
+  color: var(--link);
+  background-color: var(--raised);
+}
+
+#playerLyrics.none {
+  opacity: 0.45;
+}
+
+/* lyrics, a panel that sits on top of the player on the right (the chat tray has the left) */
+
+.lyricsPanel {
+  position: absolute;
+  right: 16px;
+  bottom: calc(100% + 12px);
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  height: min(520px, 62vh);
+  border: 1px solid var(--line-strong);
+  background-color: var(--surface);
+}
+
+.lyricsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lyricsHeadText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.lyricsLabel {
+  font-family: var(--display);
+  font-stretch: 125%;
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.lyricsSong {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lyricsBody {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  overscroll-behavior: contain;
+}
+
+.lyricsBody.synced {
+  padding: 40% 16px;
+}
+
+.lyricsLine {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 5px 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+}
+
+button.lyricsLine {
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+button.lyricsLine:hover {
+  color: var(--text);
+}
+
+button.lyricsLine.past {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+button.lyricsLine.active {
+  color: var(--link);
+}
+
+.lyricsLine.gap {
+  font-size: 15px;
+}
+
+.lyricsLine.plain {
+  font-size: 15px;
+  font-weight: 400;
+  padding: 1px 0;
+}
+
+.lyricsLine.break {
+  height: 14px;
+}
+
+.lyricsEmpty {
+  color: var(--muted);
+  text-align: center;
+  margin-top: 40px;
+}
+
+.lyricsCredit {
+  margin: 0;
+  padding: 6px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .playerVolume input {
   width: 90px;
+}
+
+/* ---------- settings: tabs down the left, the open section on the right ---------- */
+
+.settingsPage {
+  max-width: 980px;
+}
+
+.settingsLayout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.settingsTabs {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  background-color: var(--surface);
+}
+
+.settingsTab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settingsTab + .settingsTab {
+  border-top: 1px solid var(--line);
+}
+
+.settingsTab i {
+  width: 16px;
+  text-align: center;
+}
+
+.settingsTab:hover {
+  color: var(--text);
+  background-color: var(--raised);
+}
+
+.settingsTab[aria-selected=true] {
+  border-left-color: var(--link);
+  background-color: var(--raised);
+  color: var(--text);
+}
+
+.settingsTab:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -2px;
+}
+
+.settingsPanels > [role=tabpanel]:focus {
+  outline: none;
+}
+
+.avatarEdit {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatarButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatarButtons label {
+  margin: 0;
+}
+
+.avatarButtons .hint {
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .settingsLayout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  /* no room for a column, so the tabs become a row you can scroll sideways */
+  .settingsTabs {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .settingsTab {
+    flex-shrink: 0;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+
+  .settingsTab + .settingsTab {
+    border-top: none;
+    border-left: 1px solid var(--line);
+  }
+
+  .settingsTab[aria-selected=true] {
+    border-bottom-color: var(--link);
+  }
 }
 
 /* ---------- sort / filter tabs ---------- */
@@ -968,6 +1291,15 @@ section + section {
 
   .playerTime, .playerVolume {
     display: none;
+  }
+
+  .lyricsPanel {
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    width: auto;
+    height: min(440px, 55vh);
+    border-width: 1px 0 0;
   }
 
   .playerNow {
@@ -1245,6 +1577,36 @@ section + section {
 .themeNote {
   font-size: 12px;
   color: var(--muted);
+}
+
+.themeDelete {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 4px 6px;
+  border: none;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.themeOption:hover .themeDelete,
+.themeDelete:focus-visible,
+.themeDelete.really {
+  opacity: 1;
+}
+
+.themeDelete.really {
+  color: var(--danger);
+}
+
+@media (pointer: coarse) {
+  .themeDelete {
+    opacity: 1;
+  }
 }
 
 .checkRow {

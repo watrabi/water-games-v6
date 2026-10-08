@@ -1,0 +1,84 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Upload music{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=14">
+{% endblock %}
+{% block body %}
+<div class="page narrow">
+    <div class="pageHeader">
+        <div>
+            <h1>Upload music</h1>
+            <p><a href="/music">Back to music</a> · Up to {{ perDay }} a day. Only upload things you're allowed to share.</p>
+        </div>
+    </div>
+
+    <form class="panel" id="uploadForm" enctype="multipart/form-data">
+        <div class="notice" id="uploadMsg" role="status" hidden></div>
+
+        <div class="field">
+            <label for="uploadAudio">Audio file</label>
+            <label class="dropZone" id="dropZone">
+                <input type="file" id="uploadAudio" name="audio" accept="audio/*,.mp3,.ogg,.opus,.wav,.m4a,.flac,.webm" required>
+                <i class="ph-bold ph-file-audio" aria-hidden="true"></i>
+                <span class="dropText" id="dropText">Drop a song here or <u>pick one</u></span>
+                <span class="hint">mp3, ogg, wav, m4a, flac or webm, under 40MB</span>
+            </label>
+        </div>
+
+        <div class="uploadDetails">
+            <div class="field coverField">
+                <span class="fieldLabel">Album art</span>
+                <span class="uploadCover" id="coverPreview"><i class="ph-bold ph-music-notes" aria-hidden="true"></i></span>
+                <div class="coverButtons">
+                    <label class="button quiet small" for="uploadCover">Choose</label>
+                    <button class="button quiet small" type="button" id="coverRemove" hidden>Remove</button>
+                </div>
+                <input type="file" id="uploadCover" name="cover" accept="image/png,image/jpeg,image/gif,image/webp" class="sr-only">
+            </div>
+            <div class="uploadFields">
+                <div class="field">
+                    <label for="uploadTitle">Title</label>
+                    <input id="uploadTitle" name="title" maxlength="255" required autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="uploadArtist">Artist <span class="muted">(optional, helps find lyrics)</span></label>
+                    <input id="uploadArtist" name="artist" maxlength="255" autocomplete="off">
+                </div>
+                <p class="hint" id="tagHint">Title, artist and art get filled in from the file when it has them. If it's a song people know, the lyrics show up and follow along while it plays.</p>
+            </div>
+        </div>
+
+        <input type="hidden" name="duration" id="uploadDuration">
+
+        <div class="uploadProgress" id="uploadProgress" hidden><span></span></div>
+        <button class="button" type="submit" id="uploadButton"><i class="ph-bold ph-upload-simple"></i>Upload</button>
+    </form>
+
+    <section>
+        <div class="sectionHeader">
+            <h2>Your uploads</h2>
+        </div>
+        {% if uploads is empty %}
+            {{ g.empty('blobsleeping', 'Nothing yet.', 'Songs you upload show up here and on the music page.') }}
+        {% else %}
+            <ul class="uploadList" id="uploadList">
+                {% for track in uploads %}
+                <li data-track="{{ {id: track.id, title: track.title, artist: track.artist, src: track.filePath, cover: track.coverPath}|json_encode|e('html_attr') }}">
+                    <span class="trackCover">
+                        {% if track.coverPath %}<img src="{{ track.coverPath }}" alt="" loading="lazy">{% else %}<i class="ph-bold ph-music-notes"></i>{% endif %}
+                    </span>
+                    <span class="trackInfo">
+                        <span class="trackTitle">{{ track.title }}</span>
+                        <span class="trackArtist">{{ track.artist ?: 'Unknown artist' }} · {{ track.plays|compact }} {{ track.plays == 1 ? 'play' : 'plays' }} · {% if track.hasLyrics %}{{ track.lyricsSynced ? 'synced lyrics' : 'lyrics' }}{% else %}no lyrics{% endif %}</span>
+                    </span>
+                    <button class="button quiet small" type="button" data-play aria-label="Play {{ track.title }}"><i class="ph-bold ph-play"></i></button>
+                    <button class="button quiet small" type="button" data-delete>Delete</button>
+                </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+</div>
+<script src="/assets/js/musicupload.js?t=2" defer></script>
+{% endblock %}

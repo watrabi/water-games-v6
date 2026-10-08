@@ -33,6 +33,9 @@ class config {
         "site_search"=>"Search the site",
         "weather"=>"Weather",
         "fetch"=>"Read web pages",
+        "exa"=>"Search the web (Exa)",
+        "memory"=>"Memory (remembers things about each person between chats)",
+        "themes"=>"Make site themes (each person's own)",
     ];
 
     private static ?array $providers = null;
@@ -60,14 +63,39 @@ class config {
         return max(0, (int) self::setting("ai_daily_uploads", "AI_DAILY_UPLOADS", 50));
     }
 
+    // the assistant's name, shown on the ai page and used in its instructions
+    static function name(){
+        $name = trim((string) self::setting("ai_name", "AI_NAME", "Bloop"));
+        return $name === "" ? "Bloop" : mb_substr($name, 0, 40);
+    }
+
     static function systemExtra(){
         return (string) self::setting("ai_system_prompt", "AI_SYSTEM_PROMPT", "");
     }
 
-    // which built in tools are turned on
+    // which built in tools are turned on (web search only counts once there's an exa key to use)
     static function tools(){
-        $list = self::setting("ai_tools", "AI_TOOLS", "time,calculator,site_search,weather");
+        $list = self::setting("ai_tools", "AI_TOOLS", "time,calculator,site_search,weather,memory,themes");
+        $tools = array_values(array_filter(array_map("trim", explode(",", strtolower($list)))));
+        return self::exaKey() ? $tools : array_values(array_diff($tools, ["exa"]));
+    }
+
+    // what the admin panel shows ticked, including web search when it's on but missing a key
+    static function toolsPicked(){
+        $list = self::setting("ai_tools", "AI_TOOLS", "time,calculator,site_search,weather,memory,themes");
         return array_values(array_filter(array_map("trim", explode(",", strtolower($list)))));
+    }
+
+    // exa.ai key for web search. the admin panel one (stored encrypted) wins over EXA_API_KEY
+    static function exaKey(){
+        $stored = settings::get("ai_exa_key");
+        if($stored){
+            $key = (new encryption())->decrypt($stored);
+            if($key){
+                return $key;
+            }
+        }
+        return self::env("EXA_API_KEY");
     }
 
     // ---------- providers ----------
