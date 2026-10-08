@@ -74,9 +74,29 @@ class friends {
     // runs one of the friend actions, returns the new relation or throws with a message for the person.
     // both people's trays get told to refresh their lists
     public function act(int $me, int $other, string $action){
+        $before = $this->relation($me, $other);
         $relation = $this->apply($me, $other, $action);
         realtime::publish([$me, $other], ["type"=>"friends"]);
+
+        if($before !== $relation){
+            if($relation === "outgoing"){
+                notifications::send($other, "friend_request", $me);
+            } elseif($relation === "friends"){
+                notifications::send($other, "friend_accept", $me);
+                activity::log($me, "friend", null, ["with"=>self::nameOf($other)]);
+                activity::log($other, "friend", null, ["with"=>self::nameOf($me)]);
+                achievements::checkFriends($me);
+                achievements::checkFriends($other);
+            }
+        }
+
         return $relation;
+    }
+
+    private static function nameOf(int $id){
+        global $db;
+
+        return $db->table("users")->select(["username"])->where("id", $id)->first()->username ?? "";
     }
 
     private function apply(int $me, int $other, string $action){
@@ -150,8 +170,10 @@ class friends {
         global $db;
 
         $rows = $db->query(
-            "SELECT u.id, u.username, u.avatar, u.last_seen FROM friendships f
+            "SELECT u.id, u.username, u.avatar, u.last_seen, u.playing_game_id, u.play_beat, u.share_activity, g.name AS playing_name, g.type AS playing_type
+             FROM friendships f
              INNER JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
+             LEFT JOIN games g ON g.id = u.playing_game_id
              WHERE (f.requester_id = ? OR f.addressee_id = ?) AND f.status = 'accepted' AND u.banned = 0",
             [$me, $me, $me]
         )->get();
@@ -176,6 +198,8 @@ class friends {
             "id"=>(int) $row->id,
             "username"=>$row->username,
             "avatar"=>$row->avatar,
+            "playing"=>\watrlabs\games\playtime::nowPlaying($row) && $row->playing_name
+                ? ["id"=>(int) $row->playing_game_id, "name"=>$row->playing_name, "type"=>$row->playing_type] : null,
             "online"=>self::isOnline($row->last_seen) || in_array((int) $row->id, $connected, true),
             "lastSeen"=>$row->last_seen ? (int) $row->last_seen : null,
             "unread"=>$unread[(int) $row->id] ?? 0,

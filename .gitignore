@@ -5,3 +5,5 @@ vendor
 storage/cache/*
 phinx.php
 storage/errorlog.log
+storage/backups/
+storage/logs/

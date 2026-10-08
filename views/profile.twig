@@ -40,6 +40,52 @@
         {% endif %}
     </div>
 
+    {% if shares and totalPlaytime %}
+    <dl class="figures profileFigures">
+        <div><dt>Played for</dt><dd>{{ totalPlaytime|playtime }}</dd></div>
+        <div><dt>Games tried</dt><dd>{{ gamesPlayed|number_format }}</dd></div>
+        <div><dt>Achievements</dt><dd>{{ achievements.count }}<span class="figureOf">/{{ achievements.list|length }}</span></dd></div>
+    </dl>
+    {% endif %}
+
+    {% if mostPlayed is not empty %}
+    <section>
+        <div class="sectionHeader">
+            <h2>Most played</h2>
+        </div>
+        <ol class="mostPlayed">
+            {% for game in mostPlayed %}
+            <li>
+                <a href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+                    <span class="gameIcon small">{% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}</span>
+                    <span class="mostPlayedName">{{ game.name }}</span>
+                </a>
+                <span class="mostPlayedBar" aria-hidden="true"><span style="width: {{ (game.seconds / mostPlayed[0].seconds * 100)|round }}%"></span></span>
+                <span class="mostPlayedTime">{{ game.seconds|playtime }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% endif %}
+
+    <section id="achievements">
+        <div class="sectionHeader">
+            <h2>Achievements <span class="muted">{{ achievements.count }} of {{ achievements.list|length }}</span></h2>
+        </div>
+        <ul class="achievementGrid">
+            {% for item in achievements.list %}
+            <li class="achievement{{ item.earned ? ' earned' : '' }}">
+                <span class="achievementIcon"><i class="{{ item.earned ? 'ph-fill' : 'ph-bold' }} {{ item.icon }}"></i></span>
+                <span class="achievementText">
+                    <strong>{{ item.name }}</strong>
+                    <span>{{ item.text }}</span>
+                    {% if item.earned %}<span class="achievementDate">{{ item.earned|date("M j, Y") }}</span>{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
     <section>
         <div class="sectionHeader">
             <h2>Favorite games</h2>

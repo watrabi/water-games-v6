@@ -1,0 +1,46 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Categories{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Categories</h1>
+        <p>The chips on the games page. Pick them for each game on its edit page. Lower numbers come first. <a href="/admin/games">Back to games</a></p>
+    </div>
+</div>
+
+<table class="table">
+    <thead><tr><th>Name</th><th>Order</th><th>Games</th><th></th></tr></thead>
+    <tbody>
+    {% for tag in tags %}
+        <tr>
+            <td colspan="2">
+                <form method="post" action="/admin/tags/save" class="tagRow">
+                    {{ m.csrf() }}
+                    <input type="hidden" name="id" value="{{ tag.id }}">
+                    <label class="sr-only" for="tagName{{ tag.id }}">Name</label>
+                    <input id="tagName{{ tag.id }}" name="name" value="{{ tag.name }}" maxlength="40" required>
+                    <label class="sr-only" for="tagSort{{ tag.id }}">Order</label>
+                    <input id="tagSort{{ tag.id }}" name="sort" type="number" value="{{ tag.sort }}" class="narrowInput">
+                    <button class="button quiet" type="submit">Save</button>
+                </form>
+            </td>
+            <td class="muted">{{ tag.games }}</td>
+            <td class="rowActions">{{ m.deleteButton('/admin/tags/' ~ tag.id ~ '/delete', tag.name ~ ' (games keep everything else)') }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="4" class="muted">No categories yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<form method="post" action="/admin/tags/save" class="panel adminForm tagRow">
+    {{ m.csrf() }}
+    <h2>Add a category</h2>
+    <div class="formRow">
+        <div class="field"><label for="newTag">Name</label><input id="newTag" name="name" maxlength="40" required></div>
+        <div class="field narrowField"><label for="newSort">Order</label><input id="newSort" name="sort" type="number" value="{{ tags|length }}"></div>
+    </div>
+    <button class="button" type="submit">Add</button>
+</form>
+{% endblock %}

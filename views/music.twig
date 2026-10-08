@@ -23,6 +23,7 @@
                     <a href="/music?sort={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"{% if sort == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
                 {% endfor %}
             </nav>
+            {% if currentuser %}<a class="button quiet" href="/music/playlists"><i class="ph-bold ph-playlist"></i>Playlists</a>{% endif %}
             <a class="button" href="{{ currentuser ? '/music/upload' : '/auth/sign-in' }}"><i class="ph-bold ph-upload-simple"></i>Upload</a>
         </div>
     </div>
@@ -38,7 +39,7 @@
             <button class="button" id="playAll"><i class="ph-bold ph-play"></i>Play all</button>
             <button class="button quiet" id="shuffleAll"><i class="ph-bold ph-shuffle"></i>Shuffle</button>
         </div>
-        <ol class="trackList" id="trackList">
+        <ol class="trackList" id="trackList"{% if currentuser %} data-signed-in{% endif %}>
             {% for track in tracks %}
             <li>
                 <button class="track" data-track="{{ {id: track.id, title: track.title, artist: track.artist, src: track.filePath, cover: track.coverPath}|json_encode|e('html_attr') }}">
@@ -53,10 +54,11 @@
                     <span class="trackPlays">{{ track.plays|compact }} {{ track.plays == 1 ? 'play' : 'plays' }}</span>
                     <span class="trackDuration">{% if track.duration %}{{ (track.duration // 60) }}:{{ '%02d'|format(track.duration % 60) }}{% endif %}</span>
                 </button>
+                <button class="playerButton trackMore" type="button" aria-label="More for {{ track.title }}" aria-haspopup="menu"><i class="ph-bold ph-dots-three"></i></button>
             </li>
             {% endfor %}
         </ol>
     {% endif %}
 </div>
-<script src="/assets/js/musicpage.js?t=2" defer></script>
+<script src="/assets/js/musicpage.js?t=3" defer></script>
 {% endblock %}

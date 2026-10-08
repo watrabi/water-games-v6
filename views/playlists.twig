@@ -1,0 +1,48 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% block pageName %}Playlists{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=15">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <h1>Playlists</h1>
+            <p>Yours. Add songs from the <a href="/music">music page</a> with the <i class="ph-bold ph-dots-three" aria-label="more"></i> button.</p>
+        </div>
+        <form class="inlineCreate" id="playlistCreate">
+            <label class="sr-only" for="playlistName">New playlist name</label>
+            <input id="playlistName" maxlength="60" placeholder="New playlist" required>
+            <button class="button" type="submit"><i class="ph-bold ph-plus"></i>Create</button>
+        </form>
+    </div>
+    <div class="notice danger" id="playlistMsg" role="alert" hidden></div>
+
+    {% if playlists is empty %}
+        {{ g.empty('blobjam', 'No playlists yet.', 'Make one above, then add songs to it.') }}
+    {% else %}
+        <div class="playlistGrid">
+            {% for list in playlists %}
+            <a class="playlistTile" href="/music/playlists/{{ list.id }}">
+                <span class="playlistCover">{% if list.cover %}<img src="{{ list.cover }}" alt="" loading="lazy">{% else %}<i class="ph-bold ph-playlist"></i>{% endif %}</span>
+                <span class="gameName">{{ list.name }}</span>
+                <span class="gameMeta">{{ list.tracks }} {{ list.tracks == 1 ? 'song' : 'songs' }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+<script>
+(function(){
+    $("#playlistCreate").on("submit", function(event) {
+        event.preventDefault();
+        $.post("/api/v1/playlists", { name: $("#playlistName").val() }).done(function(data) {
+            window.watrNav ? window.watrNav.go("/music/playlists/" + data.id) : location.href = "/music/playlists/" + data.id;
+        }).fail(function(xhr) {
+            showNotice($("#playlistMsg"), apiMessage(xhr));
+        });
+    });
+})();
+</script>
+{% endblock %}

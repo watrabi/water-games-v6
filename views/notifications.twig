@@ -1,0 +1,32 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% import "components/avatar.twig" as a %}
+{% block pageName %}Notifications{% endblock %}
+{% block body %}
+<div class="page narrow">
+    <div class="pageHeader">
+        <div>
+            <h1>Notifications</h1>
+            <p>Friend requests, mentions, achievements and news from the site.</p>
+        </div>
+        {% if items is not empty %}<button class="button quiet" type="button" id="notifyPageReadAll">Mark all read</button>{% endif %}
+    </div>
+
+    {% if items is empty %}
+        {{ g.empty('blobsleeping', 'All quiet.', 'When something happens, it\'ll show up here.') }}
+    {% else %}
+        <ol class="notifyList page" id="notifyPageList">
+            {% for item in items %}
+            <li class="notifyItem{{ item.read ? '' : ' unread' }}" data-id="{{ item.id }}">
+                {% if item.actor %}{{ a.avatar(item.actor) }}{% else %}<span class="notifyIcon"><i class="ph-bold {{ item.icon }}"></i></span>{% endif %}
+                <div class="notifyBody">
+                    {% if item.link %}<a href="{{ item.link }}" data-notify-read="{{ item.id }}">{{ item.text }}</a>{% else %}<p>{{ item.text }}</p>{% endif %}
+                    <span class="muted notifyTime">{{ item.created|ago }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% if more %}<button class="button quiet" type="button" id="notifyPageMore" data-before="{{ items|last.id }}">Show older</button>{% endif %}
+    {% endif %}
+</div>
+{% endblock %}

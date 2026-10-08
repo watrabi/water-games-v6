@@ -22,7 +22,11 @@ let state = {
     blocked: [],
     reasons: {},
     lastId: 0,
-    convo: null,        // id of the friend whose chat is open
+    groups: {},         // id -> {id, name, owner, members, unread, lastMessage}
+    groupOrder: [],
+    lastGroupId: 0,
+    kind: "dm",         // what's open: "dm" (convo is a friend id) or "group" (convo is a group id)
+    convo: null,        // id of the friend (or group) whose chat is open
     convoIds: new Set(),
     oldestId: null,
     hasMore: false,
@@ -68,7 +72,7 @@ function api(method, url, data){
 
 function remember(){
     try {
-        sessionStorage.setItem("wgChat", JSON.stringify({ open: !tray.panel.hidden, convo: state.convo }));
+        sessionStorage.setItem("wgChat", JSON.stringify({ open: !tray.panel.hidden, convo: state.convo, kind: state.kind }));
     } catch (e) {}
 }
 
@@ -119,7 +123,8 @@ function button(label, className, onClick){
 // ---------- badge ----------
 
 function updateBadge(){
-    let unread = Object.values(state.friends).reduce((sum, f) => sum + (f.unread || 0), 0);
+    let unread = Object.values(state.friends).reduce((sum, f) => sum + (f.unread || 0), 0)
+        + Object.values(state.groups).reduce((sum, g) => sum + (g.unread || 0), 0);
     let total = unread + state.requests.incoming.length;
     tray.badge.hidden = total === 0;
     tray.badge.textContent = total > 99 ? "99+" : total;
@@ -127,6 +132,49 @@ function updateBadge(){
 }
 
 // ---------- home: requests, friends, search ----------
+
+// "Playing Slope", "Online", "Seen 5m ago"
+function friendStatus(friend){
+    if(friend.playing){
+        return "Playing " + friend.playing.name;
+    }
+    return friend.online ? "Online" : (friend.lastSeen ? "Seen " + timeAgo(friend.lastSeen) : "Offline");
+}
+
+function groupAvatar(group){
+    let wrap = el("span", "chatAvatar chatGroupAvatar");
+    wrap.append(el("i", "ph-bold ph-users-three"));
+    return wrap;
+}
+
+function renderGroups(){
+    let list = document.getElementById("chatGroups");
+    list.replaceChildren();
+
+    if(!state.groupOrder.length){
+        return;
+    }
+
+    list.append(el("h4", "chatHeading", "Groups"));
+    state.groupOrder.forEach(function(id) {
+        let group = state.groups[id];
+        let row = el("button", "chatRow chatFriend" + (group.unread ? " unread" : ""));
+        row.type = "button";
+        row.append(groupAvatar(group));
+
+        let text = el("span", "chatRowText");
+        text.append(el("span", "chatName", group.name));
+        text.append(el("span", "chatMeta", group.members.map(m => m.username).filter(n => n !== state.me.username).join(", ")));
+        row.append(text);
+
+        if(group.unread){
+            row.append(el("span", "chatCount", group.unread > 99 ? "99+" : group.unread));
+        }
+
+        row.addEventListener("click", () => openGroup(id));
+        list.append(row);
+    });
+}
 
 function renderHome(){
     let requests = document.getElementById("chatRequests");
@@ -150,8 +198,14 @@ function renderHome(){
     let list = document.getElementById("chatFriends");
     list.replaceChildren();
 
+    renderGroups();
+
     let online = state.order.filter(id => state.friends[id].online).length;
-    list.append(el("h4", "chatHeading", "Friends" + (state.order.length ? " · " + online + " online" : "")));
+    let heading = el("h4", "chatHeading", "Friends" + (state.order.length ? " · " + online + " online" : ""));
+    if(state.order.length >= 2){
+        heading.append(button("New group", "chatSmall chatHeadingAction", () => openPicker("create")));
+    }
+    list.append(heading);
 
     if(!state.order.length){
         let empty = el("p", "chatEmpty", "No friends yet. Search for someone's username above to send a request.");
@@ -166,7 +220,7 @@ function renderHome(){
 
         let text = el("span", "chatRowText");
         text.append(el("span", "chatName", friend.username));
-        text.append(el("span", "chatMeta", friend.online ? "Online" : (friend.lastSeen ? "Seen " + timeAgo(friend.lastSeen) : "Offline")));
+        text.append(el("span", "chatMeta" + (friend.playing ? " playing" : ""), friendStatus(friend)));
         row.append(text);
 
         if(friend.unread){
@@ -220,8 +274,10 @@ function applyState(data){
         state.friends[friend.id] = friend;
         state.order.push(friend.id);
     });
+    applyGroups(data.groups || []);
     if(!state.loaded){
         state.lastId = data.lastId;
+        state.lastGroupId = data.lastGroupId || 0;
     }
     state.loaded = true;
     state.lastStateLoad = Date.now();
@@ -229,9 +285,23 @@ function applyState(data){
     renderHome();
     connect();
 
-    if(state.convo && state.friends[state.convo]){
+    if(state.convo && (state.kind === "group" ? state.groups[state.convo] : state.friends[state.convo])){
         updateConvoHeader();
     }
+
+    // you were removed from the group that's open
+    if(state.kind === "group" && state.convo && !state.groups[state.convo]){
+        showHome();
+    }
+}
+
+function applyGroups(groups){
+    state.groups = {};
+    state.groupOrder = [];
+    groups.forEach(function(group) {
+        state.groups[group.id] = group;
+        state.groupOrder.push(group.id);
+    });
 }
 
 function loadState(){
@@ -305,17 +375,28 @@ document.getElementById("chatSearchForm").addEventListener("submit", e => e.prev
 // ---------- conversation ----------
 
 function updateConvoHeader(){
+    if(state.kind === "group"){
+        let group = state.groups[state.convo];
+        document.getElementById("chatTitle").textContent = group ? group.name : "Group";
+        document.getElementById("chatSub").textContent = group ? group.members.length + " people" : "";
+        return;
+    }
+
     let friend = state.friends[state.convo];
     let name = friend ? friend.username : (state.convoName || "Chat");
     document.getElementById("chatTitle").textContent = name;
-    document.getElementById("chatSub").textContent = friend ? (friend.online ? "Online" : (friend.lastSeen ? "Seen " + timeAgo(friend.lastSeen) : "Offline")) : "";
+    document.getElementById("chatSub").textContent = friend ? friendStatus(friend) : "";
     document.getElementById("chatProfileLink").href = "/users/" + encodeURIComponent(name.toLowerCase());
+}
+
+function showView(view){
+    [tray.home, tray.convoView, document.getElementById("chatPicker"), document.getElementById("chatMembers")].forEach(v => v.hidden = v !== view);
 }
 
 function showHome(){
     state.convo = null;
-    tray.convoView.hidden = true;
-    tray.home.hidden = false;
+    state.kind = "dm";
+    showView(tray.home);
     document.getElementById("chatBack").hidden = true;
     document.getElementById("chatMenu").hidden = true;
     document.getElementById("chatTitle").textContent = "Friends";
@@ -336,14 +417,16 @@ function openConvo(id, name){
 
     openPanel();
 
+    state.kind = "dm";
     state.convo = id;
     state.convoName = name || (state.friends[id] && state.friends[id].username);
+    document.getElementById("chatDmMenu").hidden = false;
+    document.getElementById("chatGroupMenu").hidden = true;
     state.convoIds = new Set();
     state.oldestId = null;
     state.hasMore = false;
 
-    tray.home.hidden = true;
-    tray.convoView.hidden = false;
+    showView(tray.convoView);
     document.getElementById("chatBack").hidden = false;
     document.getElementById("chatMenu").hidden = false;
     document.getElementById("chatMenu").open = false;
@@ -354,7 +437,7 @@ function openConvo(id, name){
     remember();
 
     api("GET", "/api/v1/social/messages/" + id).then(function(data) {
-        if(state.convo !== id){
+        if(state.convo !== id || state.kind !== "dm"){
             return;
         }
 
@@ -374,6 +457,61 @@ function openConvo(id, name){
             updateBadge();
         }
         schedulePoll(0);
+    }).catch(function(error) {
+        tray.messages.replaceChildren(el("p", "chatEmpty", error.message));
+    });
+
+    if(!touchInput()){
+        tray.input.focus();
+    }
+}
+
+function openGroup(id){
+    id = Number(id);
+
+    if(!state.loaded){
+        loadState().then(() => openGroup(id));
+        return;
+    }
+    if(!state.groups[id]){
+        showHome();
+        return;
+    }
+
+    openPanel();
+
+    state.kind = "group";
+    state.convo = id;
+    state.convoName = state.groups[id].name;
+    state.convoIds = new Set();
+    state.oldestId = null;
+    state.hasMore = false;
+
+    showView(tray.convoView);
+    document.getElementById("chatBack").hidden = false;
+    document.getElementById("chatMenu").hidden = false;
+    document.getElementById("chatMenu").open = false;
+    document.getElementById("chatDmMenu").hidden = true;
+    document.getElementById("chatGroupMenu").hidden = false;
+    tray.messages.replaceChildren(el("p", "chatEmpty", "Loading..."));
+    document.getElementById("chatSub").classList.remove("typing");
+    updateConvoHeader();
+    clearAttachment();
+    setComposer("friends");
+    remember();
+
+    api("GET", "/api/v1/social/groups/" + id + "/messages").then(function(data) {
+        if(state.convo !== id || state.kind !== "group"){
+            return;
+        }
+
+        tray.messages.replaceChildren();
+        state.hasMore = data.more;
+        addMessages(data.messages, false);
+        scrollToEnd();
+
+        state.groups[id].unread = 0;
+        updateBadge();
     }).catch(function(error) {
         tray.messages.replaceChildren(el("p", "chatEmpty", error.message));
     });
@@ -410,9 +548,23 @@ function scrollToEnd(){
     tray.messages.scrollTop = tray.messages.scrollHeight;
 }
 
-function messageNode(message){
+function messageNode(message, showName){
+    // "sam added alex" and the like
+    if(message.system){
+        let note = el("p", "chatSystem", message.body);
+        note.dataset.id = message.id;
+        note.dataset.created = message.created;
+        return note;
+    }
+
     let mine = message.from === state.me.id;
     let row = el("div", "chatMsg " + (mine ? "mine" : "theirs"));
+
+    // in groups, who said it (once per run of messages from the same person)
+    if(state.kind === "group" && !mine && showName){
+        row.classList.add("named");
+        row.append(el("span", "chatSender", message.fromName || "Someone"));
+    }
     row.dataset.id = message.id;
     row.dataset.from = message.from;
     row.dataset.created = message.created;
@@ -431,7 +583,7 @@ function messageNode(message){
             link.rel = "noopener";
             let img = el("img");
             img.src = message.image;
-            img.alt = "Image from " + (mine ? "you" : state.convoName);
+            img.alt = "Image from " + (mine ? "you" : (message.fromName || state.convoName));
             img.loading = "lazy";
             // images change the height once they load, keep the view pinned if you were near the end
             img.addEventListener("load", function() {
@@ -468,6 +620,7 @@ function addMessages(messages, atTop){
     let all = tray.messages.querySelectorAll(".chatMsg");
     let previous = atTop ? null : all[all.length - 1];
     let prevTime = previous ? Number(previous.dataset.created) : 0;
+    let prevFrom = previous ? Number(previous.dataset.from) : null;
 
     messages.forEach(function(message) {
         if(state.convoIds.has(message.id)){
@@ -479,12 +632,14 @@ function addMessages(messages, atTop){
             state.oldestId = message.id;
         }
 
-        if(message.created - prevTime > 900){
+        let gap = message.created - prevTime > 900;
+        if(gap){
             fragment.append(el("p", "chatTime", clock(message.created)));
         }
         prevTime = message.created;
 
-        fragment.append(messageNode(message));
+        fragment.append(messageNode(message, gap || message.from !== prevFrom));
+        prevFrom = message.system ? null : message.from;
     });
 
     let start = tray.messages.querySelector(".chatStart");
@@ -518,7 +673,10 @@ function updateMoreButton(){
 
 function loadOlder(){
     let id = state.convo;
-    api("GET", "/api/v1/social/messages/" + id + "?before=" + state.oldestId).then(function(data) {
+    let url = state.kind === "group"
+        ? "/api/v1/social/groups/" + id + "/messages?before=" + state.oldestId
+        : "/api/v1/social/messages/" + id + "?before=" + state.oldestId;
+    api("GET", url).then(function(data) {
         if(state.convo !== id){
             return;
         }
@@ -530,6 +688,9 @@ function loadOlder(){
 // "Seen" under the last thing you sent, once they've read it
 function updateSeen(){
     tray.messages.querySelectorAll(".chatSeen").forEach(n => n.remove());
+    if(state.kind === "group"){
+        return;
+    }
     let mine = tray.messages.querySelectorAll(".chatMsg.mine");
     let last = mine[mine.length - 1];
     let all = tray.messages.querySelectorAll(".chatMsg");
@@ -574,14 +735,23 @@ function sendMessage(){
 
     sending = true;
     let id = state.convo;
+    let kind = state.kind;
+    let url = kind === "group" ? "/api/v1/social/groups/" + id + "/messages" : "/api/v1/social/messages/" + id;
 
-    api("POST", "/api/v1/social/messages/" + id, { body: body, image: image ? image.id : "" }).then(function(data) {
+    api("POST", url, { body: body, image: image ? image.id : "" }).then(function(data) {
         tray.input.value = "";
         autoSize();
         clearAttachment();
-        if(state.convo === id){
+        if(state.convo === id && state.kind === kind){
             addMessages([data.message], false);
             scrollToEnd();
+        }
+        if(kind === "group"){
+            state.lastGroupId = Math.max(state.lastGroupId, data.message.id);
+            if(state.groups[id]){
+                state.groups[id].lastMessage = data.message.id;
+            }
+            return;
         }
         state.lastId = Math.max(state.lastId, data.message.id);
         if(state.friends[id]){
@@ -745,7 +915,7 @@ tray.report.addEventListener("submit", function(event) {
     let sendButton = document.getElementById("chatReportSend");
     sendButton.disabled = true;
 
-    api("POST", "/api/v1/social/report/" + current.message.id, {
+    api("POST", (state.kind === "group" ? "/api/v1/social/group-report/" : "/api/v1/social/report/") + current.message.id, {
         reason: reason.value,
         details: document.getElementById("chatReportDetails").value
     }).then(function(data) {
@@ -826,14 +996,14 @@ function receive(messages, countUnread){
             friend.lastMessage = message.id;
         }
 
-        if(state.convo === other){
+        if(state.kind === "dm" && state.convo === other){
             forConvo.push(message);
             if(message.from === other){
                 hideTyping();
             }
         }
 
-        if(countUnread && fresh && friend && message.from === other && !(viewingConvo() && state.convo === other)){
+        if(countUnread && fresh && friend && message.from === other && !(viewingConvo() && state.kind === "dm" && state.convo === other)){
             friend.unread = (friend.unread || 0) + 1;
         }
     });
@@ -846,7 +1016,7 @@ function receive(messages, countUnread){
     }
 
     // reading it now counts as read
-    if(viewingConvo() && forConvo.some(m => m.from === state.convo)){
+    if(viewingConvo() && state.kind === "dm" && forConvo.some(m => m.from === state.convo)){
         if(state.friends[state.convo]){
             state.friends[state.convo].unread = 0;
         }
@@ -855,6 +1025,54 @@ function receive(messages, countUnread){
 
     resort();
     refreshLists();
+}
+
+function receiveGroup(messages, countUnread){
+    if(!messages.length){
+        return;
+    }
+
+    let stick = nearBottom();
+    let forConvo = [];
+    let unknown = false;
+
+    messages.forEach(function(message) {
+        let fresh = message.id > state.lastGroupId;
+        state.lastGroupId = Math.max(state.lastGroupId, message.id);
+
+        let group = state.groups[message.group];
+        if(!group){
+            unknown = true; // a group we were just added to
+            return;
+        }
+        group.lastMessage = message.id;
+
+        if(state.kind === "group" && state.convo === message.group){
+            forConvo.push(message);
+        } else if(fresh && message.from !== state.me.id && !message.system){
+            group.unread = (group.unread || 0) + 1;
+        }
+    });
+
+    if(forConvo.length){
+        addMessages(forConvo, false);
+        if(stick){
+            scrollToEnd();
+        }
+        if(viewingConvo()){
+            api("POST", "/api/v1/social/groups/" + state.convo + "/read").catch(() => {});
+        } else if(state.groups[state.convo]){
+            state.groups[state.convo].unread += forConvo.filter(m => m.from !== state.me.id && !m.system).length;
+        }
+    }
+
+    state.groupOrder.sort((a, b) => (state.groups[b].lastMessage || 0) - (state.groups[a].lastMessage || 0));
+
+    if(unknown){
+        loadState();
+    } else {
+        refreshLists();
+    }
 }
 
 // ---------- realtime (websocket) ----------
@@ -912,9 +1130,39 @@ function connect(){
 }
 
 function handleLive(data){
+    // other scripts (the notification bell) listen for these too
+    document.dispatchEvent(new CustomEvent("watr:live", { detail: data }));
+
     switch(data.type){
         case "message":
             receive([data.message], true);
+            break;
+
+        case "group_message":
+            receiveGroup([data.message], true);
+            break;
+
+        case "groups":
+            loadState();
+            break;
+
+        case "group_read":
+            if(state.groups[data.group]){
+                state.groups[data.group].unread = 0;
+                refreshLists();
+            }
+            break;
+
+        case "group_deleted":
+            if(state.kind === "group" && state.convo === data.group){
+                markRemoved(data.id);
+            }
+            break;
+
+        // a friend started or stopped playing something. a few at once only reload once
+        case "presence":
+            clearTimeout(state.presenceTimer);
+            state.presenceTimer = setTimeout(loadState, 800);
             break;
 
         case "read":
@@ -936,23 +1184,29 @@ function handleLive(data){
             break;
 
         case "deleted":
-            let row = tray.messages.querySelector('.chatMsg[data-id="' + Number(data.id) + '"]');
-            if(row){
-                let bubble = row.querySelector(".chatBubble");
-                bubble.className = "chatBubble removed";
-                bubble.textContent = "Removed by a moderator";
-                let flag = row.querySelector(".chatFlag");
-                if(flag){
-                    flag.remove();
-                }
+            if(state.kind === "dm"){
+                markRemoved(data.id);
             }
             break;
 
         case "typing":
-            if(state.convo === data.from && state.friends[data.from]){
+            if(state.kind === "dm" && state.convo === data.from && state.friends[data.from]){
                 showTyping();
             }
             break;
+    }
+}
+
+function markRemoved(id){
+    let row = tray.messages.querySelector('.chatMsg[data-id="' + Number(id) + '"]');
+    if(row){
+        let bubble = row.querySelector(".chatBubble");
+        bubble.className = "chatBubble removed";
+        bubble.textContent = "Removed by a moderator";
+        let flag = row.querySelector(".chatFlag");
+        if(flag){
+            flag.remove();
+        }
     }
 }
 
@@ -973,7 +1227,7 @@ function hideTyping(){
 }
 
 tray.input.addEventListener("input", function() {
-    if(!socket || socket.readyState !== WebSocket.OPEN || !state.convo || !tray.input.value.trim()){
+    if(!socket || socket.readyState !== WebSocket.OPEN || !state.convo || state.kind !== "dm" || !tray.input.value.trim()){
         return;
     }
     let now = Date.now();
@@ -1004,16 +1258,21 @@ function poll(){
         return loadState().then(() => schedulePoll()).catch(() => schedulePoll(30000));
     }
 
-    api("GET", "/api/v1/social/poll?since=" + state.lastId).then(function(data) {
+    api("GET", "/api/v1/social/poll?since=" + state.lastId + "&groupSince=" + state.lastGroupId).then(function(data) {
+        document.dispatchEvent(new CustomEvent("watr:poll", { detail: data }));
+
         state.seen = data.seen || {};
         let online = new Set(data.online);
+        let playing = data.playing || {};
 
         Object.values(state.friends).forEach(function(friend) {
             friend.online = online.has(friend.id);
             friend.unread = data.unread[friend.id] || 0;
+            friend.playing = playing[friend.id] || null;
         });
 
         receive(data.messages, false);
+        receiveGroup(data.groupMessages || [], true);
 
         if(state.convo){
             updateSeen();
@@ -1061,7 +1320,7 @@ tray.toggle.addEventListener("click", function() {
     if(tray.panel.hidden){
         openPanel();
         if(state.convo){
-            openConvo(state.convo);
+            state.kind === "group" ? openGroup(state.convo) : openConvo(state.convo);
         } else {
             loadState();
         }
@@ -1080,6 +1339,8 @@ document.addEventListener("keydown", function(event) {
     }
     if(!tray.report.hidden){
         closeReport();
+    } else if(!document.getElementById("chatPicker").hidden || !document.getElementById("chatMembers").hidden){
+        state.convo && state.kind === "group" ? openGroup(state.convo) : showHome();
     } else if(tray.panel.contains(document.activeElement)){
         closePanel();
         tray.toggle.focus();
@@ -1114,14 +1375,168 @@ document.addEventListener("click", function(event) {
     });
 });
 
+// ---------- making groups, adding people, members ----------
+
+let picker = { mode: "create" };
+
+function openPicker(mode){
+    picker.mode = mode;
+    let group = mode === "add" ? state.groups[state.convo] : null;
+    let inGroup = new Set(group ? group.members.map(m => m.id) : []);
+
+    showView(document.getElementById("chatPicker"));
+    document.getElementById("chatBack").hidden = false;
+    document.getElementById("chatMenu").hidden = true;
+    document.getElementById("chatTitle").textContent = mode === "add" ? "Add people" : "New group";
+    document.getElementById("chatSub").textContent = "";
+    document.getElementById("chatPickerNameRow").hidden = mode === "add";
+    document.getElementById("chatPickerName").value = "";
+    document.getElementById("chatPickerHeading").textContent = mode === "add" ? "Pick friends to add" : "Pick at least two friends";
+    document.getElementById("chatPickerSubmit").textContent = mode === "add" ? "Add" : "Make group";
+    document.getElementById("chatPickerError").hidden = true;
+
+    let list = document.getElementById("chatPickerList");
+    list.replaceChildren();
+    let choices = state.order.filter(id => !inGroup.has(id));
+
+    if(!choices.length){
+        list.append(el("p", "chatEmpty", mode === "add" ? "All your friends are already in here." : "You need friends to make a group."));
+    }
+
+    choices.forEach(function(id) {
+        let friend = state.friends[id];
+        let row = el("label", "chatRow chatPick");
+        let box = el("input");
+        box.type = "checkbox";
+        box.value = id;
+        row.append(box, avatar(friend.username, friend.online, friend.avatar), el("span", "chatName", friend.username));
+        list.append(row);
+    });
+}
+
+document.getElementById("chatPickerCancel").addEventListener("click", function() {
+    picker.mode === "add" && state.convo ? openGroup(state.convo) : showHome();
+});
+
+document.getElementById("chatPicker").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    let members = Array.from(document.querySelectorAll("#chatPickerList input:checked")).map(b => b.value);
+    let error = document.getElementById("chatPickerError");
+    let submit = document.getElementById("chatPickerSubmit");
+    let form = new FormData();
+    members.forEach(id => form.append("members[]", id));
+
+    let request;
+    if(picker.mode === "add"){
+        request = api("POST", "/api/v1/social/groups/" + state.convo + "/add", form);
+    } else {
+        form.append("name", document.getElementById("chatPickerName").value);
+        request = api("POST", "/api/v1/social/groups", form);
+    }
+
+    submit.disabled = true;
+    request.then(function(data) {
+        let id = picker.mode === "add" ? state.convo : data.id;
+        return loadState().then(() => openGroup(id));
+    }).catch(function(e) {
+        error.textContent = e.message;
+        error.hidden = false;
+    }).finally(function() {
+        submit.disabled = false;
+    });
+});
+
+function showMembers(){
+    let group = state.groups[state.convo];
+    if(!group){
+        return;
+    }
+
+    showView(document.getElementById("chatMembers"));
+    document.getElementById("chatMenu").hidden = true;
+    document.getElementById("chatTitle").textContent = group.name;
+    document.getElementById("chatSub").textContent = group.members.length + " people";
+
+    let list = document.getElementById("chatMembersList");
+    list.replaceChildren();
+    let back = button("Back to the chat", "chatSmall chatMembersBack", () => openGroup(group.id));
+    list.append(back);
+
+    group.members.forEach(function(member) {
+        let row = el("div", "chatRow");
+        let link = el("a", "chatName", member.username);
+        link.href = "/users/" + encodeURIComponent(member.username.toLowerCase());
+        row.append(avatar(member.username, undefined, member.avatar), link);
+
+        let actions = el("span", "chatRowActions");
+        if(member.id === group.owner){
+            actions.append(el("span", "chatMeta", "Owner"));
+        } else if(group.owner === state.me.id){
+            actions.append(button("Remove", "chatSmall", function() {
+                if(!confirm("Remove " + member.username + " from the group?")){
+                    return;
+                }
+                let form = new FormData();
+                form.append("user", member.id);
+                api("POST", "/api/v1/social/groups/" + group.id + "/remove", form).then(() => loadState()).then(showMembers).catch(e => alert(e.message));
+            }));
+        }
+        row.append(actions);
+        list.append(row);
+    });
+}
+
+document.querySelectorAll("[data-group-act]").forEach(function(item) {
+    item.addEventListener("click", function() {
+        let group = state.groups[state.convo];
+        document.getElementById("chatMenu").open = false;
+        if(!group){
+            return;
+        }
+
+        switch(item.dataset.groupAct){
+            case "members":
+                showMembers();
+                break;
+            case "add":
+                openPicker("add");
+                break;
+            case "rename":
+                let name = prompt("New name for the group", group.name);
+                if(name && name.trim() && name.trim() !== group.name){
+                    let form = new FormData();
+                    form.append("name", name.trim());
+                    api("POST", "/api/v1/social/groups/" + group.id + "/rename", form).then(() => loadState()).catch(e => alert(e.message));
+                }
+                break;
+            case "leave":
+                if(confirm("Leave " + group.name + "? You'll need someone to add you back.")){
+                    api("POST", "/api/v1/social/groups/" + group.id + "/leave").then(function() {
+                        showHome();
+                        loadState();
+                    }).catch(e => alert(e.message));
+                }
+                break;
+        }
+    });
+});
+
 // pick up where the last page left off
-window.watrChat = { open: openConvo };
+window.watrChat = { open: openConvo, openGroup: openGroup, openPanel: function() {
+    if(tray.panel.hidden){
+        tray.toggle.click();
+    }
+    document.getElementById("chatSearch").focus();
+} };
 
 loadState().then(function() {
     let saved = recall();
     if(saved.open){
         openPanel();
-        if(saved.convo && state.friends[saved.convo]){
+        if(saved.convo && saved.kind === "group" && state.groups[saved.convo]){
+            openGroup(saved.convo);
+        } else if(saved.convo && saved.kind !== "group" && state.friends[saved.convo]){
             openConvo(saved.convo);
         }
     }

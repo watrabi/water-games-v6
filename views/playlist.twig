@@ -1,0 +1,94 @@
+{% extends "models/base.twig" %}
+{% import "components/games.twig" as g %}
+{% import "components/avatar.twig" as a %}
+{% block pageName %}{{ playlist.name }}{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=15">
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="pageHeader">
+        <div>
+            <p class="eyebrow">Playlist</p>
+            <h1 id="playlistTitle">{{ playlist.name }}</h1>
+            <p>By <a href="/users/{{ playlist.username|lower|url_encode }}">{{ playlist.username }}</a> · {{ tracks|length }} {{ tracks|length == 1 ? 'song' : 'songs' }}{% if duration %} · {{ duration|playtime }}{% endif %}</p>
+        </div>
+        {% if mine %}
+        <div class="buttonRow">
+            <button class="button quiet" type="button" id="playlistRename" data-id="{{ playlist.id }}">Rename</button>
+            <button class="button quiet danger" type="button" id="playlistDelete" data-id="{{ playlist.id }}">Delete</button>
+        </div>
+        {% endif %}
+    </div>
+    <div class="notice danger" id="playlistMsg" role="alert" hidden></div>
+
+    {% if tracks is empty %}
+        {{ g.empty('blobjam', 'Nothing in here yet.', mine ? 'Find songs on the <a href="/music">music page</a> and use the <i class="ph-bold ph-dots-three"></i> button to add them.' : 'Check back later.') }}
+    {% else %}
+        <div class="trackActions">
+            <button class="button" id="playAll"><i class="ph-bold ph-play"></i>Play</button>
+            <button class="button quiet" id="shuffleAll"><i class="ph-bold ph-shuffle"></i>Shuffle</button>
+        </div>
+        <ol class="trackList" id="trackList" data-playlist="{{ playlist.id }}">
+            {% for track in tracks %}
+            <li data-entry="{{ track.entry }}">
+                <button class="track" data-track="{{ {id: track.id, title: track.title, artist: track.artist, src: track.filePath, cover: track.coverPath}|json_encode|e('html_attr') }}">
+                    <span class="trackNumber">{{ loop.index }}</span>
+                    <span class="trackCover">{% if track.coverPath %}<img src="{{ track.coverPath }}" alt="" loading="lazy">{% else %}<i class="ph-bold ph-music-notes"></i>{% endif %}</span>
+                    <span class="trackInfo">
+                        <span class="trackTitle">{{ track.title }}</span>
+                        <span class="trackArtist">{{ track.artist ?: 'Unknown artist' }}</span>
+                    </span>
+                    <span class="trackPlays">{{ track.plays|compact }} {{ track.plays == 1 ? 'play' : 'plays' }}</span>
+                    <span class="trackDuration">{% if track.duration %}{{ (track.duration // 60) }}:{{ '%02d'|format(track.duration % 60) }}{% endif %}</span>
+                </button>
+                {% if mine %}
+                <span class="trackTools">
+                    <button class="playerButton" type="button" data-move="-1" aria-label="Move up"{% if loop.first %} disabled{% endif %}><i class="ph-bold ph-caret-up"></i></button>
+                    <button class="playerButton" type="button" data-move="1" aria-label="Move down"{% if loop.last %} disabled{% endif %}><i class="ph-bold ph-caret-down"></i></button>
+                    <button class="playerButton" type="button" data-remove aria-label="Remove from playlist"><i class="ph-bold ph-x"></i></button>
+                </span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+</div>
+<script src="/assets/js/musicpage.js?t=3" defer></script>
+{% if mine %}
+<script>
+(function(){
+    let id = {{ playlist.id }};
+    let message = $("#playlistMsg");
+
+    function act(action, data){
+        return $.post("/api/v1/playlists/" + id + "/" + action, data || {}).fail(function(xhr) {
+            showNotice(message, apiMessage(xhr));
+        });
+    }
+
+    $("#trackList").on("click", "[data-move]", function() {
+        act("move", { entry: $(this).closest("li").data("entry"), direction: $(this).data("move") }).done(() => window.watrNav.reload());
+    });
+
+    $("#trackList").on("click", "[data-remove]", function() {
+        let row = $(this).closest("li");
+        act("remove", { entry: row.data("entry") }).done(() => window.watrNav.reload());
+    });
+
+    $("#playlistRename").on("click", function() {
+        let name = prompt("New name", $("#playlistTitle").text());
+        if(name && name.trim()){
+            act("rename", { name: name.trim() }).done(() => window.watrNav.reload());
+        }
+    });
+
+    $("#playlistDelete").on("click", function() {
+        if(confirm("Delete this playlist? The songs stay on the site.")){
+            act("delete").done(() => window.watrNav.go("/music/playlists"));
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

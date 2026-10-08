@@ -46,6 +46,75 @@ $("#shuffleAll").on("click", function() {
     window.watrMusic.playQueue(tracks, 0);
 });
 
+// ---------- the ··· menu on each song: play next, add to queue, add to a playlist ----------
+
+function closeTrackMenu(){
+    $(".trackMenu").remove();
+    $(".trackMore[aria-expanded]").attr("aria-expanded", "false");
+}
+
+function trackMenuItem(label, icon, onClick){
+    return $("<button>", { type: "button", role: "menuitem" }).append($("<i>", { class: "ph-bold " + icon }), document.createTextNode(label)).on("click", function(event) {
+        event.stopPropagation();
+        onClick.call(this);
+    });
+}
+
+$("#trackList").on("click", ".trackMore", function(event) {
+    event.stopPropagation();
+    let button = $(this);
+    let open = button.attr("aria-expanded") === "true";
+    closeTrackMenu();
+    if(open){
+        return;
+    }
+
+    let track = button.siblings(".track").data("track");
+    let menu = $("<div>", { class: "trackMenu", role: "menu" });
+
+    menu.append(
+        trackMenuItem("Play next", "ph-arrow-bend-down-right", function() { window.watrMusic.playNext(track); closeTrackMenu(); }),
+        trackMenuItem("Add to queue", "ph-queue", function() { window.watrMusic.addToQueue(track); closeTrackMenu(); })
+    );
+
+    if($("#trackList").is("[data-signed-in]")){
+        let lists = $("<div>", { class: "trackMenuLists" }).append($("<p>", { class: "trackMenuHeading", text: "Add to playlist" }));
+        menu.append(lists);
+
+        $.getJSON("/api/v1/playlists").done(function(data) {
+            data.playlists.forEach(function(list) {
+                lists.append(trackMenuItem(list.name, "ph-playlist", function() {
+                    let item = $(this).prop("disabled", true);
+                    $.post("/api/v1/playlists/" + list.id + "/add", { track: track.id }).done(function() {
+                        item.html('<i class="ph-bold ph-check"></i>Added to ' + $("<span>").text(list.name).html());
+                    }).fail(function(xhr) {
+                        item.text(apiMessage(xhr));
+                    });
+                }));
+            });
+            lists.append(trackMenuItem("New playlist…", "ph-plus", function() {
+                let name = prompt("Name for the new playlist");
+                if(name && name.trim()){
+                    $.post("/api/v1/playlists", { name: name.trim(), track: track.id }).done(closeTrackMenu).fail(xhr => alert(apiMessage(xhr)));
+                }
+            }));
+        });
+    }
+
+    button.attr("aria-expanded", "true").closest("li").append(menu);
+    menu.find("button").first().trigger("focus");
+});
+
+$(document).off("click.trackmenu keydown.trackmenu").on("click.trackmenu", function(event) {
+    if(!$(event.target).closest(".trackMenu").length){
+        closeTrackMenu();
+    }
+}).on("keydown.trackmenu", function(event) {
+    if(event.key === "Escape"){
+        closeTrackMenu();
+    }
+});
+
 // namespaced so coming back to this page replaces the listener instead of adding another
 $(document).off(".musicpage").on("music:change.musicpage music:state.musicpage", markCurrent);
 markCurrent();

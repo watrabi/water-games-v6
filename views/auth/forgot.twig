@@ -1,0 +1,39 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Forgot password{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/authpage.css?t=31">
+{% if captcha.enabled %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="page authPage">
+    <div class="authText">
+        <h1>Forgot it?</h1>
+        <p class="muted">Happens to the best of us. We'll email you a link to pick a new one.</p>
+        <img class="authBlob" src="/assets/images/BlobEmoji/blobthinkingeyes.png" alt="" width="96" height="96">
+    </div>
+    <div class="panel authForm">
+        {% if not mailAvailable %}
+            <div class="notice danger" role="alert">Password reset emails aren't set up on this site yet. Ask an admin to reset it for you.</div>
+        {% endif %}
+        <form id="forgotForm" novalidate>
+            <div class="notice" id="forgotMsg" role="status" hidden></div>
+            <div class="field">
+                <label for="forgotWho">Username or email</label>
+                <input id="forgotWho" name="who" autocomplete="username" required autofocus>
+                <p class="hint">Only works if you added an email to your account.</p>
+            </div>
+            {% if captcha.enabled %}
+            <div class="field">
+                <div class="cf-turnstile" data-sitekey="{{ captcha.siteKey }}" data-theme="dark"></div>
+            </div>
+            {% endif %}
+            <button class="button" type="submit" id="forgotButton"{% if not mailAvailable %} disabled{% endif %}>Send reset link</button>
+        </form>
+        <p class="authSwitch muted">Remembered it? <a href="/auth/sign-in">Sign in</a></p>
+    </div>
+</div>
+<script src="/assets/js/auth-reset.js?t=1" defer></script>
+{% endblock %}

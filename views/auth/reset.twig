@@ -1,0 +1,37 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Reset password{% endblock %}
+{% block headerIncludes %}
+<link rel="stylesheet" href="/assets/css/authpage.css?t=31">
+{% endblock %}
+
+{% block body %}
+<div class="page authPage">
+    <div class="authText">
+        <h1>New password</h1>
+        <p class="muted">Pick something you'll remember this time. Every device you're signed in on gets signed out.</p>
+        <img class="authBlob" src="/assets/images/BlobEmoji/blobok.png" alt="" width="96" height="96">
+    </div>
+    <div class="panel authForm">
+        {% if not valid %}
+            <div class="notice danger" role="alert">That link has expired or was already used.</div>
+            <a class="button" href="/auth/forgot">Get a new link</a>
+        {% else %}
+        <form id="resetForm" novalidate>
+            <input type="hidden" id="resetToken" value="{{ token }}">
+            <div class="notice" id="resetMsg" role="status" hidden></div>
+            <div class="field">
+                <label for="resetPassword">New password</label>
+                <input id="resetPassword" type="password" autocomplete="new-password" minlength="8" required autofocus>
+                <p class="hint">At least 8 characters.</p>
+            </div>
+            <div class="field">
+                <label for="resetPasswordConf">Confirm it</label>
+                <input id="resetPasswordConf" type="password" autocomplete="new-password" required>
+            </div>
+            <button class="button" type="submit" id="resetButton">Save new password</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+<script src="/assets/js/auth-reset.js?t=1" defer></script>
+{% endblock %}

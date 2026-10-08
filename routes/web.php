@@ -5,6 +5,12 @@ use watrlabs\games\games;
 use watrlabs\games\comments;
 use watrlabs\users\users;
 use watrlabs\music\music;
+use watrlabs\games\playtime;
+use watrlabs\games\tags;
+use watrlabs\games\cloudsaves;
+use watrlabs\games\requests;
+use watrlabs\social\activity;
+use watrlabs\social\achievements;
 
 global $router; // IMPORTANT: KEEP THIS HERE!
 global $pagebuilder;
@@ -81,11 +87,20 @@ $router->get('/home', function(){
     requireAccount();
 
     $games = new games();
+    $playtime = new playtime();
+    $me = (int) $currentuser->id;
+
+    // friends who are in a game right now
+    $playingNow = array_values(array_filter((new \watrlabs\social\friends())->list($me), fn($f) => $f["playing"]));
 
     echo $twig->render('home.twig', [
-        "favorites"=>$games->favoritesFor($currentuser->id, 12),
-        "popular"=>$games->list("popular", null, 12),
+        "recent"=>$playtime->recent($me, 6),
+        "favorites"=>$games->favoritesFor($me, 12),
+        "trending"=>$games->list("trending", null, 12),
         "newest"=>$games->list("newest", null, 6),
+        "feed"=>(new activity())->feedFor($me, 12),
+        "playingNow"=>array_slice($playingNow, 0, 8),
+        "totalPlaytime"=>$playtime->totalFor($me),
     ]);
 });
 
@@ -100,11 +115,14 @@ $router->get("/games", function(){
     }
 
     $search = trim($_GET["q"] ?? "");
+    $tag = tags::bySlug((string) ($_GET["tag"] ?? ""));
 
     echo $twig->render('games.twig', [
-        "games"=>$games->list($sort, $search),
+        "games"=>$games->list($sort, $search, 200, "game", $tag ? (int) $tag->id : null),
         "sort"=>$sort,
         "search"=>$search,
+        "tag"=>$tag,
+        "tags"=>tags::used("game"),
     ]);
 
 });
@@ -125,6 +143,18 @@ function renderPlayer($id, $type){
     $games->addPlay($game->id);
     $game->plays++;
 
+    $played = null;
+    $myVote = 0;
+    if($currentuser){
+        $playtime = new playtime();
+        $played = $playtime->rowFor((int) $currentuser->id, (int) $game->id);
+        if(!$played){
+            activity::log((int) $currentuser->id, "first_play", (int) $game->id);
+        }
+        $playtime->start($currentuser, (int) $game->id);
+        $myVote = $games->voteOf((int) $currentuser->id, (int) $game->id);
+    }
+
     $commentsOn = comments::enabled();
     $comments = new comments();
 
@@ -132,6 +162,21 @@ function renderPlayer($id, $type){
         "game"=>$game,
         "favorited"=>$currentuser ? $games->isFavorited($currentuser->id, $game->id) : false,
         "related"=>$games->related($game->id, $type),
+        "tags"=>tags::forGame((int) $game->id),
+        "played"=>$played,
+        "myVote"=>$myVote,
+        "rating"=>games::rating($game->likes, $game->dislikes),
+        "brokenReasons"=>requests::BROKEN_REASONS,
+        "cloudOn"=>$currentuser && cloudsaves::supported($game),
+        // what play.js needs: the tracker, cloud saves and fullscreen
+        "playData"=>json_encode([
+            "game"=>(int) $game->id,
+            "signedIn"=>(bool) $currentuser,
+            "cloud"=>$currentuser && cloudsaves::supported($game),
+            "beatEvery"=>playtime::BEAT_EVERY,
+            "seconds"=>$played ? (int) $played->seconds : 0,
+            "siteKeys"=>cloudsaves::SITE_KEYS,
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
         "commentsOn"=>$commentsOn,
         "commentCount"=>$commentsOn ? $comments->count((int) $game->id) : 0,
         "commentMax"=>comments::MAX_LENGTH,
@@ -222,6 +267,8 @@ $router->get("/users/{username}", function($username){
     global $currentuser;
     global $db;
     $games = new games();
+    $playtime = new playtime();
+    $isMe = $currentuser && (int) $currentuser->id === (int) $profile->id;
 
     $relation = null;
     $friendCount = 0;
@@ -234,9 +281,17 @@ $router->get("/users/{username}", function($username){
         // friends tables arrive with the migration
     }
 
+    // playtime is private unless they share their activity (you always see your own)
+    $shares = $isMe || !empty($db->table("users")->select(["share_activity"])->where("id", $profile->id)->first()->share_activity);
+
     echo $twig->render('profile.twig', [
         "profile"=>$profile,
         "favorites"=>$games->favoritesFor($profile->id, 24),
+        "achievements"=>achievements::forUser((int) $profile->id),
+        "shares"=>$shares,
+        "totalPlaytime"=>$shares ? $playtime->totalFor((int) $profile->id) : 0,
+        "gamesPlayed"=>$shares ? $playtime->gamesPlayed((int) $profile->id) : 0,
+        "mostPlayed"=>$shares ? $playtime->most((int) $profile->id, 6) : [],
         "relation"=>$relation,
         "friendCount"=>$friendCount,
     ]);
@@ -244,10 +299,16 @@ $router->get("/users/{username}", function($username){
 
 $router->get("/settings", function(){
     global $twig;
+    global $currentuser;
 
     requireAccount();
 
-    echo $twig->render('settings.twig');
+    echo $twig->render('settings.twig', [
+        "sessions"=>(new sessions())->listFor((int) $currentuser->id),
+        "cloudSaves"=>(new cloudsaves())->listFor((int) $currentuser->id),
+        "mailAvailable"=>\watrlabs\watrkit\mail::available(),
+        "recoveryLeft"=>$currentuser->recovery_codes ? count(json_decode($currentuser->recovery_codes, true) ?: []) : 0,
+    ]);
 });
 
 $router->get("/auth/sign-up", function() {
@@ -278,18 +339,39 @@ $router->get("/auth/logout", function(){
     die();
 });
 
-// sidebar stuff that isn't built yet
-$comingSoon = [
-    "/proxy"=>"Proxy",
-];
+$router->get("/auth/forgot", function(){
+    global $twig;
 
-foreach($comingSoon as $path => $name){
-    $router->get($path, function() use ($name) {
-        global $twig;
+    redirectIfSignedIn();
 
-        echo $twig->render('soon.twig', ["feature"=>$name]);
-    });
-}
+    echo $twig->render('auth/forgot.twig', ["mailAvailable"=>\watrlabs\watrkit\mail::available()]);
+});
+
+$router->get("/auth/reset", function(){
+    global $twig;
+
+    $token = (string) ($_GET["token"] ?? "");
+
+    echo $twig->render('auth/reset.twig', [
+        "token"=>$token,
+        "valid"=>(bool) (new \watrlabs\authentication\passwordreset())->find($token),
+    ]);
+});
+
+$router->get("/notifications", function(){
+    global $twig;
+    global $currentuser;
+
+    requireAccount();
+
+    echo $twig->render('notifications.twig', (new \watrlabs\social\notifications())->list((int) $currentuser->id));
+});
+
+// offline page for the service worker
+$router->get("/offline", function(){
+    global $twig;
+    echo $twig->render('offline.twig');
+});
 
 $router->get("/terms", function(){
     global $twig;

@@ -52,6 +52,20 @@
         </div>
     </div>
 
+    {% if allTags is defined and allTags is not empty %}
+    <fieldset class="field tagPicker">
+        <legend>Categories <span class="muted">· <a href="/admin/tags">edit the list</a></span></legend>
+        {% for tag in allTags %}
+            <label class="checkRow"><input type="checkbox" name="tags[]" value="{{ tag.id }}"{% if tag.id in gameTags %} checked{% endif %}><span>{{ tag.name }}</span></label>
+        {% endfor %}
+    </fieldset>
+    {% endif %}
+
+    {% if request is defined and request %}
+    <input type="hidden" name="request" value="{{ request.id }}">
+    <p class="notice">Adding this closes {{ request.username ?? 'the' }} request for “{{ request.name }}”{% if request.url %} (they linked <a href="{{ request.url }}" target="_blank" rel="noopener nofollow">{{ request.url }}</a>){% endif %} and lets them know.</p>
+    {% endif %}
+
     {% if game.id %}
     <label class="checkRow"><input type="checkbox" name="resetPlays" value="1"><span>Reset the play count to 0</span></label>
     {% endif %}

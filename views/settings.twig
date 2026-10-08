@@ -13,7 +13,7 @@
     <div class="settingsLayout">
     {# vertical tabs, the url hash (#appearance etc.) picks which one is open #}
     <div class="settingsTabs" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
-        {% for key, tab in {profile: ['Profile', 'ph-user'], appearance: ['Appearance', 'ph-palette'], security: ['Password', 'ph-lock'], account: ['Account', 'ph-door-open']} %}
+        {% for key, tab in {profile: ['Profile', 'ph-user'], appearance: ['Appearance', 'ph-palette'], security: ['Security', 'ph-lock'], privacy: ['Privacy & saves', 'ph-eye-slash'], account: ['Account', 'ph-door-open']} %}
         <button type="button" role="tab" class="settingsTab" id="tab-{{ key }}" data-tab="{{ key }}" aria-controls="panel-{{ key }}" aria-selected="{{ loop.first ? 'true' : 'false' }}"{% if not loop.first %} tabindex="-1"{% endif %}>
             <i class="ph-bold {{ tab[1] }}" aria-hidden="true"></i><span>{{ tab[0] }}</span>
         </button>
@@ -113,6 +113,123 @@
         </div>
         <button class="button" type="submit">Change password</button>
     </form>
+
+    <form class="panel" id="emailForm">
+        <h2>Email</h2>
+        <p class="muted">Only used to send you a link if you forget your password.{% if not mailAvailable %} (Reset emails aren't set up on this site yet.){% endif %}</p>
+        <div class="notice" id="emailMsg" role="status" hidden></div>
+        <div class="field">
+            <label for="emailInput">Email</label>
+            <input id="emailInput" type="email" autocomplete="email" value="{{ currentuser.email }}" maxlength="100" placeholder="you@example.com">
+        </div>
+        <div class="field">
+            <label for="emailPassword">Your password</label>
+            <input id="emailPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="button" type="submit">Save email</button>
+    </form>
+
+    <div class="panel" id="twoFactorPanel">
+        <h2>Two-factor sign in</h2>
+        <div class="notice" id="twoFactorMsg" role="status" hidden></div>
+        {% if currentuser.totp_enabled %}
+            <p class="muted"><i class="ph-fill ph-shield-check onIcon"></i> On. Signing in needs a code from your authenticator app. {{ recoveryLeft }} recovery code{{ recoveryLeft == 1 ? '' : 's' }} left.</p>
+            <form id="twoFactorManage" class="twoFactorManage">
+                <div class="field">
+                    <label for="manageTwoFactorPassword">Your password</label>
+                    <input id="manageTwoFactorPassword" type="password" autocomplete="current-password" required>
+                </div>
+                <div class="field">
+                    <label for="manageTwoFactorCode">A code from your app</label>
+                    <input id="manageTwoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required>
+                </div>
+                <div class="buttonRow">
+                    <button class="button quiet" type="submit" data-action="recovery">New recovery codes</button>
+                    <button class="button quiet danger" type="submit" data-action="disable">Turn off</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="muted">Adds a code from an app like Google Authenticator, Authy or 1Password when you sign in, so a leaked password isn't enough.</p>
+            <button class="button" type="button" id="twoFactorStart"><i class="ph-bold ph-shield-check"></i>Set it up</button>
+            <div class="twoFactorSetup" id="twoFactorSetup" hidden>
+                <ol class="steps">
+                    <li>Scan this with your authenticator app.
+                        <div class="qrBox" id="twoFactorQr"></div>
+                        <p class="hint">Can't scan it? Type this key in instead: <code id="twoFactorSecret"></code></p>
+                    </li>
+                    <li>
+                        <form id="twoFactorEnable">
+                            <div class="field">
+                                <label for="twoFactorCodeInput">Type the 6 digit code it shows</label>
+                                <input id="twoFactorCodeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+                            </div>
+                            <button class="button" type="submit">Turn on</button>
+                        </form>
+                    </li>
+                </ol>
+            </div>
+        {% endif %}
+        <div class="recoveryCodes" id="recoveryCodes" hidden>
+            <h3>Your recovery codes</h3>
+            <p class="muted">Each one works once if you lose your phone. Keep them somewhere safe. This is the only time they're shown.</p>
+            <ol id="recoveryList"></ol>
+            <button class="button quiet" type="button" id="recoveryCopy"><i class="ph-bold ph-copy"></i>Copy them</button>
+        </div>
+    </div>
+
+    <div class="panel" id="sessionsPanel">
+        <h2>Where you're signed in</h2>
+        <p class="muted">Don't recognise one? Sign it out, then change your password.</p>
+        <div class="notice" id="sessionsMsg" role="status" hidden></div>
+        <ul class="sessionList">
+            {% for item in sessions %}
+            <li data-session="{{ item.id }}">
+                <i class="ph-bold {{ 'iPhone' in item.device or 'Android' in item.device or 'iPad' in item.device ? 'ph-device-mobile' : 'ph-desktop' }}"></i>
+                <div>
+                    <strong>{{ item.device }}</strong>{% if item.current %} <span class="badge">This device</span>{% endif %}
+                    <p class="muted">{% if item.lastUsed %}Active {{ item.lastUsed|ago }}{% else %}Signed in before we kept track{% endif %}{% if item.created %} · signed in {{ item.created|date("M j, Y") }}{% endif %}</p>
+                </div>
+                {% if not item.current %}<button class="button quiet small" type="button" data-revoke="{{ item.id }}">Sign out</button>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if sessions|length > 1 %}<button class="button quiet" type="button" id="sessionsOthers">Sign out everywhere else</button>{% endif %}
+    </div>
+    </section>
+
+    <section role="tabpanel" id="panel-privacy" aria-labelledby="tab-privacy" tabindex="0" hidden>
+    <form class="panel" id="privacyForm">
+        <h2>Activity</h2>
+        <p class="muted">Lets friends see what you're playing in their chat tray and on their home page, and shows your playtime on your profile.</p>
+        <div class="notice" id="privacyMsg" role="status" hidden></div>
+        <label class="checkRow">
+            <input type="checkbox" id="shareActivity"{% if currentuser.share_activity %} checked{% endif %}>
+            <span>Share what I'm playing and doing with friends</span>
+        </label>
+        <button class="button" type="submit">Save</button>
+    </form>
+
+    <div class="panel">
+        <h2>Cloud saves</h2>
+        <p class="muted">Progress from games on this site is kept on your account, so it follows you to other devices. Games from other sites, and games that save with IndexedDB, can't be saved this way.</p>
+        <div class="notice" id="savesMsg" role="status" hidden></div>
+        {% if cloudSaves is empty %}
+            <p class="muted">No saves yet. Play something!</p>
+        {% else %}
+        <ul class="sessionList">
+            {% for save in cloudSaves %}
+            <li data-save="{{ save.gameid }}">
+                <span class="gameIcon tiny">{% if save.gameIcon %}<img src="{{ save.gameIcon }}" alt="">{% else %}{{ save.name|first|upper }}{% endif %}</span>
+                <div>
+                    <strong><a href="/{{ save.type == 'app' ? 'apps' : 'games' }}/{{ save.gameid }}">{{ save.name }}</a></strong>
+                    <p class="muted">{{ (save.bytes / 1024)|round(1) }} KB · saved {{ save.updated|ago }}</p>
+                </div>
+                <button class="button quiet small danger" type="button" data-delete-save="{{ save.gameid }}" data-name="{{ save.name }}">Delete</button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
     </section>
 
     <section role="tabpanel" id="panel-account" aria-labelledby="tab-account" tabindex="0" hidden>
@@ -128,9 +245,37 @@
         <p class="muted">Ends your session on this device.</p>
         <a class="button quiet" href="/auth/logout">Sign out</a>
     </div>
+
+    <div class="panel">
+        <h2>Download your data</h2>
+        <p class="muted">Everything tied to your account (profile, favorites, playtime, saves, comments, messages, playlists, AI chats) as one JSON file.</p>
+        <a class="button quiet" href="/api/v1/account/export" download><i class="ph-bold ph-download-simple"></i>Download</a>
+    </div>
+
+    <form class="panel dangerPanel" id="deleteForm">
+        <h2>Delete your account</h2>
+        <p class="muted">Removes your account and everything on it: favorites, playtime, saves, friends, messages you sent, music you uploaded, AI chats. This can't be undone.</p>
+        <div class="notice" id="deleteMsg" role="status" hidden></div>
+        <div class="field">
+            <label for="deleteConfirm">Type your username, <strong>{{ currentuser.username }}</strong>, to confirm</label>
+            <input id="deleteConfirm" autocomplete="off" required>
+        </div>
+        <div class="field">
+            <label for="deletePassword">Your password</label>
+            <input id="deletePassword" type="password" autocomplete="current-password" required>
+        </div>
+        {% if currentuser.totp_enabled %}
+        <div class="field">
+            <label for="deleteCode">A code from your authenticator app</label>
+            <input id="deleteCode" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required>
+        </div>
+        {% endif %}
+        <button class="button danger" type="submit">Delete my account</button>
+    </form>
     </section>
     </div>
     </div>
 </div>
-<script src="/assets/js/settings.js?t=6" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
+<script src="/assets/js/settings.js?t=7" defer></script>
 {% endblock %}

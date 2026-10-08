@@ -3,17 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/base.css?t=224">
+    <link rel="stylesheet" href="/assets/css/base.css?t=225">
     <link rel="stylesheet" href="/assets/css/themes.css?t=1">
+    <link rel="stylesheet" href="/assets/css/features.css?t=2">
     {% if currentuser %}<link rel="stylesheet" href="/assets/css/chat.css?t=3">{% endif %}
     <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
     {# icons: phosphor (phosphoricons.com), bold for everything, fill for the "on" states like a favorited heart #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css" integrity="sha384-nblAP2mo2pVPyMQZDw9Xy9Cwgs9lowushAYep4w5+Q9kF4Ibf3n0B/gCMVdR+Vqy" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css" integrity="sha384-pPVoXE8ft+zxKtxIDDI7SfTK6y95NHm4qa+hKEg/hs8VkjW5IP+9/dGOPCbDpUPl" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="/assets/js/jquery-3.0.0.min.js" defer></script>
-    <script src="/assets/js/watrgames.js?t=223" defer></script>
-    <script src="/assets/js/music.js?t=3" defer></script>
-    <script src="/assets/js/lyrics.js?t=2" defer></script>
+    <script src="/assets/js/watrgames.js?t=224" defer></script>
+    <script src="/assets/js/shortcuts.js?t=1" defer></script>
+    {% if currentuser %}<script src="/assets/js/notifications.js?t=1" defer></script>{% endif %}
+    <script src="/assets/js/music.js?t=4" defer></script>
+    <script src="/assets/js/lyrics.js?t=3" defer></script>
     <meta content="{{ env("APP_NAME") }}" property="og:title"/>
     <meta content="{{ env("APP_DESC") }}" property="og:description"/>
     <meta name="description" content="{{ env("APP_DESC") }}">
@@ -22,6 +25,9 @@
     <meta content="" property="og:image"/>
     -->
     <meta content="{{ theme.color }}" name="theme-color"/>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/assets/images/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/images/icons/icon-192.png">
     {% if theme.css is defined and theme.css %}<style id="customTheme">{{ theme.css|raw }}</style>{% endif %}
     {% block headerIncludes %}{% endblock %}
     <title>{% block pageName %}{% endblock %} - {{ env("APP_NAME") }}</title>

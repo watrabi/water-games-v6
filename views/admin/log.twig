@@ -1,0 +1,41 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Log{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Admin log</h1>
+        <p>Everything admins have done in this panel, newest first.</p>
+    </div>
+    <form method="get" class="inlineForm">
+        <label class="sr-only" for="logAction">Only show</label>
+        <select id="logAction" name="action" onchange="this.form.requestSubmit()">
+            <option value="">Every action</option>
+            {% for item in actions %}<option value="{{ item }}"{% if item == action %} selected{% endif %}>{{ item }}</option>{% endfor %}
+        </select>
+    </form>
+</div>
+
+<table class="table">
+    <thead><tr><th>When</th><th>Who</th><th>What</th><th>On</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td class="muted" title="{{ row.created|date('M j, Y g:i A') }}">{{ row.created|ago }}</td>
+            <td>{{ row.admin_name ?? 'deleted user' }}</td>
+            <td><code>{{ row.action }}</code></td>
+            <td>
+                {% if row.target_type == 'user' and row.target_name %}<a href="/users/{{ row.target_name|lower|url_encode }}">{{ row.target_name }}</a>
+                {% elseif row.target_type == 'game' and row.target_name %}<a href="/admin/games/{{ row.target_id }}">{{ row.target_name }}</a>
+                {% elseif row.target_type == 'track' and row.target_name %}<a href="/admin/music/{{ row.target_id }}">{{ row.target_name }}</a>
+                {% else %}<span class="muted">{{ row.target_id ? '#' ~ row.target_id : '–' }}</span>{% endif %}
+            </td>
+            <td class="muted ellipsis">{{ row.details }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="5" class="muted">Nothing logged yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{{ m.pager(page, pages, {action: action}) }}
+{% endblock %}

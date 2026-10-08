@@ -14,6 +14,21 @@
       <a class="button quiet" href="/auth/sign-in">Sign in</a>
       <a class="button" href="/auth/sign-up">Sign up</a>
     {% else %}
+      <div class="notifyMenu" id="notifyMenu">
+        <button type="button" class="notifyButton" id="notifyButton" aria-haspopup="true" aria-expanded="false" aria-controls="notifyPanel" title="Notifications">
+          <i class="ph-bold ph-bell"></i>
+          <span class="notifyBadge" id="notifyBadge"{% if not unreadNotifications %} hidden{% endif %}>{{ unreadNotifications > 9 ? '9+' : unreadNotifications }}</span>
+          <span class="sr-only" id="notifyLabel">{{ unreadNotifications }} unread notification{{ unreadNotifications == 1 ? '' : 's' }}</span>
+        </button>
+        <section class="notifyPanel" id="notifyPanel" aria-label="Notifications" hidden>
+          <header class="notifyHead">
+            <h2>Notifications</h2>
+            <button type="button" class="linkButton" id="notifyReadAll">Mark all read</button>
+          </header>
+          <ol class="notifyList" id="notifyList"></ol>
+          <a class="notifyAll" href="/notifications">See all</a>
+        </section>
+      </div>
       <div class="dropdown" id="userMenu">
         <button class="navUser" aria-haspopup="true" aria-expanded="false">
           <span class="navAvatar" id="navAvatar">
@@ -26,6 +41,8 @@
         <div class="dropdown-content">
           <a class="dropdownItem" href="/users/{{ currentuser.username|lower|url_encode }}">Profile</a>
           <a class="dropdownItem" href="/favorites">Favorites</a>
+          <a class="dropdownItem" href="/music/playlists">Playlists</a>
+          <a class="dropdownItem" href="/games/request">Request a game</a>
           <a class="dropdownItem" href="/settings">Settings</a>
           {% if currentuser.admin %}
           <a class="dropdownItem" href="/admin">Admin panel</a>

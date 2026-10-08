@@ -23,6 +23,84 @@
     </div>
 </dl>
 
+{% if openRequestsCount %}
+<p class="notice">{{ openRequestsCount }} game request{{ openRequestsCount == 1 ? '' : 's' }} waiting. <a href="/admin/requests">Look at them</a></p>
+{% endif %}
+
+{# last 30 days. one series each, so no legend: the heading names it #}
+{% macro dayChart(days, key, title, format) %}
+    {% set peak = max(days|map(d => d[key])|merge([1])) %}
+    {% set total = days|map(d => d[key])|reduce((carry, v) => carry + v, 0) %}
+    <section class="panel chartPanel">
+        <div class="sectionHeader">
+            <h2>{{ title }}</h2>
+            <span class="muted">{{ format == 'time' ? total|playtime : total|number_format }} in 30 days</span>
+        </div>
+        <div class="dayChart" role="img" aria-label="{{ title }} per day for the last 30 days, {{ format == 'time' ? total|playtime : total|number_format }} in total">
+            {% for day, values in days %}
+                {% set value = values[key] %}
+                <div class="dayBar" tabindex="0" data-tip="{{ day|date('M j') }}: {{ format == 'time' ? value|playtime : value|number_format }}">
+                    <span style="height: {{ value ? max(2, (value / peak * 100)|round) : 0 }}%"></span>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="dayAxis muted"><span>{{ days|keys|first|date('M j') }}</span><span>Today</span></div>
+        <details class="chartTable">
+            <summary>Show as a table</summary>
+            <table class="table">
+                <thead><tr><th>Day</th><th class="right">{{ title }}</th></tr></thead>
+                <tbody>
+                {% for day, values in days|reverse %}
+                    <tr><td>{{ day|date('D M j') }}</td><td class="right">{{ format == 'time' ? values[key]|playtime : values[key]|number_format }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </section>
+{% endmacro %}
+
+<div class="chartGrid">
+    {{ _self.dayChart(days, 'signups', 'Signups', 'number') }}
+    {{ _self.dayChart(days, 'plays', 'Plays', 'number') }}
+    {{ _self.dayChart(days, 'seconds', 'Playtime', 'time') }}
+</div>
+
+<div class="adminColumns">
+    <section class="panel">
+        <div class="sectionHeader"><h2>Most played, last 30 days</h2></div>
+        {% if topPlaytime is empty %}
+            <p class="muted">Nobody's played long enough to count yet.</p>
+        {% else %}
+        <ol class="barList">
+            {% for game in topPlaytime %}
+            <li>
+                <a href="/admin/games/{{ game.id }}">{{ game.name }}</a>
+                <span class="barTrack" aria-hidden="true"><span style="width: {{ (game.seconds / topPlaytime[0].seconds * 100)|round }}%"></span></span>
+                <span class="barValue">{{ game.seconds|playtime }} <span class="muted">· {{ game.plays|number_format }} plays</span></span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <div class="sectionHeader"><h2>AI replies by provider, last 30 days</h2><a href="/admin/ai">AI settings</a></div>
+        {% if aiProviders is empty %}
+            <p class="muted">No AI replies yet.</p>
+        {% else %}
+        <ol class="barList">
+            {% for provider in aiProviders %}
+            <li>
+                <span>{{ provider.name }}</span>
+                <span class="barTrack" aria-hidden="true"><span style="width: {{ (provider.messages / aiProviders[0].messages * 100)|round }}%"></span></span>
+                <span class="barValue">{{ provider.messages|number_format }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+    </section>
+</div>
+
 <div class="adminColumns">
     <section class="panel">
         <div class="sectionHeader"><h2>Newest accounts</h2><a href="/admin/users">All users</a></div>

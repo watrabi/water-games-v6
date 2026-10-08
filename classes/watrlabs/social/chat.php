@@ -123,7 +123,7 @@ class chat {
     }
 
     // everything new since the last check, plus who's online. also marks you as online
-    public function poll(int $me, int $since){
+    public function poll(int $me, int $since, int $groupSince = 0){
         global $db;
 
         $rows = $db->query(
@@ -143,14 +143,23 @@ class chat {
         }
 
         $online = [];
+        $playing = [];
         foreach($this->friends->list($me) as $friend){
             if($friend["online"]){
                 $online[] = $friend["id"];
             }
+            if($friend["playing"]){
+                $playing[$friend["id"]] = $friend["playing"];
+            }
         }
+
+        $groups = new groups();
 
         return [
             "messages"=>array_map([$this, "shape"], $rows),
+            "groupMessages"=>$groups->since($me, $groupSince),
+            "playing"=>(object) $playing,
+            "notifications"=>(new notifications())->unread($me),
             "unread"=>(object) $unread,
             "seen"=>(object) $seen,
             "online"=>$online,
@@ -241,7 +250,18 @@ class chat {
                 $q->where("sender_id", $viewer->id)->orWhere("recipient_id", $viewer->id);
             })->first();
 
-        return $used ? $image : null;
+        if($used){
+            return $image;
+        }
+
+        // or a group message in a group you're in
+        $inGroup = $db->query(
+            "SELECT 1 FROM chat_group_messages x INNER JOIN chat_group_members m ON m.groupid = x.groupid AND m.userid = ?
+             WHERE x.image_id = ? AND x.deleted = 0 LIMIT 1",
+            [(int) $viewer->id, $imageId]
+        )->first();
+
+        return $inGroup ? $image : null;
     }
 
     static function imageFile($image){
@@ -264,11 +284,12 @@ class chat {
             throw new \InvalidArgumentException("Pick a reason.");
         }
 
-        if($db->table("chat_reports")->where("message_id", $messageId)->where("reporter_id", $me)->first()){
+        if($db->table("chat_reports")->where("kind", "dm")->where("message_id", $messageId)->where("reporter_id", $me)->first()){
             return; // already reported, nothing more to do
         }
 
         $db->table("chat_reports")->insert([
+            "kind"=>"dm",
             "message_id"=>$messageId,
             "reporter_id"=>$me,
             "reason"=>$reason,
@@ -288,6 +309,6 @@ class chat {
         }
 
         // game comment reports land on the same admin page
-        return $chat + \watrlabs\games\comments::openReports();
+        return $chat + \watrlabs\games\comments::openReports() + \watrlabs\games\requests::openBroken();
     }
 }

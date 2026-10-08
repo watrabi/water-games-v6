@@ -8,20 +8,30 @@
 <div class="page">
     <div class="pageHeader">
         <div>
-            <h1>{% if search %}Results for “{{ search }}”{% else %}Games, for you.{% endif %}</h1>
-            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search %} · <a href="/games?sort={{ sort }}">clear search</a>{% endif %}</p>
+            <h1>{% if search %}Results for “{{ search }}”{% elseif tag %}{{ tag.name }} games{% else %}Games, for you.{% endif %}</h1>
+            <p>{{ games|length }} {{ games|length == 1 ? 'game' : 'games' }}{% if search or tag %} · <a href="/games?sort={{ sort }}">clear {{ search ? 'search' : 'filter' }}</a>{% endif %}{% if currentuser %} · <a href="/games/request">Can't find one? Request it</a>{% endif %}</p>
         </div>
         <form class="pageSearch" action="/games" method="get" role="search">
             <input type="hidden" name="sort" value="{{ sort }}">
+            {% if tag %}<input type="hidden" name="tag" value="{{ tag.slug }}">{% endif %}
             <label class="sr-only" for="pageSearchInput">Search games</label>
             <input id="pageSearchInput" type="search" name="q" placeholder="Search games" value="{{ search }}">
         </form>
         <nav class="sortTabs" aria-label="Sort games">
-            {% for key, label in {popular: 'Popular', newest: 'Newest', name: 'A–Z'} %}
-                <a href="/games?sort={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"{% if sort == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+            {% for key, label in {popular: 'Popular', trending: 'Trending', liked: 'Top rated', newest: 'Newest', name: 'A–Z'} %}
+                <a href="/games?sort={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}{% if tag %}&tag={{ tag.slug }}{% endif %}"{% if sort == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
             {% endfor %}
         </nav>
     </div>
+
+    {% if tags is not empty %}
+    <nav class="tagChips" aria-label="Categories">
+        <a href="/games?sort={{ sort }}{% if search %}&q={{ search|url_encode }}{% endif %}" class="tagChip{{ not tag ? ' active' : '' }}"{% if not tag %} aria-current="true"{% endif %}>All</a>
+        {% for item in tags %}
+            <a href="/games?sort={{ sort }}&tag={{ item.slug }}{% if search %}&q={{ search|url_encode }}{% endif %}" class="tagChip{{ tag and tag.id == item.id ? ' active' : '' }}"{% if tag and tag.id == item.id %} aria-current="true"{% endif %}>{{ item.name }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
 
     {% if games is empty %}
         {% if search %}

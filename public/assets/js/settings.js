@@ -186,4 +186,149 @@ $("#themeForm").on("submit", function(event) {
     });
 });
 
+// ---------- email ----------
+
+$("#emailForm").on("submit", function(event) {
+    event.preventDefault();
+    let message = $("#emailMsg");
+
+    $.post("/api/v1/account/email", { email: $("#emailInput").val(), password: $("#emailPassword").val() }).done(function(data) {
+        showNotice(message, data.message, "success");
+        $("#emailPassword").val("");
+    }).fail(function(xhr) {
+        showNotice(message, apiMessage(xhr));
+    });
+});
+
+// ---------- two-factor ----------
+
+function showRecoveryCodes(codes){
+    let list = $("#recoveryList").empty();
+    codes.forEach(code => $("<li>").append($("<code>", { text: code })).appendTo(list));
+    $("#recoveryCodes").prop("hidden", false);
+    $("#recoveryCopy").off("click").on("click", function() {
+        navigator.clipboard.writeText(codes.join("\n")).then(() => $(this).text("Copied"));
+    });
+}
+
+$("#twoFactorStart").on("click", function() {
+    let button = $(this).prop("disabled", true);
+    let message = $("#twoFactorMsg").prop("hidden", true);
+
+    $.post("/api/v1/account/2fa/setup").done(function(data) {
+        button.prop("hidden", true);
+        $("#twoFactorSetup").prop("hidden", false);
+        $("#twoFactorSecret").text(data.secret.replace(/(.{4})/g, "$1 ").trim());
+
+        // the qr code is drawn here, the secret never goes to another site
+        let box = $("#twoFactorQr").empty();
+        if(window.qrcode){
+            let qr = qrcode(0, "M");
+            qr.addData(data.uri);
+            qr.make();
+            box.html(qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }));
+            box.find("svg").attr({ role: "img", "aria-label": "QR code for your authenticator app" });
+        } else {
+            box.append($("<p>", { class: "hint", text: "The QR code didn't load. Use the key below." }));
+        }
+        $("#twoFactorCodeInput").trigger("focus");
+    }).fail(function(xhr) {
+        showNotice(message, apiMessage(xhr));
+        button.prop("disabled", false);
+    });
+});
+
+$("#twoFactorEnable").on("submit", function(event) {
+    event.preventDefault();
+    let message = $("#twoFactorMsg").prop("hidden", true);
+
+    $.post("/api/v1/account/2fa/enable", { code: $("#twoFactorCodeInput").val() }).done(function(data) {
+        $("#twoFactorSetup").prop("hidden", true);
+        showNotice(message, "Two-factor sign in is on. Other devices were signed out.", "success");
+        showRecoveryCodes(data.recoveryCodes);
+    }).fail(function(xhr) {
+        showNotice(message, apiMessage(xhr));
+    });
+});
+
+$("#twoFactorManage").on("submit", function(event) {
+    event.preventDefault();
+    let action = event.originalEvent && event.originalEvent.submitter ? $(event.originalEvent.submitter).data("action") : "recovery";
+    let message = $("#twoFactorMsg").prop("hidden", true);
+    let data = { password: $("#manageTwoFactorPassword").val(), code: $("#manageTwoFactorCode").val() };
+
+    $.post("/api/v1/account/2fa/" + action, data).done(function(result) {
+        $("#manageTwoFactorPassword, #manageTwoFactorCode").val("");
+        if(action === "disable"){
+            showNotice(message, result.message, "success");
+            setTimeout(() => window.watrNav ? window.watrNav.reload() : location.reload(), 1200);
+        } else {
+            showRecoveryCodes(result.recoveryCodes);
+        }
+    }).fail(function(xhr) {
+        showNotice(message, apiMessage(xhr));
+    });
+});
+
+// ---------- sessions ----------
+
+$("[data-revoke]").on("click", function() {
+    let button = $(this).prop("disabled", true);
+    $.post("/api/v1/account/sessions/" + button.data("revoke") + "/revoke").done(function() {
+        button.closest("li").remove();
+    }).fail(function(xhr) {
+        showNotice($("#sessionsMsg"), apiMessage(xhr));
+        button.prop("disabled", false);
+    });
+});
+
+$("#sessionsOthers").on("click", function() {
+    $.post("/api/v1/account/sessions/others").done(function(data) {
+        $(".sessionList [data-session]").filter(function() { return $(this).find("[data-revoke]").length; }).remove();
+        showNotice($("#sessionsMsg"), data.message, "success");
+        $("#sessionsOthers").remove();
+    });
+});
+
+// ---------- privacy + saves ----------
+
+$("#privacyForm").on("submit", function(event) {
+    event.preventDefault();
+    $.post("/api/v1/account/privacy", { share_activity: $("#shareActivity").is(":checked") ? "1" : "" }).done(function(data) {
+        showNotice($("#privacyMsg"), data.message, "success");
+    }).fail(function(xhr) {
+        showNotice($("#privacyMsg"), apiMessage(xhr));
+    });
+});
+
+$("[data-delete-save]").on("click", function() {
+    let button = $(this);
+    if(!confirm("Delete your cloud save for " + button.data("name") + "? Progress on this device stays, but other devices won't get it.")){
+        return;
+    }
+    $.post("/api/v1/play/" + button.data("delete-save") + "/save/delete").done(function() {
+        try { localStorage.removeItem("watrCloud:" + button.data("delete-save")); } catch (e) {}
+        button.closest("li").remove();
+    }).fail(function(xhr) {
+        showNotice($("#savesMsg"), apiMessage(xhr));
+    });
+});
+
+// ---------- delete account ----------
+
+$("#deleteForm").on("submit", function(event) {
+    event.preventDefault();
+    if(!confirm("Really delete your account? There's no undo.")){
+        return;
+    }
+
+    let data = { confirm: $("#deleteConfirm").val(), password: $("#deletePassword").val(), code: $("#deleteCode").val() || "" };
+    $.post("/api/v1/account/delete", data).done(function() {
+        try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+        window.location.href = "/";
+    }).fail(function(xhr) {
+        showNotice($("#deleteMsg"), apiMessage(xhr));
+    });
+});
+
 })();

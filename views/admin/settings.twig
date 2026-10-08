@@ -9,6 +9,17 @@
     </div>
 </div>
 
+<form class="panel adminForm broadcastForm" method="post" action="/admin/broadcast" data-confirm="Send this notification to every account?">
+    {{ m.csrf() }}
+    <h2>Notify everyone</h2>
+    <p class="muted">Puts a notification in everyone's bell. For things worth interrupting people for; the announcement strip below is quieter.</p>
+    <div class="formRow">
+        <div class="field"><label for="broadcastText">Message</label><input id="broadcastText" name="text" maxlength="300" required placeholder="10 new games just landed!"></div>
+        <div class="field narrowField"><label for="broadcastLink">Link <span class="muted">(optional)</span></label><input id="broadcastLink" name="link" maxlength="200" placeholder="/games?sort=newest" class="mono"></div>
+    </div>
+    <button class="button" type="submit"><i class="ph-bold ph-megaphone"></i>Send</button>
+</form>
+
 <form class="adminForm" method="post" action="/admin/settings">
     {{ m.csrf() }}
 

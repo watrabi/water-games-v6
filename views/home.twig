@@ -1,5 +1,6 @@
 {% extends "models/base.twig" %}
 {% import "components/games.twig" as g %}
+{% import "components/avatar.twig" as a %}
 {% block pageName %}Home{% endblock %}
 
 {% block body %}
@@ -9,44 +10,108 @@
             <img src="/assets/images/BlobEmoji/blobcool.png" alt="" width="56" height="56">
             <div>
                 <h1>Welcome back, {{ currentuser.username }}</h1>
-                <p>Today's emoji is {{ eotd() }}. Make of that what you will.</p>
+                <p>Today's emoji is {{ eotd() }}.{% if totalPlaytime %} You've played for {{ totalPlaytime|playtime }} so far.{% else %} Make of that what you will.{% endif %}</p>
             </div>
         </div>
         <a class="button quiet" href="/games">All games</a>
     </div>
 
+    {% if recent is not empty %}
     <section>
         <div class="sectionHeader">
-            <h2>Your favorites</h2>
-            {% if favorites is not empty %}<a href="/favorites">See all</a>{% endif %}
+            <h2>Continue playing</h2>
         </div>
-        {% if favorites is empty %}
-            {{ g.empty('blobheart', 'Nothing here yet.', 'Hit the heart on any game and it\'ll show up here.') }}
-        {% else %}
-            {{ g.grid(favorites) }}
-        {% endif %}
-    </section>
-
-    <section>
-        <div class="sectionHeader">
-            <h2>Popular</h2>
-            <a href="/games?sort=popular">See all</a>
+        <div class="continueRow">
+            {% for game in recent %}
+            <a class="continueTile" href="/{{ game.type == 'app' ? 'apps' : 'games' }}/{{ game.id }}">
+                <span class="gameIcon">
+                    {% if game.gameIcon %}<img src="{{ game.gameIcon }}" alt="" loading="lazy">{% else %}{{ game.name|first|upper }}{% endif %}
+                </span>
+                <span class="continueText">
+                    <span class="gameName">{{ game.name }}</span>
+                    <span class="gameMeta">{% if game.seconds %}{{ game.seconds|playtime }} played{% else %}Just started{% endif %} · {{ game.last_played|ago }}</span>
+                </span>
+            </a>
+            {% endfor %}
         </div>
-        {% if popular is empty %}
-            {{ g.empty('blobsleeping', 'No games yet.', 'Check back soon, they\'re on the way.') }}
-        {% else %}
-            {{ g.grid(popular) }}
-        {% endif %}
-    </section>
-
-    {% if newest is not empty %}
-    <section>
-        <div class="sectionHeader">
-            <h2>Recently added</h2>
-            <a href="/games?sort=newest">See all</a>
-        </div>
-        {{ g.grid(newest) }}
     </section>
     {% endif %}
+
+    <div class="homeColumns">
+        <div class="homeMain">
+            <section>
+                <div class="sectionHeader">
+                    <h2>Your favorites</h2>
+                    {% if favorites is not empty %}<a href="/favorites">See all</a>{% endif %}
+                </div>
+                {% if favorites is empty %}
+                    {{ g.empty('blobheart', 'Nothing here yet.', 'Hit the heart on any game and it\'ll show up here.') }}
+                {% else %}
+                    {{ g.grid(favorites) }}
+                {% endif %}
+            </section>
+
+            <section>
+                <div class="sectionHeader">
+                    <h2>Trending this week</h2>
+                    <a href="/games?sort=trending">See all</a>
+                </div>
+                {% if trending is empty %}
+                    {{ g.empty('blobsleeping', 'No games yet.', 'Check back soon, they\'re on the way.') }}
+                {% else %}
+                    {{ g.grid(trending) }}
+                {% endif %}
+            </section>
+
+            {% if newest is not empty %}
+            <section>
+                <div class="sectionHeader">
+                    <h2>Recently added</h2>
+                    <a href="/games?sort=newest">See all</a>
+                </div>
+                {{ g.grid(newest) }}
+            </section>
+            {% endif %}
+        </div>
+
+        <aside class="homeSide">
+            {% if playingNow is not empty %}
+            <section class="panel sidePanel">
+                <h2>Friends playing now</h2>
+                <ul class="playingList">
+                    {% for friend in playingNow %}
+                    <li>
+                        <a href="/users/{{ friend.username|lower|url_encode }}">{{ a.avatar(friend) }}</a>
+                        <span><a href="/users/{{ friend.username|lower|url_encode }}">{{ friend.username }}</a> is playing <a href="/{{ friend.playing.type == 'app' ? 'apps' : 'games' }}/{{ friend.playing.id }}">{{ friend.playing.name }}</a></span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <section class="panel sidePanel">
+                <h2>What's happening</h2>
+                {% if feed is empty %}
+                    <div class="sideEmpty">
+                        <img src="/assets/images/BlobEmoji/blobpeek.png" alt="" width="40" height="40">
+                        <p class="muted">Quiet in here. Add some friends from the chat tray and you'll see what they're up to.</p>
+                    </div>
+                {% else %}
+                    <ol class="feedList">
+                        {% for item in feed %}
+                        <li>
+                            <span class="feedIcon"><i class="ph-bold {{ item.icon }}"></i></span>
+                            <p>
+                                {% if item.user %}<a href="/users/{{ item.user.username|lower|url_encode }}">{{ item.user.username }}</a> {{ item.text }}{% else %}{{ item.text }}:{% endif %}
+                                {% if item.game %}<a href="/{{ item.game.type == 'app' ? 'apps' : 'games' }}/{{ item.game.id }}">{{ item.game.name }}</a>{% endif %}
+                                <span class="muted feedTime">{{ item.created|ago }}</span>
+                            </p>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
 </div>
 {% endblock %}

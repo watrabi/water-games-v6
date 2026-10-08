@@ -91,7 +91,36 @@ class comments {
             [$id]
         )->first();
 
+        \watrlabs\social\activity::log($userId, "comment", $gameId);
+        \watrlabs\social\achievements::award($userId, "first_comment");
+        $this->notifyMentions($user, $gameId, $row->body);
+
         return self::shape($row, $user);
+    }
+
+    // "@sam" pings sam, unless one of you blocked the other. a few per comment at most
+    private function notifyMentions($user, int $gameId, string $body){
+        global $db;
+
+        if(!preg_match_all('/(?<![\w@])@([a-zA-Z0-9_]{3,20})/', $body, $matches)){
+            return;
+        }
+
+        $game = $db->table("games")->select(["name", "type"])->where("id", $gameId)->first();
+        $friends = new \watrlabs\social\friends();
+
+        foreach(array_slice(array_unique(array_map("strtolower", $matches[1])), 0, 5) as $name){
+            $target = $db->table("users")->select(["id", "banned"])->where("username", $name)->first();
+            if(!$target || $target->banned || (int) $target->id === (int) $user->id){
+                continue;
+            }
+            if(in_array($friends->relation((int) $user->id, (int) $target->id), ["blocked", "blockedby"], true)){
+                continue;
+            }
+            \watrlabs\social\notifications::send((int) $target->id, "mention", (int) $user->id, [
+                "game"=>$game->name ?? "a game", "gameid"=>$gameId, "type"=>$game->type ?? "game",
+            ]);
+        }
     }
 
     // your own comments, or anyone's if you're an admin

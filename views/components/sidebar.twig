@@ -16,9 +16,10 @@
     {{ nav.item('/ai', 'ph-bold ph-chats', 'AI', here, '/ai/') }}
   {% endif %}
   {% if currentuser %}
+    <p class="sidebarHeading">Yours</p>
     {{ nav.item('/favorites', 'ph-bold ph-heart', 'Favorites', here) }}
+    {{ nav.item('/music/playlists', 'ph-bold ph-playlist', 'Playlists', here, '/music/playlists/') }}
+    {{ nav.item('/notifications', 'ph-bold ph-bell', 'Notifications', here) }}
+    {{ nav.item('/games/request', 'ph-bold ph-lightbulb', 'Request a game', here) }}
   {% endif %}
-
-  <p class="sidebarHeading">Coming later</p>
-  <a class="sidebarItem later{{ here == '/proxy' ? ' active' : '' }}" href="/proxy"><i class="ph-bold ph-google-chrome-logo"></i>Proxy<span class="tag">soon</span></a>
 </nav>

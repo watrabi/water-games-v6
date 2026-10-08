@@ -25,9 +25,23 @@
                 <input id="password" name="password" type="password" autocomplete="current-password" required>
             </div>
             <button class="button" type="submit" id="loginButton">Sign in</button>
+            <p class="hint authForgot"><a href="/auth/forgot">Forgot your password?</a></p>
+        </form>
+
+        {# shown after a right password when the account has 2FA on #}
+        <form id="twoFactorForm" novalidate hidden>
+            <h2>Two-factor code</h2>
+            <p class="muted">Open your authenticator app and type the 6 digit code for {{ env("APP_NAME") }}. Lost your phone? Use one of your recovery codes instead.</p>
+            <div class="notice danger" id="twoFactorMsg" role="alert" hidden></div>
+            <div class="field">
+                <label for="twoFactorCode">Code</label>
+                <input id="twoFactorCode" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required>
+            </div>
+            <button class="button" type="submit" id="twoFactorButton">Verify</button>
+            <p class="hint authForgot"><a href="/auth/sign-in" data-reload>Start over</a></p>
         </form>
         <p class="authSwitch muted">New here? <a href="/auth/sign-up">Make an account</a></p>
     </div>
 </div>
-<script src="/assets/js/login.js?t=11" defer></script>
+<script src="/assets/js/login.js?t=12" defer></script>
 {% endblock %}

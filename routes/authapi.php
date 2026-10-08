@@ -45,6 +45,11 @@ $router->group('/api/v1/auth', function($router) {
             "LastIP"=>$security->encryptIp($security::getRequestIp())
         ]);
 
+        // right password, but there's a second step
+        if(!empty($userInfo->totp_enabled)){
+            return ["status"=>"2fa", "token"=>\watrlabs\authentication\totp::challenge((int) $userInfo->id)];
+        }
+
         $sessions->authenticateUser($userInfo->id);
         return ["status"=>"okay", "message"=>"login success"];
     });

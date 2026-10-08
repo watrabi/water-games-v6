@@ -87,6 +87,7 @@ function renderTrack(){
     $("body").addClass("has-player");
 
     updateMediaSession(track);
+    renderQueue();
     $(document).trigger("music:change", [track]);
 }
 
@@ -164,8 +165,81 @@ window.watrMusic = {
     },
     isPlaying: function(){
         return !music.audio.paused;
+    },
+    // right after the current song
+    playNext: function(track){
+        if(!currentTrack()){
+            return window.watrMusic.playQueue([track], 0);
+        }
+        music.queue.splice(music.index + 1, 0, track);
+        afterQueueChange();
+    },
+    // at the end
+    addToQueue: function(track){
+        if(!currentTrack()){
+            return window.watrMusic.playQueue([track], 0);
+        }
+        music.queue.push(track);
+        afterQueueChange();
+    },
+    queue: function(){
+        return { tracks: music.queue.slice(), index: music.index };
     }
 };
+
+function afterQueueChange(){
+    $("#playerNext").prop("disabled", music.index >= music.queue.length - 1);
+    saveMusic();
+    renderQueue();
+}
+
+// ---------- up next ----------
+
+function renderQueue(){
+    let panel = $("#queuePanel");
+    if(panel.prop("hidden")){
+        return;
+    }
+
+    let list = $("#queueList").empty();
+    let upcoming = music.queue.slice(music.index + 1);
+
+    if(!upcoming.length){
+        list.append($("<li>", { class: "queueEmpty muted", text: "Nothing after this one. Use “Play next” or “Add to queue” on any song." }));
+        return;
+    }
+
+    upcoming.forEach(function(track, offset) {
+        let index = music.index + 1 + offset;
+        let row = $("<li>", { class: "queueItem" });
+        let play = $("<button>", { type: "button", class: "queuePlay" }).on("click", () => loadTrack(index, true, true));
+        play.append($("<span>", { class: "queueTitle", text: track.title }), $("<span>", { class: "queueArtist", text: track.artist || "Unknown artist" }));
+        let remove = $("<button>", { type: "button", class: "playerButton", "aria-label": "Remove " + track.title + " from the queue" })
+            .append('<i class="ph-bold ph-x"></i>')
+            .on("click", function() {
+                music.queue.splice(index, 1);
+                afterQueueChange();
+            });
+        list.append(row.append(play, remove));
+    });
+}
+
+$("#playerQueue").on("click", function() {
+    let panel = $("#queuePanel");
+    let open = panel.prop("hidden");
+    panel.prop("hidden", !open);
+    $(this).attr("aria-pressed", open);
+    if(open){
+        $("#lyricsPanel").prop("hidden", true);
+        $("#playerLyrics").attr("aria-pressed", "false");
+        renderQueue();
+    }
+});
+
+$("#queueClose").on("click", function() {
+    $("#queuePanel").prop("hidden", true);
+    $("#playerQueue").attr("aria-pressed", "false");
+});
 
 function nextTrack(){
     if(music.index < music.queue.length - 1){

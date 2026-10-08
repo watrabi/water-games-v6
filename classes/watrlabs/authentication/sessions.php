@@ -33,6 +33,9 @@ class sessions {
             "userid"=>$userId,
             "session"=>$token,
             "expiration"=>$this->cookieTime,
+            "created"=>time(),
+            "last_used"=>time(),
+            "user_agent"=>mb_substr((string) ($_SERVER["HTTP_USER_AGENT"] ?? ""), 0, 255) ?: null,
         ];
 
         $db->table("sessions")->insert($insert);
@@ -101,6 +104,65 @@ class sessions {
         $db->table("sessions")->where("userid", $userId)->delete();
     }
 
+    // every device someone's signed in on, newest first. never hands out the session tokens themselves
+    public function listFor(int $userId){
+        global $db;
+
+        $current = $this->getCurrentSessionId();
+
+        return array_map(fn($row) => [
+            "id"=>(int) $row->id,
+            "device"=>self::describeAgent($row->user_agent ?? ""),
+            "created"=>$row->created ? (int) $row->created : null,
+            "lastUsed"=>$row->last_used ? (int) $row->last_used : null,
+            "current"=>$current !== null && hash_equals((string) $row->session, (string) $current),
+        ], $db->table("sessions")->where("userid", $userId)->where("expiration", ">", time())->orderBy("last_used", "DESC")->get());
+    }
+
+    // signs out one of your own sessions
+    public function revoke(int $userId, int $id){
+        global $db;
+
+        return $db->table("sessions")->where("userid", $userId)->where("id", $id)->delete()->rowCount() > 0;
+    }
+
+    // everything except the one you're using
+    public function revokeOthers(int $userId){
+        global $db;
+
+        $current = $this->getCurrentSessionId();
+        $query = $db->table("sessions")->where("userid", $userId);
+        if($current){
+            $query->where("session", "!=", $current);
+        }
+        $query->delete();
+    }
+
+    // "Firefox on Windows". rough on purpose, it only has to jog someone's memory
+    static function describeAgent(string $agent){
+        if($agent === ""){
+            return "Unknown device";
+        }
+
+        $browser = "Browser";
+        foreach(["Edg/"=>"Edge", "OPR/"=>"Opera", "SamsungBrowser"=>"Samsung Internet", "Firefox/"=>"Firefox", "CriOS"=>"Chrome", "Chrome/"=>"Chrome", "Safari/"=>"Safari"] as $needle => $name){
+            if(str_contains($agent, $needle)){
+                $browser = $name;
+                break;
+            }
+        }
+
+        $os = null;
+        foreach(["CrOS"=>"ChromeOS", "Android"=>"Android", "iPhone"=>"iPhone", "iPad"=>"iPad", "Windows"=>"Windows", "Mac OS X"=>"Mac", "Linux"=>"Linux"] as $needle => $name){
+            if(str_contains($agent, $needle)){
+                $os = $name;
+                break;
+            }
+        }
+
+        return $os ? "$browser on $os" : $browser;
+    }
+
     public function getCurrentSessionId(){
         return $_COOKIE[$_ENV["COOKIE_NAME"]] ?? null;
     }
@@ -116,6 +178,11 @@ class sessions {
     // only touches the db + cookie if it hasn't been refreshed in the last day
     private function extendLease($sessionInfo){
         global $db;
+
+        // for the "where you're signed in" list. a few minutes off is fine
+        if((int) ($sessionInfo->last_used ?? 0) < time() - 300){
+            $db->table("sessions")->where("id", $sessionInfo->id)->update(["last_used"=>time()]);
+        }
 
         if($sessionInfo->expiration < $this->cookieTime - 86400){
             $this->assignSession($sessionInfo->session);

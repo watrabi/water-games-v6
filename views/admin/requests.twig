@@ -1,0 +1,61 @@
+{% extends "admin/base.twig" %}
+{% import "admin/macros.twig" as m %}
+{% block adminTitle %}Requests{% endblock %}
+{% block admin %}
+<div class="pageHeader">
+    <div>
+        <h1>Game requests</h1>
+        <p>{{ total|number_format }} {{ status }}{% if status == 'open' %}, most asked for first{% endif %}. Whoever asked gets a notification either way.</p>
+    </div>
+    <nav class="sortTabs" aria-label="Request status">
+        {% for key, label in {open: 'Open', added: 'Added', declined: 'Declined'} %}
+            <a href="?status={{ key }}"{% if status == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+</div>
+
+{% if rows is empty %}
+    <div class="empty"><img src="/assets/images/BlobEmoji/blobcool.png" alt=""><div><strong>Nothing here.</strong>{% if status == 'open' %} No requests waiting.{% endif %}</div></div>
+{% endif %}
+
+{% for item in rows %}
+<article class="panel reportCard">
+    <header class="reportHead">
+        <div>
+            <strong>{{ item.name }}</strong>{% if item.asks > 1 %} <span class="badge">{{ item.asks }} people asked</span>{% endif %}
+            <span class="muted">· from <a href="/users/{{ item.username|lower|url_encode }}">{{ item.username }}</a> {{ item.created|ago }}</span>
+        </div>
+        {% if item.status != 'open' %}
+            <span class="muted">{{ item.status }}{% if item.game_name %} as <a href="/admin/games/{{ item.gameid }}">{{ item.game_name }}</a>{% endif %}{% if item.handler_name %} by {{ item.handler_name }}{% endif %}</span>
+        {% endif %}
+    </header>
+    {% if item.url %}<p><a href="{{ item.url }}" target="_blank" rel="noopener nofollow">{{ item.url }}</a></p>{% endif %}
+    {% if item.notes %}<p class="reportDetails">“{{ item.notes }}”</p>{% endif %}
+
+    {% if item.status == 'open' %}
+    <div class="requestActions">
+        <a class="button" href="/admin/games/new?request={{ item.id }}"><i class="ph-bold ph-plus"></i>Add it now</a>
+        <form method="post" action="/admin/requests/{{ item.id }}/action" class="inlineForm requestLink">
+            {{ m.csrf() }}
+            <input type="hidden" name="action" value="added">
+            <label class="sr-only" for="game{{ item.id }}">Already on the site as</label>
+            <select id="game{{ item.id }}" name="game" required>
+                <option value="">Already on the site as…</option>
+                {% for game in games %}<option value="{{ game.id }}">{{ game.name }}{{ game.type == 'app' ? ' (app)' : '' }}</option>{% endfor %}
+            </select>
+            <button class="button quiet" type="submit">Mark added</button>
+        </form>
+        <form method="post" action="/admin/requests/{{ item.id }}/action" class="inlineForm requestLink">
+            {{ m.csrf() }}
+            <input type="hidden" name="action" value="declined">
+            <label class="sr-only" for="note{{ item.id }}">Note for them</label>
+            <input id="note{{ item.id }}" name="note" maxlength="200" placeholder="Why not? (optional, they'll see it)">
+            <button class="button quiet danger" type="submit">Decline</button>
+        </form>
+    </div>
+    {% endif %}
+</article>
+{% endfor %}
+
+{{ m.pager(page, pages, {status: status}) }}
+{% endblock %}

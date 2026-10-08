@@ -19,9 +19,11 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/favorites`, `/users/{username}`, `/settings`, `/auth/logout`
 - `/terms`, `/privacy`, `/credits`
 - `/apps`, `/apps/{id}` same as games but for non-game stuff (rows in `games` with `type = 'app'`)
-- `/music` track list, with a player bar that follows you between pages
+- `/games?tag=puzzle` filters by category, `?sort=trending` is plays over the last week, `?sort=liked` is by votes
+- `/music` track list, with a player bar that follows you between pages. `/music/playlists` for your playlists
 - `/ai` chat with saved conversations, tools and image input (see below)
-- `/proxy` is a "coming later" placeholder
+- `/games/request` asks for a game to be added, `/notifications` is everything the bell has shown you
+- `/auth/forgot` and `/auth/reset` for forgotten passwords (needs mail, see below)
 
 # admin panel
 `/admin` (404s for everyone who isn't an admin). make your first admin in the database:
@@ -37,6 +39,47 @@ after that you can make other people admins from the panel. it covers:
 
 uploads go to `public/uploads/`, which the web server needs to be able to write to.
 big audio files also need `upload_max_filesize` / `post_max_size` raised in php.ini.
+
+# playtime
+the game page counts how long you play, but only seconds where the tab is the visible one **and** the window has
+focus (clicking into the game still counts, since that focus is inside the page). it sends what it counted every
+15 seconds, when you click away, and when you leave the page. the server never credits more than the time since your
+last heartbeat (from any tab), at most 60 seconds at once, so two games side by side don't double up and a tampered
+browser can't send hours in one go. the rule lives in `playtime::credit()` and has tests.
+
+it shows up on the game page ("3h 12m played"), on `/home` ("Continue playing"), on profiles (total, most played)
+and in the admin dashboard (playtime per day, most played this month). `game_daily` keeps plays and seconds per game
+per day, which is also what "Trending" sorts by.
+
+# cloud saves
+games in `public/game-files/` share the site's origin, so they use the site's localStorage. while a game is open,
+the page listens for `storage` events (they fire when the game's frame writes) to learn which keys are the game's, and
+uploads those keys to your account. on another device the save is written back into localStorage *before* the game
+loads. up to 1MB per game, merged key by key so a device that only knows some keys doesn't wipe the others. the
+site's own keys (`watr*`, `wg_*`, `sidebarClosed`, `aiModel`) are never included. games hosted on other sites, and
+games that save to IndexedDB (most Unity WebGL builds), can't be saved this way. people can see and delete their
+saves under Settings → Privacy & saves.
+
+# accounts
+- **forgot password**: emails a link that works once within an hour. only works for accounts with an email, which
+  people can add or change in settings. set `MAIL_HOST` etc in `.env` (see `.env.example`); without it and with
+  `APP_DEBUG=true`, emails land in `storage/logs/mail.log`
+- **two-factor sign in**: settings → Security. authenticator app codes (TOTP), plus 8 one-time recovery codes.
+  the secret is stored encrypted (AES-GCM with a key derived from `encryptionKey`), and each code works once
+- **sessions**: settings → Security lists every device you're signed in on, and signs out any of them
+- **privacy**: "share what I'm playing" (on by default) controls "Playing X" in friends' chat trays, the friends
+  activity feed on `/home`, and the playtime on your profile
+- **your data**: download everything as JSON, or delete the account (password, plus a 2FA code if it's on)
+
+# friends, groups + notifications
+- the chat tray shows what friends are playing right now, and has group chats: pick two or more friends, anyone in
+  the group can add their own friends or rename it, the owner can remove people. reports on group messages land in
+  admin → Reports → Group chats
+- the bell in the top bar: friend requests, @mentions in comments, achievements, answers to game requests, people
+  adding you to groups, and anything an admin sends from admin → Site & themes → Notify everyone. pushed instantly
+  with the realtime server, checked with the chat's polling without it
+- achievements show on profiles (`classes/watrlabs/social/achievements.php` has the list)
+- `/home` has a feed of what friends did (favorites, comments, achievements, new games they tried), plus new games
 
 # friends + chat
 signed in people get a chat tray in the bottom left. they can find people by username, send friend requests, and
@@ -85,6 +128,32 @@ links and search forms load the next page in place (fetch + swap the main area),
 tray never reload. anything unusual (a file link, a different site build after a deploy, an error) falls back to a
 normal page load. put `data-reload` on a link or form to always do a full load. page scripts run again each time
 their page is shown, so new ones should keep their variables inside a function like the existing ones do.
+
+# installing it as an app
+`public/manifest.webmanifest` and `public/sw.js` make the site installable (Chrome's install button, "add to home
+screen" on phones, Chromebook shelf). the service worker only caches files under `/assets/` and an offline page.
+pages and the api always come from the network.
+
+# keyboard shortcuts
+`?` shows them all. `/` search, `g` then `h`/`g`/`m`/`n` for home/games/music/notifications, `c` chat, and on a game
+`f` fullscreen and `t` theater mode. they don't fire while you're typing.
+
+# backups
+`bin/backup.sh` dumps the database named in `.env` into `storage/backups` (gzipped, newest 14 kept, `KEEP=30` for
+more). to run it every night, add a cron job (aaPanel → Cron → Shell script, or `crontab -e`):
+```
+0 4 * * * /www/wwwroot/games.watr.lol/bin/backup.sh >> /www/wwwroot/games.watr.lol/storage/logs/backup.log 2>&1
+```
+copy the backups somewhere off the server too, a backup on the same disk doesn't help if the disk dies.
+uploads (`public/uploads`, `storage/private`) are plain files, back them up with the rest of the server.
+
+# tests
+```bash
+vendor/bin/phpunit                    # everything
+vendor/bin/phpunit --testsuite unit   # no database needed
+```
+the `database` suite uses the database in `.env`, inside a transaction that's always rolled back, and skips itself if
+it can't connect.
 
 # themes
 four themes people can pick (Deep, Abyss, Reef, Foam) plus seasonal ones that switch on by date:
@@ -142,8 +211,12 @@ if something else buffers responses (gzip on `text/event-stream`, some proxies) 
 at the end instead of streaming.
 
 # notes
-- run migrations after pulling, there are new `favorites`, `tracks`, `settings`, `ai_*`, `friendships`, `blocks` and
-  `chat_*` tables, a `type` column on `games` and `admin` / `banned` / `theme` / `last_seen` columns on `users`
+- run migrations after pulling (`vendor/bin/phinx migrate`). the latest one adds playtime, cloud saves, categories,
+  votes, requests, notifications, achievements, groups, playlists, 2FA and the admin log
+- the admin panel also has: charts on the dashboard, Requests (mark added/declined, or "add it now"), broken game
+  reports under Reports, Categories (from the Games page), a Log of every admin action, and Notify everyone
+- uploads check the file type with php's `fileinfo` extension when it's there, and by reading the file's first bytes
+  when it isn't (aaPanel's php builds leave fileinfo out by default)
 - the turnstile captcha on sign up only turns on when `CONFIG_CaptchaEnabled=true` AND both turnstile keys are set
 - signup/login IPs are stored encrypted with `encryptionKey`/`encryptionIv` so the alt limit can match them
 - `/randTest` and `/auth/isAuthed` only exist when `APP_DEBUG=true`

@@ -3,7 +3,7 @@
 {% block adminTitle %}Reports{% endblock %}
 
 {% macro action(report, action, label, danger, confirm, kind) %}
-  <form method="post" action="/admin/reports/{{ kind == 'comments' ? 'comments/' : '' }}{{ report.id }}/action" class="inlineForm"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+  <form method="post" action="/admin/reports/{{ kind == 'comments' ? 'comments/' : (kind == 'games' ? 'games/' : '') }}{{ report.id }}/action" class="inlineForm"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="action" value="{{ action }}">
     <button type="submit" class="button{{ danger ? ' quiet danger' : ' quiet' }}">{{ label }}</button>
@@ -15,7 +15,7 @@
 <div class="pageHeader">
     <div>
         <h1>Reports</h1>
-        <p>{{ total|number_format }} {{ status }} {{ kind == 'comments' ? 'comment' : 'chat' }} report{{ total == 1 ? '' : 's' }}{% if status == 'open' %}, oldest first{% endif %}</p>
+        <p>{{ total|number_format }} {{ status }} {{ {comments: 'comment', games: 'broken game', groups: 'group chat'}[kind] ?? 'chat' }} report{{ total == 1 ? '' : 's' }}{% if status == 'open' %}, oldest first{% endif %}</p>
     </div>
     <nav class="sortTabs" aria-label="Report status">
         {% for key, label in {open: 'Open', actioned: 'Acted on', dismissed: 'Dismissed'} %}
@@ -25,7 +25,9 @@
 </div>
 <nav class="sortTabs reportKinds" aria-label="Report type">
     <a href="?kind=chat&amp;status={{ status }}"{% if kind == 'chat' %} class="active" aria-current="true"{% endif %}>Chat{% if openChat %} <span class="navCount">{{ openChat }}</span>{% endif %}</a>
+    <a href="?kind=groups&amp;status={{ status }}"{% if kind == 'groups' %} class="active" aria-current="true"{% endif %}>Group chats{% if openGroups %} <span class="navCount">{{ openGroups }}</span>{% endif %}</a>
     <a href="?kind=comments&amp;status={{ status }}"{% if kind == 'comments' %} class="active" aria-current="true"{% endif %}>Comments{% if openComments %} <span class="navCount">{{ openComments }}</span>{% endif %}</a>
+    <a href="?kind=games&amp;status={{ status }}"{% if kind == 'games' %} class="active" aria-current="true"{% endif %}>Broken games{% if openGames %} <span class="navCount">{{ openGames }}</span>{% endif %}</a>
 </nav>
 
 {% if rows is empty %}
@@ -39,7 +41,12 @@
             <strong>{{ reasons[report.reason] ?? report.reason }}</strong>
             <span class="muted">· reported by <a href="/users/{{ report.reporter_name|lower|url_encode }}">{{ report.reporter_name }}</a> {{ report.created|date("M j, g:i A") }}</span>
         </div>
-        {% if report.status == 'open' %}
+        {% if report.status == 'open' and kind == 'games' %}
+        <div class="rowActions">
+            {{ r.action(report, 'dismiss', 'Dismiss', false, null, kind) }}
+            {{ r.action(report, 'fixed', 'Mark fixed', false, null, kind) }}
+        </div>
+        {% elseif report.status == 'open' %}
         <div class="rowActions">
             {% set noun = kind == 'comments' ? 'comment' : 'message' %}
             {{ r.action(report, 'dismiss', 'Dismiss', false, null, kind) }}
@@ -55,7 +62,13 @@
 
     {% if report.details %}<p class="reportDetails">“{{ report.details }}”</p>{% endif %}
 
-    {% if kind == 'comments' %}
+    {% if kind == 'games' %}
+    <p class="muted reportWho">
+        <a href="/{{ report.game_type == 'app' ? 'apps' : 'games' }}/{{ report.gameid }}" target="_blank" rel="noopener">{{ report.game_name ?: 'A deleted game' }}</a>
+        {% if report.gamePath %}· <code>{{ report.gamePath }}</code>{% endif %}
+        · <a href="/admin/games/{{ report.gameid }}">Edit</a>
+    </p>
+    {% elseif kind == 'comments' %}
     <p class="muted reportWho">
         By <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
         on <a href="/{{ report.game_type == 'app' ? 'apps' : 'games' }}/{{ report.gameid }}">{{ report.game_name ?: 'a deleted game' }}</a>, {{ report.sent|date("M j, g:i A") }}:
@@ -70,7 +83,7 @@
     {% else %}
     <p class="muted reportWho">
         From <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
-        to {{ report.reporter_name }}. The conversation around it:
+        {% if kind == 'groups' %}in the group “{{ report.group_name }}”{% else %}to {{ report.reporter_name }}{% endif %}. The conversation around it:
     </p>
 
     <ol class="reportContext">

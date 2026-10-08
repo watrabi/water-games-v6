@@ -54,7 +54,10 @@ $routers = [
     "authapi",
     "ai",
     "admin",
-    "social"
+    "social",
+    "play",
+    "account",
+    "playlists"
 ];
 
 foreach ($routers as $r) {

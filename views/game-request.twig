@@ -1,0 +1,75 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Request a game{% endblock %}
+{% block body %}
+<div class="page narrow">
+    <div class="pageHeader">
+        <div class="welcome">
+            <img src="/assets/images/BlobEmoji/blobgamer.png" alt="" width="56" height="56">
+            <div>
+                <h1>Request a game</h1>
+                <p>Tell us what's missing. You'll get a notification when we've looked at it.</p>
+            </div>
+        </div>
+    </div>
+
+    <form class="panel" id="requestForm">
+        <div class="notice" id="requestMsg" role="status" hidden></div>
+        <div class="field">
+            <label for="requestName">Game name</label>
+            <input id="requestName" maxlength="100" required autocomplete="off">
+        </div>
+        <div class="field">
+            <label for="requestUrl">Link to it <span class="muted">(optional)</span></label>
+            <input id="requestUrl" type="url" maxlength="500" placeholder="https://">
+            <p class="hint">Where you've played it before helps a lot.</p>
+        </div>
+        <div class="field">
+            <label for="requestNotes">Anything else? <span class="muted">(optional)</span></label>
+            <textarea id="requestNotes" maxlength="1000" rows="3"></textarea>
+        </div>
+        <button class="button" type="submit" id="requestSend">Send request</button>
+        <p class="hint">Up to {{ perDay }} a day.</p>
+    </form>
+
+    {% if mine is not empty %}
+    <section>
+        <div class="sectionHeader"><h2>Your requests</h2></div>
+        <ul class="requestList">
+            {% for item in mine %}
+            <li>
+                <div>
+                    <strong>{{ item.name }}</strong>
+                    <p class="muted">Asked {{ item.created|ago }}</p>
+                </div>
+                {% if item.status == 'added' %}
+                    <span class="statusPill good"><i class="ph-bold ph-check"></i>Added</span>
+                    {% if item.gameid %}<a class="button quiet small" href="/{{ item.game_type == 'app' ? 'apps' : 'games' }}/{{ item.gameid }}">Play</a>{% endif %}
+                {% elseif item.status == 'declined' %}
+                    <span class="statusPill">Not added</span>
+                {% else %}
+                    <span class="statusPill waiting">Waiting</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</div>
+<script>
+(function(){
+    $("#requestForm").on("submit", function(event) {
+        event.preventDefault();
+        let message = $("#requestMsg");
+        let button = $("#requestSend").prop("disabled", true);
+
+        $.post("/api/v1/games/request", { name: $("#requestName").val(), url: $("#requestUrl").val(), notes: $("#requestNotes").val() }).done(function(data) {
+            showNotice(message, data.message, "success");
+            setTimeout(() => window.watrNav ? window.watrNav.reload() : location.reload(), 1500);
+        }).fail(function(xhr) {
+            showNotice(message, apiMessage(xhr));
+            button.prop("disabled", false);
+        });
+    });
+})();
+</script>
+{% endblock %}

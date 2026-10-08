@@ -1,7 +1,7 @@
 {% extends "models/base.twig" %}
 {% block pageName %}{% block adminTitle %}Admin{% endblock %} · Admin{% endblock %}
 {% block headerIncludes %}
-<link rel="stylesheet" href="/assets/css/admin.css?t=2">
+<link rel="stylesheet" href="/assets/css/admin.css?t=4">
 {% endblock %}
 
 {% block body %}
@@ -14,11 +14,13 @@
             ['music', '/admin/music', 'Music'],
             ['users', '/admin/users', 'Users'],
             ['reports', '/admin/reports', 'Reports'],
+            ['requests', '/admin/requests', 'Requests'],
             ['ai', '/admin/ai', 'AI'],
             ['settings', '/admin/settings', 'Site & themes'],
+            ['log', '/admin/log', 'Log'],
         ] %}
         {% for tab in tabs %}
-            <a href="{{ tab[1] }}"{% if section == tab[0] %} class="active" aria-current="page"{% endif %}>{{ tab[2] }}{% if tab[0] == 'reports' and openReports %} <span class="navCount">{{ openReports }}</span>{% endif %}</a>
+            <a href="{{ tab[1] }}"{% if section == tab[0] %} class="active" aria-current="page"{% endif %}>{{ tab[2] }}{% if tab[0] == 'reports' and openReports %} <span class="navCount">{{ openReports }}</span>{% endif %}{% if tab[0] == 'requests' and openRequests %} <span class="navCount">{{ openRequests }}</span>{% endif %}</a>
         {% endfor %}
     </nav>
 

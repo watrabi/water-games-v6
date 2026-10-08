@@ -543,3 +543,196 @@ form.adminForm > .panel:last-of-type {
 .reportKinds {
     margin: -8px 0 18px;
 }
+
+/* ---------- dashboard charts ---------- */
+/* one series per chart, drawn in --link. hover or focus a day for its number, or open the table */
+
+.chartGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.chartPanel .sectionHeader {
+    margin-bottom: 14px;
+}
+
+.chartPanel .sectionHeader span {
+    font-size: 13px;
+}
+
+.dayChart {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    height: 120px;
+    border-bottom: 1px solid var(--line-strong);
+}
+
+.dayBar {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    outline: none;
+}
+
+.dayBar span {
+    display: block;
+    width: 100%;
+    background-color: var(--link);
+}
+
+.dayBar:hover span,
+.dayBar:focus-visible span {
+    background-color: var(--text);
+}
+
+.dayBar:hover::after,
+.dayBar:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    z-index: 5;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border: 1px solid var(--line-strong);
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.dayBar:first-child:hover::after,
+.dayBar:first-child:focus-visible::after {
+    left: 0;
+    transform: none;
+}
+
+.dayBar:last-child:hover::after,
+.dayBar:last-child:focus-visible::after {
+    right: 0;
+    left: auto;
+    transform: none;
+}
+
+.dayAxis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.chartTable {
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.chartTable summary {
+    color: var(--link);
+    cursor: pointer;
+}
+
+.chartTable table {
+    margin-top: 8px;
+}
+
+.barList {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.barList li {
+    display: grid;
+    grid-template-columns: minmax(100px, 160px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.barList li > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.barTrack {
+    display: block;
+    height: 8px;
+    background-color: var(--raised);
+}
+
+.barTrack span {
+    display: block;
+    height: 100%;
+    background-color: var(--link);
+}
+
+.barValue {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* ---------- requests, categories ---------- */
+
+.requestActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.requestLink {
+    display: flex;
+    gap: 6px;
+}
+
+.requestLink select,
+.requestLink input {
+    max-width: 240px;
+}
+
+.tagRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.tagRow.panel {
+    display: block;
+    margin-top: 16px;
+}
+
+.narrowInput {
+    width: 80px;
+}
+
+.tagPicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 18px;
+    padding: 0;
+    border: none;
+}
+
+.tagPicker legend {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.broadcastForm {
+    margin-bottom: 16px;
+}
+
+.chartGrid > .panel,
+.adminColumns > .panel {
+    margin-top: 0;
+}

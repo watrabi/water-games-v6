@@ -14,10 +14,16 @@
       </div>
       <details class="chatMenu" id="chatMenu" hidden>
         <summary class="chatIcon" aria-label="More options"><i class="ph-bold ph-dots-three"></i></summary>
-        <div class="chatMenuItems">
+        <div class="chatMenuItems" id="chatDmMenu">
           <a id="chatProfileLink" href="#">View profile</a>
           <button type="button" data-convo-act="remove">Unfriend</button>
           <button type="button" data-convo-act="block">Block</button>
+        </div>
+        <div class="chatMenuItems" id="chatGroupMenu" hidden>
+          <button type="button" data-group-act="members">People in this group</button>
+          <button type="button" data-group-act="add">Add people</button>
+          <button type="button" data-group-act="rename">Rename</button>
+          <button type="button" data-group-act="leave">Leave group</button>
         </div>
       </details>
       <button type="button" class="chatIcon" id="chatClose" aria-label="Close chat"><i class="ph-bold ph-minus"></i></button>
@@ -31,7 +37,28 @@
       </form>
       <div class="chatList" id="chatResults" hidden></div>
       <div class="chatList" id="chatRequests"></div>
+      <div class="chatList" id="chatGroups"></div>
       <div class="chatList" id="chatFriends"></div>
+    </div>
+
+    {# picking friends for a new group, or adding people to one #}
+    <form class="chatView chatPicker" id="chatPicker" hidden>
+      <div class="chatPickerName" id="chatPickerNameRow">
+        <label for="chatPickerName">Group name <span class="chatMeta">(optional)</span></label>
+        <input id="chatPickerName" maxlength="50" autocomplete="off">
+      </div>
+      <p class="chatHeading" id="chatPickerHeading">Pick at least two friends</p>
+      <div class="chatList chatPickerList" id="chatPickerList"></div>
+      <p class="chatNotice error" id="chatPickerError" hidden></p>
+      <div class="chatPickerActions">
+        <button type="button" class="button quiet" id="chatPickerCancel">Cancel</button>
+        <button type="submit" class="button" id="chatPickerSubmit">Make group</button>
+      </div>
+    </form>
+
+    {# who's in a group #}
+    <div class="chatView" id="chatMembers" hidden>
+      <div class="chatList" id="chatMembersList"></div>
     </div>
 
     <div class="chatView chatConvoView" id="chatConvo" hidden>
@@ -65,4 +92,4 @@
     </form>
   </section>
 </div>
-<script src="/assets/js/chat.js?t=4" defer></script>
+<script src="/assets/js/chat.js?t=5" defer></script>

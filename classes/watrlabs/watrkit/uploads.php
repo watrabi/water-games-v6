@@ -17,6 +17,40 @@ class uploads {
         "audio/webm"=>"webm", "video/webm"=>"webm",
     ];
 
+    // the audio type of a file. uses fileinfo when php has it (it's an optional extension, and aaPanel's
+    // php builds leave it out), otherwise reads the first bytes of the file, which is all finfo does anyway
+    static function audioType(string $path): string {
+        if(class_exists(\finfo::class)){
+            return (string) (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        }
+
+        return self::sniffAudio((string) @file_get_contents($path, false, null, 0, 64));
+    }
+
+    // magic numbers for the formats in AUDIO. pure, so it's tested
+    static function sniffAudio(string $head): string {
+        if(str_starts_with($head, "ID3") || (strlen($head) > 1 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0 && (ord($head[1]) & 0x06) !== 0)){
+            return "audio/mpeg";
+        }
+        if(str_starts_with($head, "OggS")){
+            return "audio/ogg";
+        }
+        if(str_starts_with($head, "fLaC")){
+            return "audio/flac";
+        }
+        if(str_starts_with($head, "RIFF") && substr($head, 8, 4) === "WAVE"){
+            return "audio/x-wav";
+        }
+        if(substr($head, 4, 4) === "ftyp"){
+            return "audio/mp4";
+        }
+        if(str_starts_with($head, "\x1A\x45\xDF\xA3")){
+            return "audio/webm";
+        }
+        // adts aac has no container, the same sync bits as mp3 but layer 0
+        return "application/octet-stream";
+    }
+
     // true if the form actually had a file in this field
     static function sent(string $field){
         return isset($_FILES[$field]) && ($_FILES[$field]["error"] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
@@ -39,7 +73,7 @@ class uploads {
                 throw new \InvalidArgumentException("Audio files have to be under 100MB.");
             }
 
-            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file["tmp_name"]);
+            $mime = self::audioType($file["tmp_name"]);
             $ext = self::AUDIO[$mime] ?? null;
 
             if(!$ext){

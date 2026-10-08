@@ -1,0 +1,1182 @@
+/* playtime, notifications, groups, playlists, account security and friends. same rules as base.css:
+   tokens only, square corners, flat panels, see DESIGN.md */
+
+/* ---------- shared bits ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+
+.button.danger:not(.quiet) {
+  background-color: color-mix(in srgb, var(--danger) 22%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  color: var(--text);
+}
+
+.button.danger:not(.quiet):hover {
+  background-color: color-mix(in srgb, var(--danger) 32%, var(--surface));
+}
+
+.button.quiet.danger {
+  color: var(--danger);
+}
+
+.button.quiet.danger:hover {
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background-color: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.button.quiet.on {
+  border-color: var(--line-strong);
+  background-color: var(--raised);
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.eyebrow {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  background-color: var(--raised);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  text-align: center;
+}
+
+.gameIcon.tiny {
+  width: 36px;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.statusPill.good {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--link) 50%, transparent);
+}
+
+.statusPill.waiting::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background-color: var(--muted);
+}
+
+/* <dialog> */
+.modal {
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+.modal::backdrop {
+  background-color: var(--scrim-strong);
+}
+
+.modal h2 {
+  margin-bottom: 14px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.radioList {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+}
+
+/* ---------- notification bell ---------- */
+
+.notifyMenu {
+  position: relative;
+}
+
+.notifyButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.notifyButton:hover,
+.notifyButton[aria-expanded="true"] {
+  background-color: var(--raised);
+}
+
+.notifyBadge {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 17px;
+  padding: 0 4px;
+  background-color: var(--danger);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.notifyPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  border: 1px solid var(--line-strong);
+  background-color: var(--surface);
+}
+
+.notifyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notifyHead h2 {
+  font-size: 15px;
+}
+
+.notifyPanel .notifyList {
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+}
+
+.notifyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notifyList.page {
+  border: 1px solid var(--line);
+  background-color: var(--surface);
+  margin-bottom: 16px;
+}
+
+.notifyItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notifyItem:last-child {
+  border-bottom: none;
+}
+
+.notifyItem.unread {
+  background-color: color-mix(in srgb, var(--link) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--link);
+}
+
+.notifyItem .avatar,
+.notifyIcon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+}
+
+.notifyIcon {
+  display: grid;
+  place-items: center;
+  background-color: var(--raised);
+  color: var(--link);
+  font-size: 17px;
+}
+
+.notifyBody {
+  min-width: 0;
+  font-size: 14px;
+}
+
+.notifyBody a {
+  color: var(--text);
+}
+
+.notifyBody a:hover {
+  color: var(--link);
+}
+
+.notifyTime {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.notifyEmpty {
+  padding: 24px 14px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.notifyAll {
+  display: block;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ---------- home ---------- */
+
+.continueRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.continueTile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+.continueTile:hover {
+  text-decoration: none;
+  background-color: var(--raised);
+}
+
+.continueTile .gameIcon {
+  width: 52px;
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+.continueText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.continueText .gameName {
+  margin: 0;
+}
+
+.continueText .gameMeta {
+  margin: 0;
+}
+
+/* the columns come after a section (continue playing) but aren't one themselves */
+section + .homeColumns {
+  margin-top: 40px;
+}
+
+.homeSide section + section {
+  margin-top: 0;
+}
+
+.homeColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 32px;
+  align-items: start;
+}
+
+.homeSide {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.sidePanel {
+  padding: 18px;
+}
+
+.sidePanel h2 {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.sideEmpty {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14px;
+}
+
+.playingList,
+.feedList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.playingList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playingList .avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+}
+
+.feedList li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.feedIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  background-color: var(--raised);
+  color: var(--link);
+  font-size: 14px;
+}
+
+.feedTime {
+  display: block;
+  font-size: 12px;
+}
+
+@media (max-width: 1000px) {
+  .homeColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .homeSide {
+    position: static;
+    grid-row: 1;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin: 0 0 8px;
+  }
+}
+
+/* ---------- categories ---------- */
+
+.tagChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -8px 0 24px;
+}
+
+.tagChips.small {
+  margin: 0 0 24px;
+}
+
+.tagChip {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tagChip:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tagChip.active {
+  border-color: var(--link);
+  background-color: color-mix(in srgb, var(--link) 12%, transparent);
+  color: var(--text);
+}
+
+.tagChips.small .tagChip {
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+/* ---------- game page ---------- */
+
+.playStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.playStats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* the clock goes the accent color while it's counting */
+#playtimeText.counting i {
+  color: var(--link);
+}
+
+.cloudStatus[data-state="error"] {
+  color: var(--danger);
+}
+
+.cloudStatus[data-state="saving"] i {
+  animation: cloudPulse 1s steps(2) infinite;
+}
+
+@keyframes cloudPulse {
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloudStatus[data-state="saving"] i {
+    animation: none;
+  }
+}
+
+.voteButtons {
+  display: flex;
+}
+
+.voteButtons .button + .button {
+  margin-left: -1px;
+}
+
+.voteButtons .button.on i {
+  color: var(--link);
+}
+
+/* theater: the rail folds away and the game gets the whole column */
+body.theater #sidebar {
+  display: none;
+}
+
+body.theater .playPage {
+  max-width: none;
+}
+
+body.theater .player {
+  height: calc(100vh - var(--nav-height) - 140px);
+  aspect-ratio: auto;
+}
+
+/* ---------- profile ---------- */
+
+.profileFigures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0 0 32px;
+  border: 1px solid var(--line);
+}
+
+.profileFigures > div {
+  padding: 14px 18px;
+  border-right: 1px solid var(--line);
+}
+
+.profileFigures > div:last-child {
+  border-right: none;
+}
+
+.profileFigures dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.profileFigures dd {
+  margin: 4px 0 0;
+  font-family: var(--display);
+  font-stretch: 125%;
+  font-weight: 900;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.figureOf {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.mostPlayed {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 36px;
+  padding: 0;
+  list-style: none;
+}
+
+.mostPlayed li {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) minmax(0, 1fr) 80px;
+  align-items: center;
+  gap: 16px;
+}
+
+.mostPlayed a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.mostPlayed .gameIcon.small {
+  width: 36px;
+  font-size: 16px;
+}
+
+.mostPlayedName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mostPlayedBar,
+.barTrack {
+  display: block;
+  height: 8px;
+  background-color: var(--raised);
+}
+
+.mostPlayedBar span,
+.barTrack span {
+  display: block;
+  height: 100%;
+  background-color: var(--link);
+}
+
+.mostPlayedTime {
+  font-size: 14px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.achievementGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  margin: 0 0 36px;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.achievement.earned {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+.achievementIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  background-color: var(--raised);
+  font-size: 20px;
+  opacity: 0.55;
+}
+
+.achievement.earned .achievementIcon {
+  color: var(--link);
+  opacity: 1;
+}
+
+.achievementText {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+.achievementText strong {
+  font-size: 14px;
+}
+
+.achievementDate {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .mostPlayed li {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+
+  .mostPlayedBar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* ---------- settings ---------- */
+
+.onIcon {
+  color: var(--link);
+}
+
+.twoFactorSetup {
+  margin-top: 8px;
+}
+
+.steps {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.qrBox {
+  width: 196px;
+  margin: 10px 0 6px;
+  padding: 8px;
+  background-color: #fff; /* scanners need dark on light, whatever the theme */
+}
+
+.qrBox svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.recoveryCodes {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  background-color: var(--raised);
+}
+
+.recoveryCodes h3 {
+  font-size: 15px;
+}
+
+.recoveryCodes ol {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 4px 28px;
+  margin: 12px 0;
+  padding-left: 22px;
+  font-size: 15px;
+}
+
+.twoFactorManage {
+  margin-top: 14px;
+}
+
+.sessionList {
+  display: grid;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+}
+
+.sessionList li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sessionList li:last-child {
+  border-bottom: none;
+}
+
+.sessionList li > i {
+  font-size: 22px;
+  color: var(--muted);
+}
+
+.sessionList li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.sessionList p {
+  font-size: 13px;
+}
+
+.dangerPanel {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+/* ---------- auth ---------- */
+
+.authBlob {
+  margin-top: 28px;
+}
+
+.authForgot {
+  margin-top: 12px;
+  text-align: center;
+}
+
+#twoFactorForm h2 {
+  margin-bottom: 6px;
+}
+
+#twoFactorForm > p.muted {
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* ---------- requests ---------- */
+
+.requestList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+}
+
+.requestList li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.requestList li:last-child {
+  border-bottom: none;
+}
+
+.requestList li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.requestList p {
+  font-size: 13px;
+}
+
+/* ---------- playlists ---------- */
+
+.inlineCreate {
+  display: flex;
+  gap: 8px;
+}
+
+.inlineCreate input {
+  min-width: 0;
+}
+
+.playlistGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.playlistTile {
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+}
+
+.playlistTile:hover {
+  text-decoration: none;
+}
+
+.playlistCover {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background-color: var(--raised);
+  color: var(--muted);
+  font-size: 40px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.playlistCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (hover: hover) {
+  .playlistTile:hover .playlistCover {
+    transform: translate(-3px, -3px);
+    box-shadow: 3px 3px 0 var(--accent);
+  }
+}
+
+.playlistTile .gameName {
+  margin: 0;
+}
+
+.trackList li {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.trackList li .track {
+  flex: 1;
+  min-width: 0;
+}
+
+.trackTools {
+  display: flex;
+  padding-right: 6px;
+}
+
+.trackMore {
+  margin-right: 6px;
+}
+
+.trackMenu {
+  position: absolute;
+  top: calc(100% - 6px);
+  right: 6px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 4px 0;
+  border: 1px solid var(--line-strong);
+  background-color: var(--surface);
+}
+
+.trackMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trackMenu button:hover,
+.trackMenu button:focus-visible {
+  background-color: var(--raised);
+}
+
+.trackMenuLists {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.trackMenuHeading {
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* up next, shares the lyrics panel's box */
+.queueList {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.queuePlay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queuePlay:hover {
+  background-color: var(--raised);
+}
+
+.queueTitle,
+.queueArtist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.queueArtist {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.queueEmpty {
+  padding: 18px 14px;
+  font-size: 14px;
+}
+
+#playerQueue[aria-pressed="true"] {
+  color: var(--link);
+}
+
+/* ---------- chat tray: groups + presence ---------- */
+
+.chatHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chatHeadingAction {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.chatMeta.playing {
+  color: var(--link);
+}
+
+.chatGroupAvatar {
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.chatSystem {
+  margin: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.chatMsg.named {
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.chatSender {
+  flex-basis: 100%;
+  margin: 0 0 2px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.chatPicker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chatPicker[hidden] {
+  display: none;
+}
+
+.chatPickerName {
+  display: grid;
+  gap: 4px;
+  padding: 12px 12px 0;
+  font-size: 13px;
+}
+
+.chatPickerName[hidden] {
+  display: none;
+}
+
+.chatPickerName input {
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  background-color: var(--raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.chatPickerList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chatPick {
+  cursor: pointer;
+}
+
+.chatPick:hover {
+  background-color: var(--raised);
+}
+
+.chatPickerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.chatPickerActions .button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.chatMembersBack {
+  margin: 10px 12px;
+}
+
+/* ---------- keyboard shortcuts ---------- */
+
+.shortcutList {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.shortcutList dt {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcutList dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 700px) {
+  .notifyPanel {
+    position: fixed;
+    top: calc(var(--nav-height) + 4px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+
+  .playActions {
+    flex-wrap: wrap;
+  }
+
+  .inlineCreate {
+    width: 100%;
+  }
+
+  .inlineCreate input {
+    flex: 1;
+  }
+
+  .recoveryCodes ol {
+    grid-template-columns: max-content;
+  }
+
+  body.theater .player {
+    height: auto;
+  }
+
+  /* there's no sidebar to fold away on a phone */
+  #theaterButton {
+    display: none;
+  }
+
+  #reportGameButton {
+    flex: 0 0 auto;
+  }
+}
+
+/* settings tabs are sections, so the usual gap between sections would push every tab but the first down */
+.settingsPanels > section + section {
+  margin-top: 0;
+}

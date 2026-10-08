@@ -12,6 +12,13 @@
     <div class="lyricsBody" id="lyricsBody" tabindex="-1"></div>
     <p class="lyricsCredit">From <a href="https://lrclib.net" target="_blank" rel="noopener">LRCLIB</a></p>
   </section>
+  <section class="lyricsPanel queuePanel" id="queuePanel" aria-label="Up next" hidden>
+    <div class="lyricsHead">
+      <div class="lyricsHeadText"><span class="lyricsLabel">Up next</span></div>
+      <button class="playerButton" id="queueClose" aria-label="Hide queue"><i class="ph-bold ph-x"></i></button>
+    </div>
+    <ol class="queueList" id="queueList"></ol>
+  </section>
   <input class="playerSeek" id="playerSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
   <div class="playerInner">
     <a class="playerNow" href="/music">
@@ -27,6 +34,7 @@
       <button class="playerButton" id="playerNext" aria-label="Next track"><i class="ph-bold ph-skip-forward"></i></button>
     </div>
     <div class="playerTime"><span id="playerCurrent">0:00</span> / <span id="playerDuration">0:00</span></div>
+    <button class="playerButton" id="playerQueue" aria-label="Up next" aria-pressed="false" aria-controls="queuePanel" title="Up next"><i class="ph-bold ph-queue"></i></button>
     <button class="playerButton" id="playerLyrics" aria-label="Lyrics" aria-pressed="false" aria-controls="lyricsPanel" title="Lyrics"><i class="ph-bold ph-microphone-stage"></i></button>
     <div class="playerVolume">
       <button class="playerButton" id="playerMute" aria-label="Mute"><i class="ph-bold ph-speaker-high"></i></button>

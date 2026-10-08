@@ -5,14 +5,19 @@ namespace watrlabs\games;
 class games {
 
     // every list query goes through this so cards always have a favorites count
-    private const SELECT = "SELECT g.id, g.type, g.name, g.description, g.gamePath, g.gameIcon, g.plays,
-        (SELECT COUNT(*) FROM favorites f WHERE f.gameid = g.id) AS favorites
+    private const SELECT = "SELECT g.id, g.type, g.name, g.description, g.gamePath, g.gameIcon, g.plays, g.created,
+        (SELECT COUNT(*) FROM favorites f WHERE f.gameid = g.id) AS favorites,
+        (SELECT COUNT(*) FROM game_votes v WHERE v.gameid = g.id AND v.vote = 1) AS likes,
+        (SELECT COUNT(*) FROM game_votes v WHERE v.gameid = g.id AND v.vote = -1) AS dislikes
         FROM games g";
 
+    // trending is plays over the last week, from game_daily
     private const SORTS = [
         "popular"=>"g.plays DESC, g.id DESC",
+        "trending"=>"(SELECT COALESCE(SUM(d.plays), 0) FROM game_daily d WHERE d.gameid = g.id AND d.day >= CURDATE() - INTERVAL 7 DAY) DESC, g.plays DESC",
         "newest"=>"g.id DESC",
         "name"=>"g.name ASC",
+        "liked"=>"(SELECT COALESCE(SUM(v.vote), 0) FROM game_votes v WHERE v.gameid = g.id) DESC, g.plays DESC",
     ];
 
     public static function sortOptions(){
@@ -20,12 +25,17 @@ class games {
     }
 
     // type is 'game' or 'app'
-    public function list(string $sort = "popular", ?string $search = null, int $limit = 200, string $type = "game"){
+    public function list(string $sort = "popular", ?string $search = null, int $limit = 200, string $type = "game", ?int $tagId = null){
         global $db;
 
         $order = self::SORTS[$sort] ?? self::SORTS["popular"];
         $sql = self::SELECT . " WHERE g.type = ?";
         $bindings = [$type];
+
+        if($tagId){
+            $sql .= " AND g.id IN (SELECT gameid FROM game_tags WHERE tagid = ?)";
+            $bindings[] = $tagId;
+        }
 
         if($search !== null && $search !== ""){
             $sql .= " AND g.name LIKE ?";
@@ -80,6 +90,48 @@ class games {
         global $db;
 
         $db->table("games")->where("id", $id)->update(["plays"=>$db->raw("plays + 1")]);
+        $db->query(
+            "INSERT INTO game_daily (gameid, day, plays, seconds) VALUES (?, ?, 1, 0) ON DUPLICATE KEY UPDATE plays = plays + 1",
+            [$id, date("Y-m-d")]
+        );
+    }
+
+    // ---------- thumbs up / down ----------
+
+    public function voteOf(int $userId, int $gameId){
+        global $db;
+
+        $row = $db->table("game_votes")->select(["vote"])->where("userid", $userId)->where("gameid", $gameId)->first();
+        return $row ? (int) $row->vote : 0;
+    }
+
+    // 1, -1, or 0 to take it back. returns the new counts
+    public function vote(int $userId, int $gameId, int $vote){
+        global $db;
+
+        if($vote === 0){
+            $db->table("game_votes")->where("userid", $userId)->where("gameid", $gameId)->delete();
+        } else {
+            $db->query(
+                "INSERT INTO game_votes (userid, gameid, vote, created) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE vote = VALUES(vote)",
+                [$userId, $gameId, $vote > 0 ? 1 : -1, time()]
+            );
+        }
+
+        return $this->voteCounts($gameId);
+    }
+
+    public function voteCounts(int $gameId){
+        global $db;
+
+        $row = $db->query("SELECT COALESCE(SUM(vote = 1), 0) AS likes, COALESCE(SUM(vote = -1), 0) AS dislikes FROM game_votes WHERE gameid = ?", [$gameId])->first();
+        return ["likes"=>(int) $row->likes, "dislikes"=>(int) $row->dislikes];
+    }
+
+    // "92%", or null with too few votes to mean anything
+    static function rating($likes, $dislikes){
+        $total = (int) $likes + (int) $dislikes;
+        return $total < 1 ? null : (int) round((int) $likes / $total * 100);
     }
 
     public function isFavorited(int $userId, int $gameId){
@@ -102,6 +154,9 @@ class games {
             "gameid"=>$gameId,
             "created"=>time(),
         ]);
+
+        \watrlabs\social\activity::log($userId, "favorite", $gameId);
+        \watrlabs\social\achievements::checkFavorites($userId);
 
         return true;
     }

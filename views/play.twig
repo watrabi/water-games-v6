@@ -4,13 +4,14 @@
 {% set isApp = game.type == 'app' %}
 {% block pageName %}{{ game.name }}{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=14">
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=15">
     <meta content="{{ game.name }} on {{ env("APP_NAME") }}" property="og:title"/>
 {% endblock %}
 {% block body %}
 <div class="page playPage">
     <div class="player" id="player">
-        <iframe id="gameFrame" src="{{ game.gamePath }}" title="{{ game.name }}" allow="fullscreen; gamepad; autoplay" allowfullscreen></iframe>
+        {# with cloud saves on, play.js sets src once the save is back in localStorage #}
+        <iframe id="gameFrame" {{ cloudOn ? 'data-src' : 'src' }}="{{ game.gamePath }}" title="{{ game.name }}" allow="fullscreen; gamepad; autoplay" allowfullscreen></iframe>
     </div>
 
     <div class="playBar">
@@ -20,11 +21,21 @@
             </span>
             <div>
                 <h1>{{ game.name }}</h1>
-                <p class="muted">{{ game.plays|number_format }} {% if isApp %}{{ game.plays == 1 ? 'open' : 'opens' }}{% else %}{{ game.plays == 1 ? 'play' : 'plays' }}{% endif %} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span></p>
+                <p class="muted">{{ game.plays|number_format }} {% if isApp %}{{ game.plays == 1 ? 'open' : 'opens' }}{% else %}{{ game.plays == 1 ? 'play' : 'plays' }}{% endif %} · <span id="favoriteCount">{{ game.favorites|number_format }}</span> <span id="favoriteLabel">{{ game.favorites == 1 ? 'favorite' : 'favorites' }}</span>{% if rating is not null %} · <span id="ratingText">{{ rating }}% liked</span>{% else %} <span id="ratingText"></span>{% endif %}</p>
+                {% if currentuser %}
+                <p class="playStats">
+                    <span id="playtimeText" title="Only counts while this tab is in front and the window is focused"><i class="ph-bold ph-clock"></i>{% if played and played.seconds %}{{ played.seconds|playtime }} played{% else %}Not played yet{% endif %}</span>
+                    <span class="cloudStatus" id="cloudStatus" hidden><i class="ph-bold ph-cloud"></i><span></span></span>
+                </p>
+                {% endif %}
             </div>
         </div>
         <div class="playActions">
             {% if currentuser %}
+                <div class="voteButtons" role="group" aria-label="Rate {{ game.name }}">
+                    <button class="button quiet{{ myVote == 1 ? ' on' : '' }}" id="voteUp" data-vote="1" aria-pressed="{{ myVote == 1 ? 'true' : 'false' }}" title="I like it"><i class="{{ myVote == 1 ? 'ph-fill' : 'ph-bold' }} ph-thumbs-up"></i><span id="likeCount">{{ game.likes|compact }}</span></button>
+                    <button class="button quiet{{ myVote == -1 ? ' on' : '' }}" id="voteDown" data-vote="-1" aria-pressed="{{ myVote == -1 ? 'true' : 'false' }}" title="Not for me"><i class="{{ myVote == -1 ? 'ph-fill' : 'ph-bold' }} ph-thumbs-down"></i><span class="sr-only">Dislike</span></button>
+                </div>
                 <button class="button quiet{{ favorited ? ' on' : '' }}" id="favoriteButton" data-id="{{ game.id }}" aria-pressed="{{ favorited ? 'true' : 'false' }}">
                     <i class="{{ favorited ? 'ph-fill' : 'ph-bold' }} ph-heart"></i><span>{{ favorited ? 'Favorited' : 'Favorite' }}</span>
                 </button>
@@ -32,10 +43,42 @@
                 <a class="button quiet" href="/auth/sign-in" title="Sign in to save favorites"><i class="ph-bold ph-heart"></i>Favorite</a>
             {% endif %}
             <a class="button quiet" href="{{ game.gamePath }}" target="_blank" rel="noopener" title="Open in a new tab"><i class="ph-bold ph-arrow-square-out"></i><span class="sr-only">Open in a new tab</span></a>
-            <button class="button" id="fullscreenButton"><i class="ph-bold ph-arrows-out"></i>Fullscreen</button>
+            <button class="button quiet" id="theaterButton" aria-pressed="false" title="Theater mode (T)"><i class="ph-bold ph-frame-corners"></i><span class="sr-only">Theater mode</span></button>
+            {% if currentuser %}<button class="button quiet" id="reportGameButton" title="Report a problem"><i class="ph-bold ph-flag"></i><span class="sr-only">Report a problem</span></button>{% endif %}
+            <button class="button" id="fullscreenButton" title="Fullscreen (F)"><i class="ph-bold ph-arrows-out"></i>Fullscreen</button>
         </div>
     </div>
     <div class="notice danger" id="playError" role="alert" hidden></div>
+    <div class="notice success" id="playMsg" role="status" hidden></div>
+
+    {% if tags is not empty %}
+    <nav class="tagChips small" aria-label="Categories">
+        {% for tag in tags %}<a class="tagChip" href="/{{ isApp ? 'apps' : 'games' }}?tag={{ tag.slug }}">{{ tag.name }}</a>{% endfor %}
+    </nav>
+    {% endif %}
+
+    {% if currentuser %}
+    <dialog class="modal" id="reportGameDialog" aria-labelledby="reportGameTitle">
+        <form method="dialog" id="reportGameForm">
+            <h2 id="reportGameTitle">What's wrong with {{ game.name }}?</h2>
+            <fieldset class="radioList">
+                <legend class="sr-only">Problem</legend>
+                {% for key, label in brokenReasons %}
+                <label class="checkRow"><input type="radio" name="reason" value="{{ key }}"{% if loop.first %} required{% endif %}><span>{{ label }}</span></label>
+                {% endfor %}
+            </fieldset>
+            <div class="field">
+                <label for="reportGameDetails">Anything else? <span class="muted">(optional)</span></label>
+                <textarea id="reportGameDetails" maxlength="1000" rows="3" placeholder="What browser or device, what you tried..."></textarea>
+            </div>
+            <div class="notice danger" id="reportGameError" role="alert" hidden></div>
+            <div class="modalActions">
+                <button type="button" class="button quiet" value="cancel" id="reportGameCancel">Cancel</button>
+                <button type="submit" class="button" id="reportGameSend">Send report</button>
+            </div>
+        </form>
+    </dialog>
+    {% endif %}
 
     {% if game.description %}
         <div class="playDescription">
@@ -82,6 +125,7 @@
     </section>
     {% endif %}
 </div>
-<script src="/assets/js/play.js?t=3" defer></script>
+<script type="application/json" id="playData">{{ playData|raw }}</script>
+<script src="/assets/js/play.js?t=4" defer></script>
 {% if commentsOn %}<script src="/assets/js/comments.js?t=1" defer></script>{% endif %}
 {% endblock %}

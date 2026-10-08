@@ -5,6 +5,7 @@ let usernameInput = $("#username");
 let passwordInput = $("#password");
 let submitBtn = $("#loginButton");
 let errorMsg = $("#dangermsg");
+let challenge = null;
 
 $("#loginForm").on("submit", function(event) {
     event.preventDefault();
@@ -23,6 +24,12 @@ $("#loginForm").on("submit", function(event) {
     }).done(function(data) {
         if(data.status == "okay"){
             window.location.href = "/home";
+        } else if(data.status == "2fa"){
+            // right password, now the code
+            challenge = data.token;
+            $("#loginForm").prop("hidden", true);
+            $("#twoFactorForm").prop("hidden", false);
+            $("#twoFactorCode").trigger("focus");
         } else {
             showNotice(errorMsg, data.message);
             submitBtn.prop("disabled", false).text("Sign in");
@@ -30,6 +37,21 @@ $("#loginForm").on("submit", function(event) {
     }).fail(function(xhr) {
         showNotice(errorMsg, apiMessage(xhr));
         submitBtn.prop("disabled", false).text("Sign in");
+    });
+});
+
+$("#twoFactorForm").on("submit", function(event) {
+    event.preventDefault();
+
+    let message = $("#twoFactorMsg").prop("hidden", true);
+    let button = $("#twoFactorButton").prop("disabled", true).text("Checking...");
+
+    $.post("/api/v1/auth/2fa", { token: challenge, code: $("#twoFactorCode").val() }).done(function() {
+        window.location.href = "/home";
+    }).fail(function(xhr) {
+        showNotice(message, apiMessage(xhr));
+        button.prop("disabled", false).text("Verify");
+        $("#twoFactorCode").val("").trigger("focus");
     });
 });
 

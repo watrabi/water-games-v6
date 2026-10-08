@@ -11,7 +11,8 @@ global $currentuser;
 global $errors;
 
 spl_autoload_register(function ($class_name) {
-    $directory = '../classes/';
+    // absolute, because php changes the working directory while shutting down (when the error page renders)
+    $directory = __DIR__ . '/classes/';
     $class_name = str_replace('\\', DIRECTORY_SEPARATOR, $class_name);
     $file = $directory . $class_name . '.php';
     if (file_exists($file)) {
@@ -86,6 +87,15 @@ $twig->addGlobal('aiMemory', in_array('memory', \watrlabs\ai\config::tools(), tr
 
 // red badge on an admin's avatar while there are chat reports to look at
 $twig->addGlobal('openReports', $currentuser && !empty($currentuser->admin) ? \watrlabs\social\chat::openReports() : 0);
+
+// the bell in the top bar
+$unreadNotifications = 0;
+if($currentuser){
+    try {
+        $unreadNotifications = (new \watrlabs\social\notifications())->unread((int) $currentuser->id);
+    } catch (\Throwable $e) {} // before migrations
+}
+$twig->addGlobal('unreadNotifications', $unreadNotifications);
 
 // themes: which one to draw with, what the person picked, and the list for pickers
 $themeState = \watrlabs\watrkit\themes::resolve($currentuser);

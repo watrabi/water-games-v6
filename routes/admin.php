@@ -3,6 +3,9 @@ use watrlabs\watrkit\csrf;
 use watrlabs\watrkit\settings;
 use watrlabs\watrkit\themes;
 use watrlabs\watrkit\uploads;
+use watrlabs\watrkit\adminlog;
+use watrlabs\games\tags;
+use watrlabs\games\requests;
 use watrlabs\ai\config as aiconfig;
 use watrlabs\authentication\sessions;
 use watrlabs\encryption;
@@ -42,6 +45,10 @@ const ADMIN_MESSAGES = [
     "dismissed"=>"Report dismissed.",
     "removed"=>"Message removed.",
     "removedbanned"=>"Message removed and the sender is banned.",
+    "fixed"=>"Marked as fixed.",
+    "added"=>"Marked as added. They've been told.",
+    "declined"=>"Declined. They've been told.",
+    "sent"=>"Sent to everyone.",
 ];
 
 function adminRedirect(string $url, ?string $message = null){
@@ -60,6 +67,7 @@ function adminRender(string $view, string $section, array $data = []){
     echo $twig->render("admin/$view.twig", array_merge([
         "section"=>$section,
         "openReports"=>\watrlabs\social\chat::openReports(),
+        "openRequests"=>requests::openCount(),
         "flash"=>ADMIN_MESSAGES[$_GET["msg"] ?? ""] ?? null,
     ], $data));
 }
@@ -108,7 +116,50 @@ $router->group('/admin', function($router){
             ];
         } catch (\Throwable $e) {}
 
+        // the last 30 days, one entry per day even when nothing happened
+        $days = [];
+        for($i = 29; $i >= 0; $i--){
+            $days[date("Y-m-d", strtotime("-$i days"))] = ["signups"=>0, "plays"=>0, "seconds"=>0];
+        }
+        $since = strtotime(array_key_first($days));
+        foreach($db->query("SELECT DATE(FROM_UNIXTIME(registered)) AS day, COUNT(*) AS n FROM users WHERE registered >= ? GROUP BY day", [$since])->get() as $row){
+            if(isset($days[$row->day])){ $days[$row->day]["signups"] = (int) $row->n; }
+        }
+        foreach($db->query("SELECT day, SUM(plays) AS plays, SUM(seconds) AS seconds FROM game_daily WHERE day >= ? GROUP BY day", [array_key_first($days)])->get() as $row){
+            if(isset($days[$row->day])){ $days[$row->day]["plays"] = (int) $row->plays; $days[$row->day]["seconds"] = (int) $row->seconds; }
+        }
+
+        $topPlaytime = $db->query(
+            "SELECT g.id, g.name, g.type, SUM(d.seconds) AS seconds, SUM(d.plays) AS plays FROM game_daily d INNER JOIN games g ON g.id = d.gameid
+             WHERE d.day >= ? GROUP BY g.id, g.name, g.type HAVING seconds > 0 ORDER BY seconds DESC LIMIT 8",
+            [array_key_first($days)]
+        )->get();
+
+        // messages are saved with a model id, every model belongs to a provider (deleted ones count as "removed")
+        $aiProviders = [];
+        try {
+            $owner = [];
+            foreach(aiconfig::providers() as $provider){
+                foreach($provider["models"] as $model){
+                    $owner[$model["id"]] = $provider["name"];
+                }
+            }
+            foreach($db->query(
+                "SELECT model, COUNT(*) AS n FROM ai_messages WHERE role = 'assistant' AND created >= ? AND model IS NOT NULL GROUP BY model",
+                [$since]
+            )->get() as $row){
+                $name = $owner[$row->model] ?? "A removed model";
+                $aiProviders[$name] = ($aiProviders[$name] ?? 0) + (int) $row->n;
+            }
+            arsort($aiProviders);
+            $aiProviders = array_map(fn($name, $n) => ["name"=>$name, "messages"=>$n], array_keys($aiProviders), $aiProviders);
+        } catch (\Throwable $e) {}
+
         adminRender("dashboard", "dashboard", [
+            "days"=>$days,
+            "topPlaytime"=>$topPlaytime,
+            "aiProviders"=>$aiProviders,
+            "openRequestsCount"=>requests::openCount(),
             "stats"=>$stats,
             "ai"=>$ai,
             "aiEnabledNow"=>aiconfig::enabled(),
@@ -148,7 +199,15 @@ $router->group('/admin', function($router){
 
     $router->get("/games/new", function(){
         $type = ($_GET["type"] ?? "game") === "app" ? "app" : "game";
-        adminRender("game-form", $type === "app" ? "apps" : "games", ["game"=>(object) ["id"=>null, "type"=>$type, "name"=>"", "description"=>"", "gamePath"=>"", "gameIcon"=>"", "plays"=>0]]);
+        // "add this game" from a request fills in what we know
+        $request = ctype_digit((string) ($_GET["request"] ?? "")) ? $GLOBALS["db"]->table("game_requests")->where("id", (int) $_GET["request"])->first() : null;
+
+        adminRender("game-form", $type === "app" ? "apps" : "games", [
+            "game"=>(object) ["id"=>null, "type"=>$type, "name"=>$request->name ?? "", "description"=>"", "gamePath"=>"", "gameIcon"=>"", "plays"=>0],
+            "allTags"=>tags::all(),
+            "gameTags"=>[],
+            "request"=>$request,
+        ]);
     });
 
     $router->get("/games/{id}", function($id){
@@ -160,7 +219,7 @@ $router->group('/admin', function($router){
             return $router->return_status(404);
         }
 
-        adminRender("game-form", $game->type === "app" ? "apps" : "games", ["game"=>$game]);
+        adminRender("game-form", $game->type === "app" ? "apps" : "games", ["game"=>$game, "allTags"=>tags::all(), "gameTags"=>array_map(fn($t) => (int) $t->id, tags::forGame((int) $game->id))]);
     });
 
     $router->post("/games/save", function(){
@@ -197,7 +256,7 @@ $router->group('/admin', function($router){
         }
 
         if($error){
-            return adminRender("game-form", $game->type === "app" ? "apps" : "games", ["game"=>$game, "error"=>$error]);
+            return adminRender("game-form", $game->type === "app" ? "apps" : "games", ["game"=>$game, "error"=>$error, "allTags"=>tags::all(), "gameTags"=>array_map("intval", (array) ($_POST["tags"] ?? []))]);
         }
 
         $values = [
@@ -217,11 +276,22 @@ $router->group('/admin', function($router){
                 uploads::delete($existing->gameIcon);
             }
             $db->table("games")->where("id", $existing->id)->update($values);
+            tags::setForGame((int) $existing->id, (array) ($_POST["tags"] ?? []));
+            adminlog::add("game.edit", "game", (int) $existing->id, $game->name);
             adminRedirect("/admin/games/" . $existing->id, "saved");
         }
 
         $values["plays"] = 0;
+        $values["created"] = time();
         $newId = $db->table("games")->insert($values);
+        tags::setForGame((int) $newId, (array) ($_POST["tags"] ?? []));
+        adminlog::add("game.add", "game", (int) $newId, $game->name);
+
+        // a request for this game can be closed off from here
+        if(ctype_digit((string) ($_POST["request"] ?? ""))){
+            (new requests())->resolve((int) $_POST["request"], "added", (int) $newId, "", (int) $GLOBALS["currentuser"]->id);
+        }
+
         adminRedirect("/admin/games/" . $newId, "created");
     });
 
@@ -232,8 +302,11 @@ $router->group('/admin', function($router){
         $game = $db->table("games")->where("id", (int) $id)->first();
         if($game){
             uploads::delete($game->gameIcon);
-            $db->table("favorites")->where("gameid", $game->id)->delete();
+            foreach(["favorites", "game_tags", "game_votes", "playtime", "game_daily", "cloud_saves", "game_reports"] as $table){
+                $db->table($table)->where("gameid", $game->id)->delete();
+            }
             $db->table("games")->where("id", $game->id)->delete();
+            adminlog::add("game.delete", null, (int) $game->id, $game->name);
         }
 
         adminRedirect("/admin/games?type=" . ($game->type ?? "game"), "deleted");
@@ -342,12 +415,14 @@ $router->group('/admin', function($router){
                 $values += ["lyrics"=>null, "lyricsSynced"=>0, "lyricsChecked"=>null];
             }
             $db->table("tracks")->where("id", $existing->id)->update($values);
+            adminlog::add("track.edit", "track", (int) $existing->id, $values["title"]);
             adminRedirect("/admin/music/" . $existing->id, "saved");
         }
 
         $values["plays"] = 0;
         $values["created"] = time();
         $newId = $db->table("tracks")->insert($values);
+        adminlog::add("track.add", "track", (int) $newId, $values["title"]);
         adminRedirect("/admin/music/" . $newId, "created");
     });
 
@@ -359,7 +434,9 @@ $router->group('/admin', function($router){
         if($track){
             uploads::delete($track->filePath);
             uploads::delete($track->coverPath);
+            $db->table("playlist_tracks")->where("trackid", $track->id)->delete();
             $db->table("tracks")->where("id", $track->id)->delete();
+            adminlog::add("track.delete", null, (int) $track->id, $track->title);
         }
 
         adminRedirect("/admin/music", "deleted");
@@ -418,6 +495,10 @@ $router->group('/admin', function($router){
 
         $sessions = new sessions();
 
+        if(in_array($action, ["ban", "unban", "admin", "unadmin", "signout"], true)){
+            adminlog::add("user." . $action, "user", (int) $user->id, $user->username);
+        }
+
         switch($action){
             case "ban":
                 $db->table("users")->where("id", $user->id)->update(["banned"=>1]);
@@ -475,6 +556,7 @@ $router->group('/admin', function($router){
         settings::set("chat_filter", mb_substr(trim($_POST["chat_filter"] ?? ""), 0, 20000));
         settings::set("comments_enabled", !empty($_POST["comments_enabled"]));
 
+        adminlog::add("settings.save");
         adminRedirect("/admin/settings", "saved");
     });
 
@@ -487,8 +569,55 @@ $router->group('/admin', function($router){
         $status = in_array($status, ["open", "dismissed", "actioned"], true) ? $status : "open";
         $page = adminPage();
 
-        $openChat = $db->table("chat_reports")->where("status", "open")->count();
+        $openChat = $db->table("chat_reports")->where("kind", "dm")->where("status", "open")->count();
+        $openGroups = $db->table("chat_reports")->where("kind", "group")->where("status", "open")->count();
         $openComments = \watrlabs\games\comments::openReports();
+        $openGames = requests::openBroken();
+        $counts = ["openChat"=>$openChat, "openGroups"=>$openGroups, "openComments"=>$openComments, "openGames"=>$openGames];
+
+        // "this game is broken" reports
+        if(($_GET["kind"] ?? "") === "games"){
+            $total = $db->table("game_reports")->where("status", $status)->count();
+            $rows = $db->query(
+                "SELECT r.*, g.name AS game_name, g.type AS game_type, g.gamePath, u.username AS reporter_name, h.username AS handler_name
+                 FROM game_reports r LEFT JOIN games g ON g.id = r.gameid LEFT JOIN users u ON u.id = r.userid LEFT JOIN users h ON h.id = r.handled_by
+                 WHERE r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
+                [$status]
+            )->get();
+
+            return adminRender("reports", "reports", $counts + [
+                "kind"=>"games", "rows"=>$rows, "status"=>$status, "reasons"=>requests::BROKEN_REASONS,
+                "page"=>$page, "pages"=>max(1, (int) ceil($total / 25)), "total"=>$total,
+            ]);
+        }
+
+        // group chat messages, with the messages around each one
+        if(($_GET["kind"] ?? "") === "groups"){
+            $total = $db->table("chat_reports")->where("kind", "group")->where("status", $status)->count();
+            $rows = $db->query(
+                "SELECT r.*, m.sender_id, m.groupid, m.body, m.image_id, m.created AS sent, m.deleted, gr.name AS group_name,
+                        s.username AS sender_name, s.banned AS sender_banned, rp.username AS reporter_name, h.username AS handler_name
+                 FROM chat_reports r
+                 INNER JOIN chat_group_messages m ON m.id = r.message_id
+                 LEFT JOIN chat_groups gr ON gr.id = m.groupid
+                 LEFT JOIN users s ON s.id = m.sender_id
+                 LEFT JOIN users rp ON rp.id = r.reporter_id
+                 LEFT JOIN users h ON h.id = r.handled_by
+                 WHERE r.kind = 'group' AND r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
+                [$status]
+            )->get();
+
+            foreach($rows as $row){
+                $before = $db->query("SELECT m.id, m.sender_id, m.body, m.image_id, m.created, m.deleted, u.username FROM chat_group_messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.groupid = ? AND m.id < ? ORDER BY m.id DESC LIMIT 5", [$row->groupid, $row->message_id])->get();
+                $after = $db->query("SELECT m.id, m.sender_id, m.body, m.image_id, m.created, m.deleted, u.username FROM chat_group_messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.groupid = ? AND m.id >= ? ORDER BY m.id ASC LIMIT 6", [$row->groupid, $row->message_id])->get();
+                $row->context = array_merge(array_reverse($before), $after);
+            }
+
+            return adminRender("reports", "reports", $counts + [
+                "kind"=>"groups", "rows"=>$rows, "status"=>$status, "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
+                "page"=>$page, "pages"=>max(1, (int) ceil($total / 25)), "total"=>$total,
+            ]);
+        }
 
         // game comment reports, same statuses and actions as chat ones
         if(($_GET["kind"] ?? "") === "comments"){
@@ -514,13 +643,11 @@ $router->group('/admin', function($router){
                 "page"=>$page,
                 "pages"=>max(1, (int) ceil($total / 25)),
                 "total"=>$total,
-                "openChat"=>$openChat,
-                "openComments"=>$openComments,
-            ]);
+            ] + $counts);
             return;
         }
 
-        $total = $db->table("chat_reports")->where("status", $status)->count();
+        $total = $db->table("chat_reports")->where("kind", "dm")->where("status", $status)->count();
         $rows = $db->query(
             "SELECT r.*, m.sender_id, m.recipient_id, m.body, m.image_id, m.created AS sent, m.deleted,
                     s.username AS sender_name, s.banned AS sender_banned, rp.username AS reporter_name, h.username AS handler_name
@@ -529,7 +656,7 @@ $router->group('/admin', function($router){
              LEFT JOIN users s ON s.id = m.sender_id
              LEFT JOIN users rp ON rp.id = r.reporter_id
              LEFT JOIN users h ON h.id = r.handled_by
-             WHERE r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
+             WHERE r.kind = 'dm' AND r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
             [$status]
         )->get();
 
@@ -547,10 +674,8 @@ $router->group('/admin', function($router){
             $row->context = $index === false ? [] : array_slice($around, max(0, $index - 5), 11);
         }
 
-        adminRender("reports", "reports", [
+        adminRender("reports", "reports", $counts + [
             "kind"=>"chat",
-            "openChat"=>$openChat,
-            "openComments"=>$openComments,
             "rows"=>$rows,
             "status"=>$status,
             "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
@@ -575,6 +700,8 @@ $router->group('/admin', function($router){
 
         $comment = $db->table("game_comments")->where("id", $report->comment_id)->first();
         $handled = ["handled_by"=>$currentuser->id, "handled_at"=>time()];
+
+        adminlog::add("comment_report." . $action, "user", $comment ? (int) $comment->userid : null, $comment ? mb_substr((string) $comment->body, 0, 200) : null);
 
         if($action === "dismiss"){
             $db->table("comment_reports")->where("id", $report->id)->update(["status"=>"dismissed", "action"=>"dismissed"] + $handled);
@@ -612,32 +739,41 @@ $router->group('/admin', function($router){
             adminRedirect("/admin/reports");
         }
 
-        $message = $db->table("chat_messages")->where("id", $report->message_id)->first();
+        $isGroup = ($report->kind ?? "dm") === "group";
+        $back = $isGroup ? "/admin/reports?kind=groups" : "/admin/reports";
+        $message = $db->table($isGroup ? "chat_group_messages" : "chat_messages")->where("id", $report->message_id)->first();
         $handled = ["handled_by"=>$currentuser->id, "handled_at"=>time()];
+
+        adminlog::add("chat_report." . $action, "user", $message ? (int) $message->sender_id : null, $message ? mb_substr((string) $message->body, 0, 200) : null);
 
         if($action === "dismiss"){
             $db->table("chat_reports")->where("id", $report->id)->update(["status"=>"dismissed", "action"=>"dismissed"] + $handled);
-            adminRedirect("/admin/reports", "dismissed");
+            adminRedirect($back, "dismissed");
         }
 
         if(($action === "remove" || $action === "ban") && $message){
-            $db->table("chat_messages")->where("id", $message->id)->update(["deleted"=>1]);
-            \watrlabs\social\realtime::publish([$message->sender_id, $message->recipient_id], ["type"=>"deleted", "id"=>(int) $message->id]);
+            if($isGroup){
+                $db->table("chat_group_messages")->where("id", $message->id)->update(["deleted"=>1]);
+                \watrlabs\social\realtime::publish((new \watrlabs\social\groups())->memberIds((int) $message->groupid), ["type"=>"group_deleted", "id"=>(int) $message->id, "group"=>(int) $message->groupid]);
+            } else {
+                $db->table("chat_messages")->where("id", $message->id)->update(["deleted"=>1]);
+                \watrlabs\social\realtime::publish([$message->sender_id, $message->recipient_id], ["type"=>"deleted", "id"=>(int) $message->id]);
+            }
 
             // every open report on this message is settled by the same decision
-            $db->table("chat_reports")->where("message_id", $message->id)->where("status", "open")
+            $db->table("chat_reports")->where("kind", $isGroup ? "group" : "dm")->where("message_id", $message->id)->where("status", "open")
                 ->update(["status"=>"actioned", "action"=>$action === "ban" ? "removed, sender banned" : "removed"] + $handled);
 
             if($action === "ban" && (int) $message->sender_id !== (int) $currentuser->id){
                 $db->table("users")->where("id", $message->sender_id)->update(["banned"=>1]);
                 $db->table("sessions")->where("userid", $message->sender_id)->delete();
-                adminRedirect("/admin/reports", "removedbanned");
+                adminRedirect($back, "removedbanned");
             }
 
-            adminRedirect("/admin/reports", "removed");
+            adminRedirect($back, "removed");
         }
 
-        adminRedirect("/admin/reports");
+        adminRedirect($back);
     });
 
     // ---------- ai: settings, providers, models ----------
@@ -701,6 +837,7 @@ $router->group('/admin', function($router){
             settings::set("ai_default_model", $default);
         }
 
+        adminlog::add("ai.settings");
         adminRedirect("/admin/ai", "saved");
     });
 
@@ -801,6 +938,8 @@ $router->group('/admin', function($router){
             $values["api_key"] = null;
         }
 
+        adminlog::add($existing ? "ai.provider.edit" : "ai.provider.add", null, $existing ? (int) $existing->id : null, $name);
+
         if($existing){
             $db->table("ai_providers")->where("id", $existing->id)->update($values);
             adminRedirect("/admin/ai/providers/" . $existing->id, "saved");
@@ -817,6 +956,7 @@ $router->group('/admin', function($router){
 
         $db->table("ai_models")->where("provider_id", (int) $id)->delete();
         $db->table("ai_providers")->where("id", (int) $id)->delete();
+        adminlog::add("ai.provider.delete", null, (int) $id);
 
         adminRedirect("/admin/ai", "deleted");
     });
@@ -865,6 +1005,8 @@ $router->group('/admin', function($router){
             "sort"=>(int) ($_POST["sort"] ?? 0),
         ];
 
+        adminlog::add("ai.model.save", null, null, $values["name"]);
+
         $id = (int) ($_POST["id"] ?? 0);
         if($id && $db->table("ai_models")->where("id", $id)->where("provider_id", $providerId)->first()){
             $db->table("ai_models")->where("id", $id)->update($values);
@@ -886,6 +1028,150 @@ $router->group('/admin', function($router){
         }
 
         adminRedirect("/admin/ai");
+    });
+
+    // ---------- game requests ----------
+
+    $router->get("/requests", function(){
+        global $db;
+
+        $status = in_array($_GET["status"] ?? "open", ["open", "added", "declined"], true) ? ($_GET["status"] ?? "open") : "open";
+        $page = adminPage();
+
+        $total = $db->table("game_requests")->where("status", $status)->count();
+
+        // how many people asked for the same name, so popular ones stand out
+        $rows = $db->query(
+            "SELECT r.*, u.username, h.username AS handler_name, g.name AS game_name,
+                    (SELECT COUNT(*) FROM game_requests x WHERE x.status = 'open' AND LOWER(x.name) = LOWER(r.name)) AS asks
+             FROM game_requests r LEFT JOIN users u ON u.id = r.userid LEFT JOIN users h ON h.id = r.handled_by LEFT JOIN games g ON g.id = r.gameid
+             WHERE r.status = ? ORDER BY " . ($status === "open" ? "asks DESC, r.created ASC" : "r.handled_at DESC") . " LIMIT 50 OFFSET " . (($page - 1) * 50),
+            [$status]
+        )->get();
+
+        adminRender("requests", "requests", [
+            "rows"=>$rows,
+            "status"=>$status,
+            "page"=>$page,
+            "pages"=>max(1, (int) ceil($total / 50)),
+            "total"=>$total,
+            "games"=>$db->table("games")->select(["id", "name", "type"])->orderBy("name")->get(),
+        ]);
+    });
+
+    $router->post("/requests/{id}/action", function($id){
+        global $currentuser;
+        requireAdminPost();
+
+        $action = $_POST["action"] ?? "";
+        $status = $action === "added" ? "added" : ($action === "declined" ? "declined" : null);
+        if($status){
+            $gameId = ctype_digit((string) ($_POST["game"] ?? "")) ? (int) $_POST["game"] : null;
+            (new requests())->resolve((int) $id, $status, $gameId, (string) ($_POST["note"] ?? ""), (int) $currentuser->id);
+            adminlog::add("request." . $status, "game", $gameId, null);
+            adminRedirect("/admin/requests", $status);
+        }
+
+        adminRedirect("/admin/requests");
+    });
+
+    // ---------- broken game reports ----------
+
+    $router->post("/reports/games/{id}/action", function($id){
+        global $db;
+        global $currentuser;
+        requireAdminPost();
+
+        $report = $db->table("game_reports")->where("id", (int) $id)->first();
+        $action = $_POST["action"] ?? "";
+        $back = "/admin/reports?kind=games";
+
+        if(!$report || !in_array($action, ["fixed", "dismiss"], true)){
+            adminRedirect($back);
+        }
+
+        $handled = ["status"=>$action === "fixed" ? "actioned" : "dismissed", "handled_by"=>$currentuser->id, "handled_at"=>time()];
+
+        // fixing a game settles every open report on it
+        if($action === "fixed"){
+            $db->table("game_reports")->where("gameid", $report->gameid)->where("status", "open")->update($handled);
+        } else {
+            $db->table("game_reports")->where("id", $report->id)->update($handled);
+        }
+
+        adminlog::add("game_report." . $action, "game", (int) $report->gameid);
+        adminRedirect($back, $action === "fixed" ? "fixed" : "dismissed");
+    });
+
+    // ---------- categories ----------
+
+    $router->get("/tags", function(){
+        global $db;
+
+        adminRender("tags", "games", [
+            "tags"=>$db->query("SELECT t.*, (SELECT COUNT(*) FROM game_tags gt WHERE gt.tagid = t.id) AS games FROM tags t ORDER BY t.sort, t.name")->get(),
+        ]);
+    });
+
+    $router->post("/tags/save", function(){
+        requireAdminPost();
+
+        $id = ctype_digit((string) ($_POST["id"] ?? "")) ? (int) $_POST["id"] : null;
+        try {
+            $saved = tags::save($id, (string) ($_POST["name"] ?? ""), (int) ($_POST["sort"] ?? 0));
+        } catch (\InvalidArgumentException $e) {
+            global $db;
+            return adminRender("tags", "games", [
+                "tags"=>$db->query("SELECT t.*, (SELECT COUNT(*) FROM game_tags gt WHERE gt.tagid = t.id) AS games FROM tags t ORDER BY t.sort, t.name")->get(),
+                "error"=>$e->getMessage(),
+            ]);
+        }
+
+        adminlog::add($id ? "tag.edit" : "tag.add", null, (int) $saved, (string) ($_POST["name"] ?? ""));
+        adminRedirect("/admin/tags", $id ? "saved" : "created");
+    });
+
+    $router->post("/tags/{id}/delete", function($id){
+        requireAdminPost();
+
+        tags::delete((int) $id);
+        adminlog::add("tag.delete", null, (int) $id);
+        adminRedirect("/admin/tags", "deleted");
+    });
+
+    // ---------- audit log ----------
+
+    $router->get("/log", function(){
+        $action = (string) ($_GET["action"] ?? "");
+        $actions = adminlog::actions();
+        $action = in_array($action, $actions, true) ? $action : null;
+        $page = adminPage();
+
+        adminRender("log", "log", adminlog::page($page, $action) + [
+            "action"=>$action,
+            "actions"=>$actions,
+            "page"=>$page,
+        ]);
+    });
+
+    // ---------- notify everyone ----------
+
+    $router->post("/broadcast", function(){
+        global $currentuser;
+        requireAdminPost();
+
+        $text = mb_substr(trim(preg_replace('/\s+/', ' ', $_POST["text"] ?? "")), 0, 300);
+        $link = trim($_POST["link"] ?? "");
+        // only links on this site, so a notification can't send people somewhere dodgy
+        $link = ($link !== "" && str_starts_with($link, "/") && !str_starts_with($link, "//")) ? mb_substr($link, 0, 200) : null;
+
+        if($text !== ""){
+            \watrlabs\social\notifications::broadcast($text, $link, (int) $currentuser->id);
+            adminlog::add("broadcast", null, null, $text);
+            adminRedirect("/admin/settings", "sent");
+        }
+
+        adminRedirect("/admin/settings");
     });
 
 }, 'requireAdmin');

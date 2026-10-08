@@ -54,6 +54,10 @@ function setPanel(open, remember){
     $("#lyricsPanel").prop("hidden", !open);
     $("#playerLyrics").attr("aria-pressed", open ? "true" : "false").toggleClass("on", open);
     $("body").toggleClass("lyrics-open", open);
+    if(open){
+        $("#queuePanel").prop("hidden", true);
+        $("#playerQueue").attr("aria-pressed", "false");
+    }
 
     if(remember){
         setLyricsPref(open ? "open" : "closed");
