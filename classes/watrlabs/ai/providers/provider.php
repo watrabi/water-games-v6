@@ -20,6 +20,11 @@ abstract class provider {
     protected $emit;
     protected bool $aborted = false;
     protected int $lastPing = 0;
+    // place in line for a local model, see takeTicket()
+    protected ?string $ticket = null;
+    protected int $ahead = 0;
+    protected int $lastQueueCheck = 0;
+    protected bool $started = false;
     // background calls (titles, suggestions) answer with plain json, so no keepalive pings
     public bool $quiet = false;
     public ?int $timeout = null;
@@ -57,6 +62,10 @@ abstract class provider {
     public function run(string $system, array $messages, array $tools): array {
         [$url, $headers, $body] = $this->request($system, $messages, $tools);
 
+        if($this->model["provider"] === "ollama"){
+            $this->takeTicket();
+        }
+
         $buffer = "";
         $status = 0;
         $errorBody = "";
@@ -80,6 +89,7 @@ abstract class provider {
                     return strlen($chunk);
                 }
 
+                $this->started = true;
                 $buffer .= $chunk;
 
                 while(($pos = strpos($buffer, "\n")) !== false){
@@ -95,6 +105,7 @@ abstract class provider {
             },
             CURLOPT_NOPROGRESS=>false,
             CURLOPT_XFERINFOFUNCTION=>function(){
+                $this->checkQueue();
                 return $this->checkClient() ? 0 : 1;
             },
         ]);
@@ -102,6 +113,7 @@ abstract class provider {
         $ok = curl_exec($ch);
         $curlError = curl_error($ch);
         curl_close($ch);
+        $this->dropTicket();
 
         if(trim($buffer) !== "" && $status < 400){
             $this->handleLine(trim($buffer));
@@ -125,6 +137,73 @@ abstract class provider {
             "error"=>$this->error,
             "model"=>$this->servedBy,
         ];
+    }
+
+    // ollama answers one request per model at a time and queues the rest without saying so, so every
+    // request to it takes a ticket here: a file named by model and time. the older tickets still around
+    // are the requests ahead of this one. a ticket from a request that died without cleaning up stops
+    // counting once it's older than the longest a request can run
+    private static function queueDir(){
+        return __DIR__ . "/../../../../storage/cache/ai-queue";
+    }
+
+    private function queueKey(){
+        return md5($this->model["url"] . "|" . $this->model["name"]);
+    }
+
+    protected function takeTicket(){
+        $dir = self::queueDir();
+        if(!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)){
+            return; // no queue display is better than no answer
+        }
+
+        $name = $this->queueKey() . "-" . sprintf("%017d", (int) (microtime(true) * 1e6)) . "-" . bin2hex(random_bytes(3));
+        if(@touch($dir . "/" . $name)){
+            $this->ticket = $name;
+            register_shutdown_function(fn() => $this->dropTicket());
+        }
+    }
+
+    protected function dropTicket(){
+        if($this->ticket){
+            @unlink(self::queueDir() . "/" . $this->ticket);
+            $this->ticket = null;
+        }
+    }
+
+    // how many requests to the same model are ahead of this one
+    protected function countAhead(){
+        $dir = self::queueDir();
+        $stale = time() - (int) config::env("AI_TIMEOUT", 600) - 60;
+        $ahead = 0;
+
+        foreach(glob($dir . "/" . $this->queueKey() . "-*") ?: [] as $file){
+            $name = basename($file);
+            if($name >= $this->ticket){
+                continue;
+            }
+            if(@filemtime($file) < $stale){
+                @unlink($file);
+                continue;
+            }
+            $ahead++;
+        }
+
+        return $ahead;
+    }
+
+    // tells the browser its place in line until the model starts answering
+    protected function checkQueue(){
+        if(!$this->ticket || $this->started || $this->quiet || time() - $this->lastQueueCheck < 2){
+            return;
+        }
+        $this->lastQueueCheck = time();
+
+        $ahead = $this->countAhead();
+        if($ahead !== $this->ahead){
+            $this->ahead = $ahead;
+            $this->emit(["type"=>"queue", "ahead"=>$ahead]);
+        }
     }
 
     // keeps the browser connection alive and notices when it's gone

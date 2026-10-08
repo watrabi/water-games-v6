@@ -1286,7 +1286,7 @@ function send(options){
     let newChat = null;
 
     function handle(event){
-        if(!gotAnything && event.type !== "chat"){
+        if(!gotAnything && event.type !== "chat" && event.type !== "queue"){
             gotAnything = true;
         }
 
@@ -1311,6 +1311,12 @@ function send(options){
                 } else {
                     bloopDoing(turn, null);
                 }
+                break;
+            case "queue":
+                // a local model answering someone else first
+                bloopDoing(turn, "ponder", event.ahead > 0
+                    ? "Waiting in line (" + event.ahead + " ahead of you)..."
+                    : aiName + " is thinking...");
                 break;
             case "thinking_start":
                 startThinking(turn, true);
