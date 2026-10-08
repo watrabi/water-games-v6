@@ -2,8 +2,8 @@
 {% import "admin/macros.twig" as m %}
 {% block adminTitle %}Reports{% endblock %}
 
-{% macro action(report, action, label, danger, confirm) %}
-  <form method="post" action="/admin/reports/{{ report.id }}/action" class="inlineForm"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+{% macro action(report, action, label, danger, confirm, kind) %}
+  <form method="post" action="/admin/reports/{{ kind == 'comments' ? 'comments/' : '' }}{{ report.id }}/action" class="inlineForm"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="action" value="{{ action }}">
     <button type="submit" class="button{{ danger ? ' quiet danger' : ' quiet' }}">{{ label }}</button>
@@ -15,14 +15,18 @@
 <div class="pageHeader">
     <div>
         <h1>Reports</h1>
-        <p>{{ total|number_format }} {{ status }} report{{ total == 1 ? '' : 's' }}{% if status == 'open' %}, oldest first{% endif %}</p>
+        <p>{{ total|number_format }} {{ status }} {{ kind == 'comments' ? 'comment' : 'chat' }} report{{ total == 1 ? '' : 's' }}{% if status == 'open' %}, oldest first{% endif %}</p>
     </div>
     <nav class="sortTabs" aria-label="Report status">
         {% for key, label in {open: 'Open', actioned: 'Acted on', dismissed: 'Dismissed'} %}
-            <a href="?status={{ key }}"{% if status == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
+            <a href="?kind={{ kind }}&amp;status={{ key }}"{% if status == key %} class="active" aria-current="true"{% endif %}>{{ label }}</a>
         {% endfor %}
     </nav>
 </div>
+<nav class="sortTabs reportKinds" aria-label="Report type">
+    <a href="?kind=chat&amp;status={{ status }}"{% if kind == 'chat' %} class="active" aria-current="true"{% endif %}>Chat{% if openChat %} <span class="navCount">{{ openChat }}</span>{% endif %}</a>
+    <a href="?kind=comments&amp;status={{ status }}"{% if kind == 'comments' %} class="active" aria-current="true"{% endif %}>Comments{% if openComments %} <span class="navCount">{{ openComments }}</span>{% endif %}</a>
+</nav>
 
 {% if rows is empty %}
     <div class="empty"><img src="/assets/images/BlobEmoji/blobcool.png" alt=""><div><strong>Nothing to look at.</strong>{% if status == 'open' %}No open reports right now.{% endif %}</div></div>
@@ -37,10 +41,11 @@
         </div>
         {% if report.status == 'open' %}
         <div class="rowActions">
-            {{ r.action(report, 'dismiss', 'Dismiss', false, null) }}
-            {{ r.action(report, 'remove', 'Remove message', true, null) }}
+            {% set noun = kind == 'comments' ? 'comment' : 'message' %}
+            {{ r.action(report, 'dismiss', 'Dismiss', false, null, kind) }}
+            {{ r.action(report, 'remove', 'Remove ' ~ noun, true, null, kind) }}
             {% if not report.sender_banned %}
-                {{ r.action(report, 'ban', 'Remove + ban ' ~ report.sender_name, true, 'Remove the message and ban ' ~ report.sender_name ~ '? They\'ll be signed out everywhere.') }}
+                {{ r.action(report, 'ban', 'Remove + ban ' ~ report.sender_name, true, 'Remove the ' ~ noun ~ ' and ban ' ~ report.sender_name ~ '? They\'ll be signed out everywhere.', kind) }}
             {% endif %}
         </div>
         {% else %}
@@ -50,6 +55,19 @@
 
     {% if report.details %}<p class="reportDetails">“{{ report.details }}”</p>{% endif %}
 
+    {% if kind == 'comments' %}
+    <p class="muted reportWho">
+        By <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
+        on <a href="/{{ report.game_type == 'app' ? 'apps' : 'games' }}/{{ report.gameid }}">{{ report.game_name ?: 'a deleted game' }}</a>, {{ report.sent|date("M j, g:i A") }}:
+    </p>
+    <ol class="reportContext">
+        <li class="reported fromSender">
+            <span class="reportAuthor">{{ report.sender_name }}</span>
+            <span class="reportBody"><span class="reportText">{{ report.body }}</span>{% if report.deleted %} <span class="badge">removed</span>{% endif %}</span>
+            <span class="reportWhen">{{ report.sent|date("M j, g:i A") }}</span>
+        </li>
+    </ol>
+    {% else %}
     <p class="muted reportWho">
         From <a href="/users/{{ report.sender_name|lower|url_encode }}">{{ report.sender_name }}</a>{% if report.sender_banned %} <span class="badge danger">banned</span>{% endif %}
         to {{ report.reporter_name }}. The conversation around it:
@@ -68,8 +86,9 @@
             </li>
         {% endfor %}
     </ol>
+    {% endif %}
 </article>
 {% endfor %}
 
-{{ m.pager(page, pages, {status: status}) }}
+{{ m.pager(page, pages, {kind: kind, status: status}) }}
 {% endblock %}

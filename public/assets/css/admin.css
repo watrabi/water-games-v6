@@ -539,3 +539,7 @@ form.adminForm > .panel:last-of-type {
         gap: 2px;
     }
 }
+
+.reportKinds {
+    margin: -8px 0 18px;
+}

@@ -1,9 +1,10 @@
 {% extends "models/base.twig" %}
 {% import "components/games.twig" as g %}
+{% import "components/avatar.twig" as a %}
 {% set isApp = game.type == 'app' %}
 {% block pageName %}{{ game.name }}{% endblock %}
 {% block headerIncludes %}
-    <link rel="stylesheet" href="/assets/css/gamepage.css?t=13">
+    <link rel="stylesheet" href="/assets/css/gamepage.css?t=14">
     <meta content="{{ game.name }} on {{ env("APP_NAME") }}" property="og:title"/>
 {% endblock %}
 {% block body %}
@@ -43,6 +44,34 @@
         </div>
     {% endif %}
 
+    {% if commentsOn %}
+    <section class="comments" id="comments">
+        <h2>Comments <span class="commentCount" id="commentCount">{{ commentCount|number_format }}</span></h2>
+
+        {% if currentuser %}
+        <form class="commentForm" id="commentForm">
+            {{ a.avatar(currentuser) }}
+            <div class="commentInput">
+                <label class="sr-only" for="commentText">Write a comment</label>
+                <textarea id="commentText" rows="2" maxlength="{{ commentMax }}" placeholder="What did you think of {{ game.name }}?"></textarea>
+                <div class="commentFormBar">
+                    <span class="commentChars muted" id="commentChars"></span>
+                    <button class="button" type="submit" id="commentSend">Post</button>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        <p class="muted"><a href="/auth/sign-in">Sign in</a> to leave a comment.</p>
+        {% endif %}
+
+        <div class="notice danger" id="commentMsg" role="alert" hidden></div>
+        <ol class="commentList" id="commentList"></ol>
+        <p class="muted commentEmpty" id="commentEmpty" hidden>No comments yet. Be the first!</p>
+        <button class="button quiet" type="button" id="commentMore" hidden>Show older comments</button>
+        <script type="application/json" id="commentData">{{ commentData|raw }}</script>
+    </section>
+    {% endif %}
+
     {% if related is not empty %}
     <section>
         <div class="sectionHeader">
@@ -54,4 +83,5 @@
     {% endif %}
 </div>
 <script src="/assets/js/play.js?t=3" defer></script>
+{% if commentsOn %}<script src="/assets/js/comments.js?t=1" defer></script>{% endif %}
 {% endblock %}

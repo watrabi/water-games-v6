@@ -451,6 +451,7 @@ $router->group('/admin', function($router){
                 "seasonal_greeting"=>settings::bool("seasonal_greeting", true),
                 "announcement"=>settings::get("announcement", ""),
                 "chat_filter"=>settings::get("chat_filter", ""),
+                "comments_enabled"=>settings::bool("comments_enabled", true),
             ],
             "currentSeason"=>themes::currentSeason(),
             "siteTheme"=>themes::get(themes::siteTheme()),
@@ -472,6 +473,7 @@ $router->group('/admin', function($router){
         settings::set("seasonal_greeting", !empty($_POST["seasonal_greeting"]));
         settings::set("announcement", mb_substr(trim(preg_replace('/\s+/', ' ', $_POST["announcement"] ?? "")), 0, 300));
         settings::set("chat_filter", mb_substr(trim($_POST["chat_filter"] ?? ""), 0, 20000));
+        settings::set("comments_enabled", !empty($_POST["comments_enabled"]));
 
         adminRedirect("/admin/settings", "saved");
     });
@@ -484,6 +486,39 @@ $router->group('/admin', function($router){
         $status = $_GET["status"] ?? "open";
         $status = in_array($status, ["open", "dismissed", "actioned"], true) ? $status : "open";
         $page = adminPage();
+
+        $openChat = $db->table("chat_reports")->where("status", "open")->count();
+        $openComments = \watrlabs\games\comments::openReports();
+
+        // game comment reports, same statuses and actions as chat ones
+        if(($_GET["kind"] ?? "") === "comments"){
+            $total = $db->table("comment_reports")->where("status", $status)->count();
+            $rows = $db->query(
+                "SELECT r.*, c.userid AS sender_id, c.body, c.created AS sent, c.deleted, c.gameid, g.name AS game_name, g.type AS game_type,
+                        s.username AS sender_name, s.banned AS sender_banned, rp.username AS reporter_name, h.username AS handler_name
+                 FROM comment_reports r
+                 INNER JOIN game_comments c ON c.id = r.comment_id
+                 LEFT JOIN games g ON g.id = c.gameid
+                 LEFT JOIN users s ON s.id = c.userid
+                 LEFT JOIN users rp ON rp.id = r.reporter_id
+                 LEFT JOIN users h ON h.id = r.handled_by
+                 WHERE r.status = ? ORDER BY r.created " . ($status === "open" ? "ASC" : "DESC") . " LIMIT 25 OFFSET " . (($page - 1) * 25),
+                [$status]
+            )->get();
+
+            adminRender("reports", "reports", [
+                "kind"=>"comments",
+                "rows"=>$rows,
+                "status"=>$status,
+                "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
+                "page"=>$page,
+                "pages"=>max(1, (int) ceil($total / 25)),
+                "total"=>$total,
+                "openChat"=>$openChat,
+                "openComments"=>$openComments,
+            ]);
+            return;
+        }
 
         $total = $db->table("chat_reports")->where("status", $status)->count();
         $rows = $db->query(
@@ -513,6 +548,9 @@ $router->group('/admin', function($router){
         }
 
         adminRender("reports", "reports", [
+            "kind"=>"chat",
+            "openChat"=>$openChat,
+            "openComments"=>$openComments,
             "rows"=>$rows,
             "status"=>$status,
             "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
@@ -520,6 +558,46 @@ $router->group('/admin', function($router){
             "pages"=>max(1, (int) ceil($total / 25)),
             "total"=>$total,
         ]);
+    });
+
+    $router->post("/reports/comments/{id}/action", function($id){
+        global $db;
+        global $currentuser;
+        requireAdminPost();
+
+        $report = $db->table("comment_reports")->where("id", (int) $id)->first();
+        $action = $_POST["action"] ?? "";
+        $back = "/admin/reports?kind=comments";
+
+        if(!$report){
+            adminRedirect($back);
+        }
+
+        $comment = $db->table("game_comments")->where("id", $report->comment_id)->first();
+        $handled = ["handled_by"=>$currentuser->id, "handled_at"=>time()];
+
+        if($action === "dismiss"){
+            $db->table("comment_reports")->where("id", $report->id)->update(["status"=>"dismissed", "action"=>"dismissed"] + $handled);
+            adminRedirect($back, "dismissed");
+        }
+
+        if(($action === "remove" || $action === "ban") && $comment){
+            $db->table("game_comments")->where("id", $comment->id)->update(["deleted"=>1]);
+
+            // every open report on this comment is settled by the same decision
+            $db->table("comment_reports")->where("comment_id", $comment->id)->where("status", "open")
+                ->update(["status"=>"actioned", "action"=>$action === "ban" ? "removed, author banned" : "removed"] + $handled);
+
+            if($action === "ban" && (int) $comment->userid !== (int) $currentuser->id){
+                $db->table("users")->where("id", $comment->userid)->update(["banned"=>1]);
+                $db->table("sessions")->where("userid", $comment->userid)->delete();
+                adminRedirect($back, "removedbanned");
+            }
+
+            adminRedirect($back, "removed");
+        }
+
+        adminRedirect($back);
     });
 
     $router->post("/reports/{id}/action", function($id){

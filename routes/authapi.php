@@ -3,6 +3,7 @@ use watrlabs\authentication\sessions;
 use watrlabs\authentication\registration;
 use watrlabs\authentication\security;
 use watrlabs\games\games;
+use watrlabs\games\comments;
 use watrlabs\users\users;
 use watrlabs\music\music;
 use watrlabs\watrkit\uploads;
@@ -90,6 +91,73 @@ $router->group('/api/v1/games', function($router) {
             "favorited"=>$favorited,
             "favorites"=>$games->favoriteCount((int) $gameId),
         ];
+    });
+
+    // ---------- comments ----------
+
+    $router->get("/{id}/comments", function($id){
+        global $currentuser;
+
+        if(!comments::enabled()){
+            return apiError("Comments are switched off.", 403);
+        }
+        if(!ctype_digit($id) || !(new games())->get((int) $id)){
+            return apiError("That game doesn't exist.", 404);
+        }
+
+        $before = ctype_digit((string) ($_GET["before"] ?? "")) ? (int) $_GET["before"] : null;
+        return ["status"=>"okay"] + (new comments())->list((int) $id, $currentuser, $before);
+    });
+
+    $router->post("/{id}/comments", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in to comment.", 401);
+        }
+        if(!comments::enabled()){
+            return apiError("Comments are switched off.", 403);
+        }
+        if(!ctype_digit($id) || !(new games())->get((int) $id)){
+            return apiError("That game doesn't exist.", 404);
+        }
+
+        try {
+            $comment = (new comments())->add($currentuser, (int) $id, (string) ($_POST["body"] ?? ""));
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return ["status"=>"okay", "comment"=>$comment];
+    });
+
+    $router->post("/comments/{id}/delete", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+        if(!ctype_digit($id) || !(new comments())->delete($currentuser, (int) $id)){
+            return apiError("You can't delete that comment.", 404);
+        }
+
+        return ["status"=>"okay"];
+    });
+
+    $router->post("/comments/{id}/report", function($id){
+        global $currentuser;
+
+        if(!$currentuser){
+            return apiError("You need to be signed in.", 401);
+        }
+
+        try {
+            (new comments())->report((int) $currentuser->id, ctype_digit($id) ? (int) $id : 0, (string) ($_POST["reason"] ?? ""), (string) ($_POST["details"] ?? ""));
+        } catch (\InvalidArgumentException $e) {
+            return apiError($e->getMessage());
+        }
+
+        return ["status"=>"okay"];
     });
 
 });

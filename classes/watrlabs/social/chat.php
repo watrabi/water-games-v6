@@ -282,9 +282,12 @@ class chat {
         global $db;
 
         try {
-            return $db->table("chat_reports")->where("status", "open")->count();
+            $chat = $db->table("chat_reports")->where("status", "open")->count();
         } catch (\Throwable $e) {
-            return 0; // before migrations
+            $chat = 0; // before migrations
         }
+
+        // game comment reports land on the same admin page
+        return $chat + \watrlabs\games\comments::openReports();
     }
 }

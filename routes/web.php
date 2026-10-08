@@ -2,6 +2,7 @@
 use watrlabs\encryption;
 use watrlabs\authentication\sessions;
 use watrlabs\games\games;
+use watrlabs\games\comments;
 use watrlabs\users\users;
 use watrlabs\music\music;
 
@@ -124,10 +125,22 @@ function renderPlayer($id, $type){
     $games->addPlay($game->id);
     $game->plays++;
 
+    $commentsOn = comments::enabled();
+    $comments = new comments();
+
     echo $twig->render('play.twig', [
         "game"=>$game,
         "favorited"=>$currentuser ? $games->isFavorited($currentuser->id, $game->id) : false,
         "related"=>$games->related($game->id, $type),
+        "commentsOn"=>$commentsOn,
+        "commentCount"=>$commentsOn ? $comments->count((int) $game->id) : 0,
+        "commentMax"=>comments::MAX_LENGTH,
+        // comment text ends up in a script tag, so < > & and quotes are escaped
+        "commentData"=>$commentsOn ? json_encode([
+            "game"=>(int) $game->id,
+            "signedIn"=>(bool) $currentuser,
+            "reasons"=>\watrlabs\social\chat::REPORT_REASONS,
+        ] + $comments->list((int) $game->id, $currentuser), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) : null,
     ]);
 }
 

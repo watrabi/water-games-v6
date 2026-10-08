@@ -73,11 +73,17 @@
 
     <section class="panel">
         <h2>Chat filter</h2>
-        <p class="muted">Words to hide in friend chat. Matching whole words get replaced with #### when a message is sent. One per line, or separated with commas.</p>
+        <p class="muted">Words to hide in friend chat and game comments. Matching whole words get replaced with #### when a message or comment is sent. One per line, or separated with commas.</p>
         <div class="field">
             <label for="chat_filter">Blocked words</label>
             <textarea id="chat_filter" name="chat_filter" rows="5" class="mono">{{ s.chat_filter }}</textarea>
         </div>
+    </section>
+
+    <section class="panel">
+        <h2>Game comments</h2>
+        <p class="muted">Signed in people can comment under games and apps. Reported comments show up in Reports. Switching this off hides every comment, nothing gets deleted.</p>
+        <label class="checkRow"><input type="checkbox" name="comments_enabled" value="1"{% if s.comments_enabled %} checked{% endif %}><span>Show comments on game and app pages</span></label>
     </section>
 
     <button class="button" type="submit">Save site settings</button>
