@@ -24,6 +24,7 @@ then run `vendor/bin/phinx migrate -e development` or whatever your current envi
 - `/music` track list, with a player bar that follows you between pages. `/music/playlists` for your playlists
 - `/ai` chat with saved conversations, tools and image input (see below)
 - `/discover/request` asks for a game to be added, `/notifications` is everything the bell has shown you
+- `/proxy` web proxy (see below)
 - `/collections`, `/recap`, `/play/random`, `/sitemap.xml`, `/robots.txt`, `/health`
 - `/auth/forgot` and `/auth/reset` for forgotten passwords (needs mail, see below)
 
@@ -198,6 +199,79 @@ apache (mod_proxy_wstunnel): `ProxyPass /ws ws://127.0.0.1:3001/`
 
 keep it running with systemd, pm2, or whatever you like (`pm2 start server.js --name watr-realtime`). `GET /health`
 answers without the secret if you want to monitor it. if node goes down, chat quietly falls back to polling.
+
+# proxy
+`/proxy` is a web proxy: search or type an address and the site opens inside the page, with back / forward / reload,
+fullscreen and "open in a new tab". `/proxy?url=wikipedia.org` opens a site straight away. only signed in people can
+use it, and it only shows up in the sidebar once it's set up.
+
+it's [Scramjet](https://github.com/MercuryWorkshop/scramjet). the rewriting and even the TLS happen in the browser
+(a service worker plus a wasm transport), and `proxy/` is a small node service that serves those files and runs a
+[Wisp](https://github.com/MercuryWorkshop/wisp-protocol) server: one websocket per browser, many TCP connections out.
+the server never sees inside https, it only knows which sites people open. what makes it fast:
+- everything starts loading when `/proxy` opens, not when you press Go, and the connection to your search engine is
+  opened early. while you type an address (or hover a quick link) that site's connection is opened too
+- the browser-side files are served as brotli (the wasm transports go from ~1.7MB to ~600KB) with a versioned url, so
+  after the first visit they come from the browser's cache. the compressed copies are kept on disk, so restarts are
+  instant
+- DNS answers are cached for 10 minutes and IPv4 is tried first (a site with broken IPv6 otherwise costs a timeout)
+- two fixes on top of Scramjet in `proxy/public/sw.js`: sites that set cookies on their scripts and images
+  (wikipedia, most big sites) used to freeze half loaded, and the rewriter script is built once instead of per page
+
+it can't reach the server itself or anything on its network (private and loopback addresses are refused), only ports
+80, 443, 8080 and 8443 (so no sending mail through it), and DNS goes through Cloudflare's 1.1.1.3 (blocks malware and
+adult sites). some sites (reddit, google sign in) block proxies, and heavy use from one server IP gets CAPTCHAs.
+anything people do through it comes from the server's IP, so keep an eye on it.
+
+setup:
+```bash
+cd proxy
+npm ci --omit=dev
+PROXY_SECRET="same-as-.env" ALLOWED_ORIGINS="https://games.watr.lol" node server.js
+```
+then `PROXY_SECRET="same-as-node"` in the site's `.env`. other settings (`PROXY_DNS`, `PROXY_PORTS`,
+`PROXY_BLOCKED_HOSTS`, `PROXY_MAX_PER_USER`, `PORT`) are explained at the top of `proxy/server.js`.
+
+it listens on 127.0.0.1:3002, so send `/proxy/` to it (with the slash: `/proxy` itself is the PHP page and stays with PHP). nginx:
+```nginx
+location ^~ /proxy/wisp/ {
+    proxy_pass http://127.0.0.1:3002;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 1h;
+    proxy_send_timeout 1h;
+    proxy_buffering off;
+}
+location ^~ /proxy/ {
+    proxy_pass http://127.0.0.1:3002;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+}
+```
+keep it running with systemd (`/etc/systemd/system/watr-proxy.service`), `bin/deploy.sh` restarts it when `proxy/`
+changes:
+```ini
+[Unit]
+Description=Water Games proxy
+After=network.target
+
+[Service]
+WorkingDirectory=/www/wwwroot/games.watr.lol/proxy
+Environment=PROXY_SECRET=same-as-.env
+Environment=ALLOWED_ORIGINS=https://games.watr.lol
+ExecStart=/usr/bin/node server.js
+Restart=always
+User=www
+
+[Install]
+WantedBy=multi-user.target
+```
+`GET /proxy/health` answers without the secret, and the admin health checks (and `bin/cron.php` alerts) include it.
+to try it locally without nginx: run `php -S 127.0.0.1:8000 -t public dev-router.php`, then
+`DEV_UPSTREAM=http://127.0.0.1:8000 PORT=3002 PROXY_SECRET=... node server.js` in `proxy/` and open
+`http://localhost:3002/proxy` (node passes everything else on to PHP).
 
 # page loading
 links and search forms load the next page in place (fetch + swap the main area), so the music player and chat

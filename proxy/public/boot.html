@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Loading…</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #002131; color: #F5F1ED; font: 15px/1.5 system-ui, sans-serif; text-align: center; padding: 16px; box-sizing: border-box; }
+  a { color: #7cc4e4; }
+</style>
+</head>
+<body>
+<p id="msg">Loading…</p>
+<script>
+// a proxied address reached the server, so the service worker didn't catch it: it isn't installed yet, or a hard
+// refresh (ctrl+shift+r) skipped it. install it and try once more; if that doesn't work, send them to /proxy
+(function(){
+    var msg = document.getElementById("msg");
+    function giveUp(){
+        msg.innerHTML = 'This page needs the proxy to be running. <a href="/proxy" target="_top">Open the proxy</a> and try again.';
+    }
+    if(!navigator.serviceWorker){
+        return giveUp();
+    }
+    // tried in the last 10 seconds = the reload didn't help
+    var tried = false;
+    try {
+        tried = Date.now() - Number(sessionStorage.getItem("watrProxyBoot") || 0) < 10000;
+        sessionStorage.setItem("watrProxyBoot", String(Date.now()));
+    } catch(e) {}
+    if(tried){
+        return giveUp();
+    }
+    navigator.serviceWorker.register("/proxy/sw.js", { scope: "/proxy/" })
+        .then(function() { return navigator.serviceWorker.ready; })
+        .then(function() { location.reload(); }, giveUp);
+})();
+</script>
+</body>
+</html>

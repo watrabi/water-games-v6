@@ -84,6 +84,7 @@ $twig->addGlobal('path', strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'] ?? '
 $twig->addGlobal('aiEnabled', \watrlabs\ai\config::enabled());
 $twig->addGlobal('aiName', \watrlabs\ai\config::name());
 $twig->addGlobal('aiMemory', in_array('memory', \watrlabs\ai\config::tools(), true));
+$twig->addGlobal('proxyEnabled', \watrlabs\proxy\proxy::enabled());
 
 // red badge on an admin's avatar while there are chat reports to look at
 $twig->addGlobal('openReports', $currentuser && !empty($currentuser->admin) ? \watrlabs\social\chat::openReports() : 0);

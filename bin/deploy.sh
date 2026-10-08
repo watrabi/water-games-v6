@@ -14,7 +14,7 @@
 #   5. copies the code over. these are never touched: .env, phinx.php, vendor/, storage/, public/uploads/,
 #      public/game-files/ (prod has games that aren't in the repo), public/.user.ini, public/.well-known/
 #   6. clears the twig cache, fixes ownership
-#   7. restarts watr-realtime, only if realtime/ changed
+#   7. restarts watr-realtime, only if realtime/ changed, and watr-proxy, only if proxy/ changed
 #
 # nothing is deleted from the site: a file removed from the repo stays on the server until you remove it.
 
@@ -84,6 +84,8 @@ LOCK_CHANGED=""
 cmp -s "$TMP/src/composer.lock" "$SITE/composer.lock" || LOCK_CHANGED=1
 REALTIME_CHANGED=""
 diff -rq "$TMP/src/realtime" "$SITE/realtime" --exclude=node_modules > /dev/null 2>&1 || REALTIME_CHANGED=1
+PROXY_CHANGED=""
+diff -rq "$TMP/src/proxy" "$SITE/proxy" --exclude=node_modules > /dev/null 2>&1 || PROXY_CHANGED=1
 
 # ---------- 3. dependencies ----------
 # --ignore-platform-req=php: some packages (cocur/slugify) haven't added PHP 8.5 to their list yet but run fine on it,
@@ -122,6 +124,14 @@ if [ -n "$REALTIME_CHANGED" ] && systemctl list-unit-files watr-realtime.service
     (cd "$SITE/realtime" && npm install --omit=dev --silent)
     chown -R "$OWNER" "$SITE/realtime"
     systemctl restart watr-realtime
+fi
+
+# ---------- 8. proxy ----------
+if [ -n "$PROXY_CHANGED" ] && systemctl list-unit-files watr-proxy.service > /dev/null 2>&1; then
+    say "proxy/ changed, restarting watr-proxy"
+    (cd "$SITE/proxy" && npm ci --omit=dev --silent)
+    chown -R "$OWNER" "$SITE/proxy"
+    systemctl restart watr-proxy
 fi
 
 say "done: $COMMIT"

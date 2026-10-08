@@ -41,6 +41,21 @@ class health {
             $checks["Realtime chat"] = ["ok"=>null, "detail"=>"Not set up, chat uses polling"];
         }
 
+        // web proxy (proxy/ node service)
+        if(\watrlabs\proxy\proxy::enabled()){
+            $url = rtrim($_ENV["PROXY_INTERNAL_URL"] ?? "http://127.0.0.1:3002", "/") . "/proxy/health";
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT_MS=>1000, CURLOPT_TIMEOUT_MS=>2000]);
+            $body = curl_exec($ch);
+            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $data = $body ? json_decode($body, true) : null;
+            $checks["Proxy"] = $code === 200 && !empty($data["ok"])
+                ? ["ok"=>true, "detail"=>(int) ($data["users"] ?? 0) . " people browsing"]
+                : ["ok"=>false, "detail"=>"Not answering at $url (/proxy won't load sites)"];
+        } else {
+            $checks["Proxy"] = ["ok"=>null, "detail"=>"Not set up"];
+        }
+
         // disk
         $free = @disk_free_space(self::root());
         $total = @disk_total_space(self::root());

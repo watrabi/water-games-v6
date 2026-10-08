@@ -1,0 +1,233 @@
+/* ---------- /proxy ---------- */
+
+.proxyHome {
+    max-width: 720px;
+    margin: 6vh auto 0;
+}
+
+.proxyHome h1 {
+    font-size: 46px;
+    margin-bottom: 24px;
+}
+
+.proxySearch {
+    display: flex;
+    align-items: center;
+    background-color: var(--raised);
+    border: 1px solid var(--line-strong);
+}
+
+.proxySearch:focus-within {
+    border-color: var(--link);
+}
+
+.proxySearch > i {
+    padding: 0 4px 0 16px;
+    color: var(--muted);
+    font-size: 18px;
+}
+
+.proxySearch input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    padding: 14px 12px;
+    font-size: 18px;
+}
+
+.proxySearch input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.proxySearch .button {
+    align-self: stretch;
+    padding: 0 22px;
+}
+
+.proxyLinks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.proxyLink {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.proxyLink:hover {
+    background-color: var(--raised);
+}
+
+.proxyLink i {
+    font-size: 20px;
+    color: var(--link);
+}
+
+.proxySettings {
+    margin-top: 24px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+}
+
+.proxySettings summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.proxySettingsBody {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.proxySettingsBody select {
+    width: 100%;
+}
+
+.proxyNote {
+    margin-top: 20px;
+    font-size: 13px;
+    max-width: 62ch;
+}
+
+/* the browser: toolbar plus a frame that fills the rest of the column */
+
+.proxyPage.browsing {
+    max-width: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--nav-height));
+    height: calc(100dvh - var(--nav-height));
+}
+
+.proxyBrowser {
+    margin-top: 0 !important; /* base.css spaces out section + section */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.proxyBrowser[hidden] {
+    display: none;
+}
+
+.proxyBar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+.proxyBar .button {
+    padding: 7px 10px;
+    border-color: transparent;
+}
+
+.proxyAddress {
+    flex: 1;
+    min-width: 0;
+    margin: 0 4px;
+}
+
+.proxyAddress input {
+    padding: 7px 12px;
+    font-size: 14px;
+}
+
+.proxyFrame {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background-color: #fff;
+}
+
+.proxyFrame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* a strip that slides along the top while a page loads */
+.proxyLoading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.proxyLoading::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    background-color: var(--link);
+    animation: proxyLoading 1s linear infinite;
+}
+
+@keyframes proxyLoading {
+    from { left: -30%; }
+    to { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .proxyLoading::before {
+        animation-duration: 3s;
+    }
+}
+
+.proxyPage > .notice {
+    margin: 16px auto 0;
+    max-width: 720px;
+}
+
+.proxyPage.browsing > .notice {
+    margin: 0;
+    max-width: none;
+}
+
+@media (max-width: 560px) {
+    .proxyHome {
+        margin-top: 2vh;
+    }
+
+    .proxyHome h1 {
+        font-size: 32px;
+    }
+
+    .proxyLinks {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .proxySettingsBody {
+        grid-template-columns: 1fr;
+    }
+
+    #proxyNewTab,
+    #proxyFullscreen {
+        display: none;
+    }
+}

@@ -16,6 +16,9 @@
   {% if aiEnabled %}
     {{ nav.item('/ai', 'ph-bold ph-chats', 'AI', here, '/ai/') }}
   {% endif %}
+  {% if proxyEnabled %}
+    {{ nav.item('/proxy', 'ph-bold ph-globe-hemisphere-west', 'Proxy', here) }}
+  {% endif %}
   {% if currentuser %}
     <p class="sidebarHeading">Yours</p>
     {{ nav.item('/favorites', 'ph-bold ph-heart', 'Favorites', here) }}

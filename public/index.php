@@ -61,7 +61,8 @@ $routers = [
     "discover",
     "scores",
     "collections",
-    "recap"
+    "recap",
+    "proxy"
 ];
 
 foreach ($routers as $r) {

@@ -123,7 +123,7 @@ and per-minute limits on comments and chat.
   in: fetch the save, write the keys into localStorage, *then* set the iframe `src` (it becomes `data-src`).
   Limit 1MB per game. Skip the site's own keys (`sidebarClosed`, `aiModel`, music/lyrics prefs, `wg*`).
   Cross-origin games and IndexedDB-only games aren't supported; say so in the UI.
-- **/proxy**: remove the placeholder (route + sidebar). Building a web proxy is out of scope and an abuse risk.
+- **/proxy**: removed in batch 1. The owner asked for it on 2026-10-08, so it's back as a real one (see the log).
 - **Group chats**: separate tables (`chat_groups`, `chat_group_members`, `chat_group_messages`), not a
   rework of the 1:1 `chat_messages`. Only friends can be added; max 20 members. Reports on group messages
   go into `chat_reports` with `kind = 'group'`.
@@ -267,3 +267,12 @@ Routes / pages:
 - 2026-10-08: URLs moved and deployed (588f8d4): /games -> /discover, /games/{id} -> /play/{id}, /games/random ->
   /play/random, /games/request -> /discover/request. The old ones 301 with the query string (movedTo() in
   routes/web.php). Apps stay at /apps. API paths (/api/v1/games/..., /api/v1/play/...) and /admin/games didn't change.
+- 2026-10-08: **web proxy at /proxy, built and tested locally, not committed or deployed.** Scramjet 1.1 + bare-mux,
+  epoxy (default) or libcurl transport, wisp-js server, all in the new `proxy/` node service (port 3002), served under
+  /proxy/ on the site's own domain. The proxy SW is scoped to /proxy/ so the site's /sw.js is untouched. PHP signs a
+  token like realtime does (PROXY_SECRET). Two upstream bugs worked around in proxy/public/sw.js: Scramjet waits for
+  the page to ack cookies set by subresources, which deadlocks while the page is parsing (wikipedia froze), and the
+  wasm path must not carry `?v=` (Scramjet compares pathnames). The bare-mux SharedWorker lives under /proxy/ too, so
+  the SW must not open Scramjet's IndexedDB before the page has made it. Tested headless: wikipedia 1.5s, iana 0.6s,
+  youtube search, discord login, github, scratch; reddit blocks proxies. **To ship:** nginx locations + systemd unit
+  from the readme, `npm ci` in proxy/, PROXY_SECRET in .env and the unit.
