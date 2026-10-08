@@ -260,3 +260,7 @@ Routes / pages:
   and is on the ai page header, every answer, the new chat screen and the guest/disabled pages; the loading dots are
   replaced by him pondering, typing, using tools or writing. Checked in headless Chrome with a stubbed stream (the
   extension wasn't connected); note headless --virtual-time-budget only runs a handful of animation frames.
+- 2026-10-08: plans + partial artifact edits deployed (4c0cdda). The model writes a <plan> checklist before building, and
+  changes artifacts with mode="edit" SEARCH/REPLACE blocks (artifacts::applyEdits, mirrored in ai.js for the live
+  preview). Misses change nothing and go back to the model as a hidden user message (block "auto"=>true, shown as a
+  "retry" notice), at most twice an answer. Not yet tried against a real model, only a stubbed stream.
