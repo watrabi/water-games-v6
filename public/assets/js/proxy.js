@@ -26,6 +26,68 @@ try {
 const V = "?v=" + encodeURIComponent(config.version || "");
 const PREFIX = "/network/~/";
 
+// proxied addresses are base64url (/network/~/aHR0cHM6Ly9lbi53aWtpcGVkaWEub3Jn) instead of readable
+// (/network/~/https%3A%2F%2Fen.wikipedia.org), so filters that read paths don't see the site. Scramjet turns these
+// into text and rebuilds them in the service worker and every page, so they can't use anything from out here
+const codec = {
+    encode: function(url) {
+        if(!url){
+            return url;
+        }
+        let bytes = new TextEncoder().encode(url);
+        let binary = "";
+        for(let i = 0; i < bytes.length; i++){
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    },
+    decode: function(text) {
+        if(!text){
+            return text;
+        }
+        // a #part can follow the encoded address (Scramjet adds it unencoded)
+        let fragment = "";
+        let pound = text.indexOf("#");
+        if(pound !== -1){
+            fragment = text.slice(pound);
+            text = text.slice(0, pound);
+        }
+        // a form that submits with GET puts its fields after the address, like ?q=cats. they replace the
+        // address's own query, the same as on the real site
+        let query = null;
+        let mark = text.indexOf("?");
+        if(mark !== -1){
+            query = text.slice(mark);
+            text = text.slice(0, mark);
+        }
+        let url;
+        if(/^[A-Za-z0-9_-]+$/.test(text)){
+            try {
+                let binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+                url = new TextDecoder().decode(Uint8Array.from(binary, c => c.charCodeAt(0)));
+            } catch (e) {}
+        }
+        if(url === undefined){
+            // the old readable kind, from before the switch (history, bookmarks)
+            try {
+                url = decodeURIComponent(text);
+            } catch (e) {
+                url = text;
+            }
+        }
+        if(query !== null){
+            let hash = url.indexOf("#");
+            let base = hash === -1 ? url : url.slice(0, hash);
+            url = base.split("?")[0] + query;
+        }
+        if(fragment){
+            let hash = url.indexOf("#");
+            url = (hash === -1 ? url : url.slice(0, hash)) + fragment;
+        }
+        return url;
+    },
+};
+
 const engines = {
     ddg: "https://duckduckgo.com/?q=%s",
     google: "https://www.google.com/search?q=%s",
@@ -116,6 +178,7 @@ async function setup(){
         const { ScramjetController } = $scramjetLoadController();
         state.controller = new ScramjetController({
             prefix: PREFIX,
+            codec: codec,
             files: {
                 // no ?v= on this one: Scramjet compares it to the bare path
                 wasm: "/network/s/scram/scramjet.wasm.wasm",
