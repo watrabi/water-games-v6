@@ -301,3 +301,6 @@ Routes / pages:
   Found with a temporary nginx log, /www/wwwlogs/watr-cookiecheck.log (map at the top of the vhost, school IPs
   207.191.188.* only, logs the first 6 characters of each WATR-AUTH): **remove it once this is confirmed.**
 - 2026-10-08: proxied addresses are base64url (d2ae868), a Scramjet `codec` in proxy.js. Old readable ones decode.
+- 2026-10-08: the word "proxy" is gone from everything the browser gets: label/title "Network", ids and classes
+  `network*`, files public/assets/js/network.js, public/assets/css/network.css, views/network.twig, and the text in
+  sw.js / boot.html. Server-side names (proxy/ service, watrlabs\proxy, PROXY_* env, routes/proxy.php) stay.

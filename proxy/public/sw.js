@@ -1,5 +1,5 @@
-// the proxy's service worker, scoped to /network/ (the site's own /sw.js keeps everything else).
-// every request a proxied page makes comes through here, and Scramjet rewrites it.
+// the network's service worker, scoped to /network/ (the site's own /sw.js keeps everything else).
+// every request an opened page makes comes through here, and Scramjet rewrites it.
 // __VERSION__ is filled in by server.js, so the big script below can be cached forever
 importScripts("/network/s/scram/scramjet.all.js?v=__VERSION__");
 
@@ -40,7 +40,7 @@ scramjet.dispatch = function(client, message) {
     return message && message.scramjet$type === "cookie" ? Promise.resolve() : reply;
 };
 
-// take over straight away, so the first page someone opens is already proxied instead of needing a reload
+// take over straight away, so the first page someone opens is already opened instead of needing a reload
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", event => event.waitUntil(self.clients.claim()));
 
@@ -65,7 +65,7 @@ async function handle(event){
     return fetch(event.request);
 }
 
-// every proxied page loads the rewriter with <script src="...wasm">, and gets back a script that sets
+// every opened page loads the rewriter with <script src="...wasm">, and gets back a script that sets
 // self.WASM to the wasm as base64. Scramjet builds that ~700KB string again for every page, one character at a
 // time. it never changes, so build it once and hand out the same text
 const WASM = "/network/s/scram/scramjet.wasm.wasm";
@@ -86,7 +86,7 @@ function rewriterScript(){
 }
 
 self.addEventListener("fetch", function(event) {
-    // only proxied addresses and the rewriter. the proxy's own files (and the bare-mux worker, which lives under
+    // only opened addresses and the rewriter. the network's own files (and the bare-mux worker, which lives under
     // /network/ too) go straight to the network without a detour through here
     let path = new URL(event.request.url).pathname;
     if(path.startsWith("/network/~/")){

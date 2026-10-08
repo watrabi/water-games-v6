@@ -1,19 +1,19 @@
 // /network. runs again on every visit (pages load in place), so everything stays inside this function. the expensive
-// parts (scripts, service worker, transport) live on window.watrProxy and are only set up once per tab.
+// parts (scripts, service worker, transport) live on window.watrNetwork and are only set up once per tab.
 //
 // how it's fast:
 // - setup starts the moment the page opens, not when you press Go, so by the time you've typed it's done
 // - the transport's wisp socket and wasm are warmed with a tiny request to your search engine, and while you type an
 //   address that site gets one too, so its DNS, TCP and TLS are already done when you press enter
-// - the files come from proxy/server.js as brotli with a versioned url, so after the first visit they're never
+// - the files come from the node service as brotli with a versioned url, so after the first visit they're never
 //   downloaded again
 (function(){
 
-if(window.watrProxyCleanup){
-    window.watrProxyCleanup();
+if(window.watrNetworkCleanup){
+    window.watrNetworkCleanup();
 }
 
-let dataEl = document.getElementById("proxyData");
+let dataEl = document.getElementById("networkData");
 if(!dataEl){
     return;
 }
@@ -26,7 +26,7 @@ try {
 const V = "?v=" + encodeURIComponent(config.version || "");
 const PREFIX = "/network/~/";
 
-// proxied addresses are base64url (/network/~/aHR0cHM6Ly9lbi53aWtpcGVkaWEub3Jn) instead of readable
+// opened addresses are base64url (/network/~/aHR0cHM6Ly9lbi53aWtpcGVkaWEub3Jn) instead of readable
 // (/network/~/https%3A%2F%2Fen.wikipedia.org), so filters that read paths don't see the site. Scramjet turns these
 // into text and rebuilds them in the service worker and every page, so they can't use anything from out here
 const codec = {
@@ -100,17 +100,17 @@ const transports = {
     libcurl: "/network/s/libcurl/index.mjs" + V,
 };
 
-let page = document.getElementById("proxyPage");
-let home = document.getElementById("proxyHome");
-let browser = document.getElementById("proxyBrowser");
-let form = document.getElementById("proxyForm");
-let input = document.getElementById("proxyInput");
-let address = document.getElementById("proxyAddress");
-let frameBox = document.getElementById("proxyFrame");
-let loading = document.getElementById("proxyLoading");
-let errorBox = document.getElementById("proxyError");
-let engineSelect = document.getElementById("proxyEngine");
-let transportSelect = document.getElementById("proxyTransport");
+let page = document.getElementById("networkPage");
+let home = document.getElementById("networkHome");
+let browser = document.getElementById("networkBrowser");
+let form = document.getElementById("networkForm");
+let input = document.getElementById("networkInput");
+let address = document.getElementById("networkAddress");
+let frameBox = document.getElementById("networkFrame");
+let loading = document.getElementById("networkLoading");
+let errorBox = document.getElementById("networkError");
+let engineSelect = document.getElementById("networkEngine");
+let transportSelect = document.getElementById("networkTransport");
 
 let cleanups = [];
 function on(target, type, fn, options){
@@ -118,18 +118,18 @@ function on(target, type, fn, options){
     cleanups.push(() => target.removeEventListener(type, fn, options));
 }
 
-window.watrProxyCleanup = function(){
+window.watrNetworkCleanup = function(){
     cleanups.forEach(fn => fn());
     cleanups = [];
     closeFrame();
-    window.watrProxyCleanup = null;
+    window.watrNetworkCleanup = null;
 };
 
 // ---------- settings (just this browser) ----------
 
 let settings = { engine: "ddg", transport: "epoxy" };
 try {
-    Object.assign(settings, JSON.parse(localStorage.getItem("wg_proxy") || "{}"));
+    Object.assign(settings, JSON.parse(localStorage.getItem("wg_network") || "{}"));
 } catch (e) {}
 if(!engines[settings.engine]){ settings.engine = "ddg"; }
 if(!transports[settings.transport]){ settings.transport = "epoxy"; }
@@ -138,23 +138,23 @@ transportSelect.value = settings.transport;
 
 function saveSettings(){
     try {
-        localStorage.setItem("wg_proxy", JSON.stringify(settings));
+        localStorage.setItem("wg_network", JSON.stringify(settings));
     } catch (e) {}
 }
 
 // ---------- setup, once per tab ----------
 
-let state = window.watrProxy || (window.watrProxy = { warmed: new Set() });
+let state = window.watrNetwork || (window.watrNetwork = { warmed: new Set() });
 
 function loadScript(src){
     return new Promise(function(resolve, reject) {
-        let existing = document.querySelector('script[data-proxy-src="' + CSS.escape(src) + '"]');
+        let existing = document.querySelector('script[data-network-src="' + CSS.escape(src) + '"]');
         if(existing){
             return existing.dataset.loaded ? resolve() : existing.addEventListener("load", () => resolve(), { once: true });
         }
         let script = document.createElement("script");
         script.src = src;
-        script.dataset.proxySrc = src;
+        script.dataset.networkSrc = src;
         script.onload = function() { script.dataset.loaded = "1"; resolve(); };
         script.onerror = () => reject(new Error("couldn't load " + src));
         document.head.appendChild(script);
@@ -167,7 +167,7 @@ function wispUrl(){
 
 async function setup(){
     if(!navigator.serviceWorker){
-        throw new Error(location.protocol === "https:" ? "This browser can't run the proxy (no service workers)." : "The proxy only works over https.");
+        throw new Error(location.protocol === "https:" ? "This browser can't open sites here (no service workers)." : "This only works over https.");
     }
 
     // all at once: the two scripts download while the service worker installs
@@ -204,7 +204,7 @@ async function setup(){
     }
 }
 
-// an older proxy service worker could leave Scramjet's database without its tables (see proxy/public/sw.js), and
+// an older network service worker could leave Scramjet's database without its tables (see the service worker), and
 // init() can't fix that. delete it so init() makes it again. the new worker lets go of it when asked, the old one
 // when it's replaced, so give it a few seconds
 const STORES = ["config", "cookies", "redirectTrackers", "referrerPolicies", "publicSuffixList"];
@@ -319,7 +319,7 @@ async function open(text){
 
     if(!frame){
         frame = state.controller.createFrame();
-        frame.frame.title = "Proxied page";
+        frame.frame.title = "Opened page";
         frame.frame.setAttribute("allow", "fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture; gamepad");
         frame.frame.setAttribute("allowfullscreen", "");
         frame.frame.addEventListener("load", function() {
@@ -327,7 +327,7 @@ async function open(text){
             try {
                 let title = frame.frame.contentDocument.title;
                 if(title){
-                    document.title = title + " - Proxy";
+                    document.title = title + " - Network";
                 }
             } catch (e) {}
         });
@@ -371,7 +371,7 @@ on(form, "submit", function(event) {
     open(input.value);
 });
 
-on(document.getElementById("proxyAddressForm"), "submit", function(event) {
+on(document.getElementById("networkAddressForm"), "submit", function(event) {
     event.preventDefault();
     address.blur();
     open(address.value);
@@ -390,28 +390,28 @@ on(input, "input", function() {
 });
 cleanups.push(() => clearTimeout(typingTimer));
 
-document.querySelectorAll(".proxyLink").forEach(function(link) {
+document.querySelectorAll(".networkLink").forEach(function(link) {
     on(link, "click", () => open(link.dataset.url));
     // the pointer is on its way, so is the connection
     on(link, "pointerenter", () => warm(link.dataset.url));
     on(link, "focus", () => warm(link.dataset.url));
 });
 
-on(document.getElementById("proxyBack"), "click", () => frame && frame.back());
-on(document.getElementById("proxyForward"), "click", () => frame && frame.forward());
-on(document.getElementById("proxyReload"), "click", function() {
+on(document.getElementById("networkBack"), "click", () => frame && frame.back());
+on(document.getElementById("networkForward"), "click", () => frame && frame.forward());
+on(document.getElementById("networkReload"), "click", function() {
     if(frame){
         setLoading(true);
         frame.reload();
     }
 });
-on(document.getElementById("proxyHomeButton"), "click", goHome);
-on(document.getElementById("proxyNewTab"), "click", function() {
+on(document.getElementById("networkHomeButton"), "click", goHome);
+on(document.getElementById("networkNewTab"), "click", function() {
     if(current && state.controller){
         window.open(state.controller.encodeUrl(current), "_blank", "noopener");
     }
 });
-on(document.getElementById("proxyFullscreen"), "click", function() {
+on(document.getElementById("networkFullscreen"), "click", function() {
     if(document.fullscreenElement){
         document.exitFullscreen();
     } else if(frameBox.requestFullscreen){

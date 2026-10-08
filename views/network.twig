@@ -1,0 +1,78 @@
+{% extends "models/base.twig" %}
+{% block pageName %}Network{% endblock %}
+{% block headerIncludes %}
+    <link rel="stylesheet" href="/assets/css/network.css?t=2">
+    {# fetched while the page settles, so the first site opens without waiting on them #}
+    <link rel="prefetch" href="/network/s/scram/scramjet.wasm.wasm">
+    <link rel="prefetch" href="/network/s/epoxy/index.mjs?v={{ networkVersion }}">
+{% endblock %}
+{% block body %}
+<div class="page networkPage" id="networkPage">
+    <section class="networkHome" id="networkHome">
+        <p class="eyebrow">Network</p>
+        <h1>Go <em>anywhere</em>.</h1>
+        <form class="networkSearch" id="networkForm" role="search">
+            <i class="ph-bold ph-magnifying-glass" aria-hidden="true"></i>
+            <input id="networkInput" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search, or type an address" aria-label="Search, or type an address" autofocus>
+            <button class="button" type="submit">Go</button>
+        </form>
+
+        <nav class="networkLinks" aria-label="Quick links">
+            <button type="button" class="networkLink" data-url="https://www.youtube.com"><i class="ph-bold ph-youtube-logo"></i>YouTube</button>
+            <button type="button" class="networkLink" data-url="https://discord.com/app"><i class="ph-bold ph-discord-logo"></i>Discord</button>
+            <button type="button" class="networkLink" data-url="https://scratch.mit.edu"><i class="ph-bold ph-puzzle-piece"></i>Scratch</button>
+            <button type="button" class="networkLink" data-url="https://open.spotify.com"><i class="ph-bold ph-spotify-logo"></i>Spotify</button>
+            <button type="button" class="networkLink" data-url="https://en.wikipedia.org"><i class="ph-bold ph-book-open"></i>Wikipedia</button>
+            <button type="button" class="networkLink" data-url="https://github.com"><i class="ph-bold ph-github-logo"></i>GitHub</button>
+        </nav>
+
+        <details class="networkSettings">
+            <summary>Settings</summary>
+            <div class="networkSettingsBody">
+                <div class="field">
+                    <label for="networkEngine">Search with</label>
+                    <select id="networkEngine">
+                        <option value="ddg">DuckDuckGo</option>
+                        <option value="google">Google</option>
+                        <option value="bing">Bing</option>
+                        <option value="brave">Brave</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="networkTransport">Connection</label>
+                    <select id="networkTransport">
+                        <option value="epoxy">Fast (epoxy)</option>
+                        <option value="libcurl">Compatible (libcurl)</option>
+                    </select>
+                    <p class="muted small">If a site won't load, try the other one.</p>
+                </div>
+            </div>
+        </details>
+
+        <p class="networkNote muted">Sites see this server instead of you. Encryption happens in your browser, so the server
+            only knows which sites you open, not what's on them. Some sites (Google sign in, banks) don't work through it.</p>
+    </section>
+
+    <section class="networkBrowser" id="networkBrowser" hidden>
+        <div class="networkBar">
+            <button type="button" class="button quiet" id="networkBack" title="Back"><i class="ph-bold ph-arrow-left"></i><span class="sr-only">Back</span></button>
+            <button type="button" class="button quiet" id="networkForward" title="Forward"><i class="ph-bold ph-arrow-right"></i><span class="sr-only">Forward</span></button>
+            <button type="button" class="button quiet" id="networkReload" title="Reload"><i class="ph-bold ph-arrow-clockwise"></i><span class="sr-only">Reload</span></button>
+            <form class="networkAddress" id="networkAddressForm">
+                <input id="networkAddress" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Address">
+            </form>
+            <button type="button" class="button quiet" id="networkNewTab" title="Open in a new tab"><i class="ph-bold ph-arrow-square-out"></i><span class="sr-only">Open in a new tab</span></button>
+            <button type="button" class="button quiet" id="networkFullscreen" title="Fullscreen"><i class="ph-bold ph-arrows-out"></i><span class="sr-only">Fullscreen</span></button>
+            <button type="button" class="button quiet" id="networkHomeButton" title="Close"><i class="ph-bold ph-x"></i><span class="sr-only">Close</span></button>
+        </div>
+        <div class="networkFrame" id="networkFrame">
+            <div class="networkLoading" id="networkLoading" hidden></div>
+        </div>
+    </section>
+
+    <div class="notice danger" id="networkError" role="alert" hidden></div>
+</div>
+<script type="application/json" id="networkData">{{ networkData|raw }}</script>
+<script src="/assets/js/network.js?t=4" defer></script>
+{% endblock %}
+{% block footer %}{% endblock %}

@@ -18,9 +18,9 @@ $router->get("/network", function(){
 
     $start = trim((string) ($_GET["url"] ?? ""));
 
-    echo $twig->render("proxy.twig", [
-        "proxyData"=>json_encode(proxy::clientConfig((int) $currentuser->id) + ["start"=>mb_substr($start, 0, 2000)], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP),
-        "proxyVersion"=>proxy::version(),
+    echo $twig->render("network.twig", [
+        "networkData"=>json_encode(proxy::clientConfig((int) $currentuser->id) + ["start"=>mb_substr($start, 0, 2000)], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP),
+        "networkVersion"=>proxy::version(),
     ]);
 });
 

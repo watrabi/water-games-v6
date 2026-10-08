@@ -49,11 +49,11 @@ class health {
             $body = curl_exec($ch);
             $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $data = $body ? json_decode($body, true) : null;
-            $checks["Proxy"] = $code === 200 && !empty($data["ok"])
+            $checks["Network"] = $code === 200 && !empty($data["ok"])
                 ? ["ok"=>true, "detail"=>(int) ($data["users"] ?? 0) . " people browsing"]
                 : ["ok"=>false, "detail"=>"Not answering at $url (/network won't load sites)"];
         } else {
-            $checks["Proxy"] = ["ok"=>null, "detail"=>"Not set up"];
+            $checks["Network"] = ["ok"=>null, "detail"=>"Not set up"];
         }
 
         // disk

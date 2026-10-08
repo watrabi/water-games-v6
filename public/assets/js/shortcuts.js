@@ -9,7 +9,7 @@ const shortcutKeys = [
     [["g", "n"], "Go to notifications"],
     [["g", "c"], "Go to collections"],
     [["g", "r"], "Random game"],
-    [["g", "p"], "Go to the proxy"],
+    [["g", "p"], "Go to network"],
     [["c"], "Open chat"],
     [["f"], "Fullscreen (on a game)"],
     [["t"], "Theater mode (on a game)"],

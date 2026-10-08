@@ -203,7 +203,8 @@ answers without the secret if you want to monitor it. if node goes down, chat qu
 # proxy
 `/network` is a web proxy: search or type an address and the site opens inside the page, with back / forward / reload,
 fullscreen and "open in a new tab". `/network?url=wikipedia.org` opens a site straight away. only signed in people can
-use it, and it only shows up in the sidebar once it's set up.
+use it, and it only shows up in the sidebar (as "Network") once it's set up. the page never says "proxy" anywhere a filter
+could read it: the text, ids, file names (`network.js`, `network.css`) and proxied addresses (base64url) all avoid it.
 
 it's [Scramjet](https://github.com/MercuryWorkshop/scramjet). the rewriting and even the TLS happen in the browser
 (a service worker plus a wasm transport), and `proxy/` is a small node service that serves those files and runs a
