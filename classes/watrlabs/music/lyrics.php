@@ -3,7 +3,8 @@
 namespace watrlabs\music;
 
 // finds lyrics for a track on lrclib.net (free, no key). prefers time synced (LRC) lyrics so the
-// player can follow along, falls back to plain text. a match needs the title to line up plus either
+// player can follow along, falls back to plain text. when lrclib has a Lyricsfile for it (see lyricsfile.php), that's
+// kept too, and ones with word by word timing win over ones without. a match needs the title to line up plus either
 // the artist or the length, so a song called "Hello" doesn't get whichever "Hello" comes back first
 class lyrics {
 
@@ -15,7 +16,7 @@ class lyrics {
     // bits people tack onto titles that the real song name doesn't have
     const TITLE_NOISE = '/[\(\[][^\)\]]*(official|video|audio|lyric|visuali[sz]er|hd|hq|4k|remaster|explicit|clean|mv|m\/v)[^\)\]]*[\)\]]/i';
 
-    // returns ["lyrics"=>string, "synced"=>bool] or null if nothing good turned up.
+    // returns ["lyrics"=>string, "synced"=>bool, "file"=>?string (the Lyricsfile yaml)] or null if nothing good turned up.
     // throws RuntimeException when lrclib can't be reached, so the caller knows to try again later
     public static function find(string $title, ?string $artist, ?int $duration){
         $title = trim($title);
@@ -99,10 +100,17 @@ class lyrics {
                 continue;
             }
 
-            $score = ($synced !== "" ? 100 : 0) - ($diff ?? 4) * 3;
+            // a Lyricsfile only counts if it reads properly
+            $file = is_string($candidate["lyricsfile"] ?? null) ? $candidate["lyricsfile"] : null;
+            $parsed = $file !== null ? lyricsfile::parse($file) : null;
+            if(!$parsed || !$parsed["lines"]){
+                $file = null;
+            }
+
+            $score = ($synced !== "" ? 100 : 0) + ($parsed && $parsed["words"] ? 50 : 0) - ($diff ?? 4) * 3;
             if($score > $bestScore){
                 $bestScore = $score;
-                $best = ["lyrics"=>$text, "synced"=>$synced !== ""];
+                $best = ["lyrics"=>$text, "synced"=>$synced !== "", "file"=>$file];
             }
         }
 

@@ -1054,6 +1054,26 @@ button.lyricsLine.active {
   font-size: 15px;
 }
 
+/* word by word (from a Lyricsfile): the lit line starts out quiet and each word lights up as it's sung */
+button.lyricsLine.active:has(.lyricsWord) {
+  color: var(--text);
+}
+
+button.lyricsLine.active .lyricsWord {
+  color: color-mix(in srgb, var(--text) 55%, transparent);
+  transition: color 0.12s;
+}
+
+button.lyricsLine.active .lyricsWord.sung {
+  color: var(--link);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.lyricsLine.active .lyricsWord {
+    transition: none;
+  }
+}
+
 .lyricsLine.plain {
   font-size: 15px;
   font-weight: 400;

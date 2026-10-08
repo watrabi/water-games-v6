@@ -133,7 +133,8 @@ class music {
         return true;
     }
 
-    // ["lyrics"=>?string, "synced"=>bool]. looked up once and saved, tracks with nothing get asked again after a week
+    // ["lyrics"=>?string, "synced"=>bool, "lines"=>?array, "words"=>bool]. looked up once and saved, tracks with nothing
+    // get asked again after a week. "lines" comes from the Lyricsfile when lrclib had one (see lyricsfile.php)
     public function lyricsFor($track){
         global $db;
 
@@ -143,20 +144,28 @@ class music {
         if($stale){
             try {
                 $found = lyrics::find($track->title, $track->artist, $track->duration ? (int) $track->duration : null);
-            } catch (\RuntimeException $e) {
-                // lrclib is down, leave it unchecked so the next play tries again
-                return ["lyrics"=>$track->lyrics, "synced"=>(bool) $track->lyricsSynced];
-            }
 
-            $track->lyrics = $found["lyrics"] ?? null;
-            $track->lyricsSynced = $found["synced"] ?? false;
-            $db->table("tracks")->where("id", $track->id)->update([
-                "lyrics"=>$track->lyrics,
-                "lyricsSynced"=>$track->lyricsSynced ? 1 : 0,
-                "lyricsChecked"=>time(),
-            ]);
+                $track->lyrics = $found["lyrics"] ?? null;
+                $track->lyricsSynced = $found["synced"] ?? false;
+                $track->lyricsFile = $found["file"] ?? null;
+                $db->table("tracks")->where("id", $track->id)->update([
+                    "lyrics"=>$track->lyrics,
+                    "lyricsSynced"=>$track->lyricsSynced ? 1 : 0,
+                    "lyricsFile"=>$track->lyricsFile,
+                    "lyricsChecked"=>time(),
+                ]);
+            } catch (\RuntimeException $e) {
+                // lrclib is down, leave it unchecked so the next play tries again (and keep whatever we had)
+            }
         }
 
-        return ["lyrics"=>$track->lyrics, "synced"=>(bool) $track->lyricsSynced];
+        $file = lyricsfile::parse($track->lyricsFile ?? null);
+
+        return [
+            "lyrics"=>$track->lyrics,
+            "synced"=>(bool) $track->lyricsSynced,
+            "lines"=>$file && $file["lines"] ? $file["lines"] : null,
+            "words"=>$file ? $file["words"] : false,
+        ];
     }
 }

@@ -1,5 +1,6 @@
 // lyrics for whatever the player has on. synced (LRC) lyrics light up line by line with the song,
-// clicking a line jumps there. loaded once like music.js, the panel sits outside #main so it stays put
+// clicking a line jumps there. when the server has a Lyricsfile for the song, its lines also say when they end (so
+// instrumental breaks go quiet) and sometimes when each word is sung, which lights up word by word. loaded once like music.js, the panel sits outside #main so it stays put
 // across page changes
 
 const lyricsPrefKey = "watrLyrics"; // "open" | "closed", unset means open it the first time we find some
@@ -7,8 +8,9 @@ const lyricsPrefKey = "watrLyrics"; // "open" | "closed", unset means open it th
 let lyrics = {
     cache: {},         // track id -> {lyrics, synced} once the server answers
     trackId: null,
-    lines: [],         // [{time, text, el}] for synced, [] for plain
+    lines: [],         // [{time, end, text, words, el}] for synced, [] for plain. end/words only from a Lyricsfile
     active: -1,
+    activeKey: "",     // which lines are lit, so nothing is redrawn when that hasn't changed
     frame: null,
     userScrolled: 0    // last time someone scrolled the panel themselves
 };
@@ -65,6 +67,7 @@ function setPanel(open, remember){
 
     if(open){
         lyrics.active = -1;
+        lyrics.activeKey = "";
         tick();
     }
     loop();
@@ -90,9 +93,33 @@ function render(track, data){
 
     $("#playerLyrics").removeClass("none").attr("title", "Lyrics");
     $(".lyricsCredit").prop("hidden", false);
-    body.toggleClass("synced", !!data.synced);
+    body.toggleClass("synced", !!(data.synced || data.lines));
+    body.toggleClass("words", !!data.words);
+    lyrics.activeKey = "";
 
-    if(data.synced){
+    if(data.lines && data.lines.length){
+        // from the Lyricsfile: times are milliseconds
+        lyrics.lines = data.lines.map(function(line) {
+            let entry = {
+                time: line.start / 1000,
+                end: line.end === null ? null : line.end / 1000,
+                text: line.text,
+                words: (line.words || []).map(w => ({ time: w.start / 1000, end: w.end === null ? null : w.end / 1000, text: w.text }))
+            };
+            let el = $("<button>", { type: "button", "class": "lyricsLine" + (line.text.trim() ? "" : " gap") }).data("time", entry.time)[0];
+            if(entry.words.length){
+                entry.words.forEach(function(word) {
+                    word.el = $("<span>", { "class": "lyricsWord", text: word.text })[0];
+                    el.append(word.el);
+                });
+            } else {
+                el.textContent = line.text.trim() ? line.text : "♪";
+            }
+            entry.el = el;
+            body.append(el);
+            return entry;
+        });
+    } else if(data.synced){
         lyrics.lines = parseLrc(data.lyrics);
         lyrics.lines.forEach(function(line) {
             line.el = $("<button>", {
@@ -158,13 +185,36 @@ function tick(){
         index = i;
     }
 
-    if(index === lyrics.active){
-        return;
+    // what's lit: a line runs until its end time when it has one (Lyricsfile), otherwise until the next line.
+    // lines can overlap (two singers), so more than one can be lit
+    let lit = [];
+    for(let i = 0; i <= index; i++){
+        let line = lyrics.lines[i];
+        let until = line.end !== undefined && line.end !== null ? line.end : (lyrics.lines[i + 1] ? lyrics.lines[i + 1].time : Infinity);
+        if(now < until || (i === index && line.end === undefined)){
+            lit.push(i);
+        }
     }
 
+    lit.forEach(i => lightWords(lyrics.lines[i], now));
+
+    let key = index + ":" + lit.join(",");
+    if(key === lyrics.activeKey){
+        return;
+    }
+    lyrics.activeKey = key;
+
     lyrics.lines.forEach(function(line, i) {
-        line.el.classList.toggle("active", i === index);
-        line.el.classList.toggle("past", i < index);
+        let on = lit.indexOf(i) !== -1;
+        line.el.classList.toggle("active", on);
+        line.el.classList.toggle("past", !on && i <= index);
+        if(!on && line.words){
+            // finished lines show every word as sung, ones not reached yet show none
+            line.words.forEach(word => {
+                word.el.classList.toggle("sung", i <= index);
+                word.el.classList.remove("now");
+            });
+        }
     });
     lyrics.active = index;
 
@@ -175,6 +225,20 @@ function tick(){
         let reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         body.scrollTo({ top: line.offsetTop - body.clientHeight / 2 + line.offsetHeight / 2, behavior: reduce ? "auto" : "smooth" });
     }
+}
+
+// inside a lit line: words already sung, and the one being sung now
+function lightWords(line, now){
+    if(!line.words || !line.words.length){
+        return;
+    }
+    line.words.forEach(function(word, i) {
+        let next = line.words[i + 1];
+        let until = word.end !== null ? word.end : (next ? next.time : (line.end !== null && line.end !== undefined ? line.end : Infinity));
+        let started = word.time <= now;
+        word.el.classList.toggle("now", started && now < until);
+        word.el.classList.toggle("sung", started);
+    });
 }
 
 // smoother than timeupdate (which only fires ~4 times a second), and only runs while it's needed
@@ -218,6 +282,7 @@ $("#lyricsBody").on("click", ".lyricsLine", function() {
 
 $(window.watrMusic.audio).on("seeked", function() {
     lyrics.userScrolled = 0;
+    lyrics.activeKey = "";
     tick();
 });
 

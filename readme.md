@@ -260,6 +260,15 @@ VALUES ('Low Tide', 'watrlabs', '/music-files/low-tide.mp3', '/music-files/cover
 `artist`, `coverPath` and `duration` (seconds) are optional. the web server needs to support range requests
 for seeking to work (apache and nginx do by default, `php -S` doesn't)
 
+# lyrics
+the player looks lyrics up on [lrclib.net](https://lrclib.net) the first time a song plays and saves them (songs with
+nothing get asked again after a week). it prefers time synced lyrics, which light up line by line, and falls back to
+plain text. when lrclib has a [Lyricsfile](https://github.com/tranxuanthang/lyricsfile/blob/main/SPECIFICATION.md)
+for the song, that's saved too (`tracks.lyricsFile`): its lines say when they end, so instrumental breaks go quiet,
+and when it has word timing the words light up as they're sung. results with word timing are picked over ones without.
+files that don't follow the 1.0 draft are ignored and the plain synced lyrics are used. changing a track's title,
+artist or length in the admin panel looks its lyrics up again.
+
 # AI chat
 the easy way is **admin panel → AI**: add a provider (pick Ollama, Anthropic compatible or OpenAI compatible, give it a
 base url and key), hit "fetch available models" to add the ones you want, then switch the AI on. you can have as many

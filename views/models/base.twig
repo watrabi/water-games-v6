@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/base.css?t=226">
+    <link rel="stylesheet" href="/assets/css/base.css?t=227">
     <link rel="stylesheet" href="/assets/css/themes.css?t=1">
     <link rel="stylesheet" href="/assets/css/features.css?t=3">
     {% if currentuser %}<link rel="stylesheet" href="/assets/css/chat.css?t=4">{% endif %}
@@ -17,7 +17,7 @@
     <script src="/assets/js/reactions.js?t=1" defer></script>
     {% if currentuser %}<script src="/assets/js/notifications.js?t=1" defer></script>{% endif %}
     <script src="/assets/js/music.js?t=4" defer></script>
-    <script src="/assets/js/lyrics.js?t=3" defer></script>
+    <script src="/assets/js/lyrics.js?t=4" defer></script>
     {# share previews (discord, imessage, twitter...). a page can define ogTitle, ogDescription, ogImage and
        twitterCard blocks (they're only read here, never printed on their own), see play.twig #}
     {% set ogTitle = block('ogTitle') is defined ? block('ogTitle')|trim : ((block('pageName')|trim) ? (block('pageName')|trim) ~ ' - ' ~ env("APP_NAME") : env("APP_NAME")) %}
