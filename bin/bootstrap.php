@@ -4,6 +4,9 @@ if(PHP_SAPI !== "cli"){
     exit;
 }
 
+// the libraries in vendor/ are older than PHP 8.5 and print deprecation notices that would fill the cron log
+error_reporting(E_ALL & ~E_DEPRECATED);
+
 spl_autoload_register(function ($class_name) {
     $file = dirname(__DIR__) . '/classes/' . str_replace('\\', DIRECTORY_SEPARATOR, $class_name) . '.php';
     if(file_exists($file)){

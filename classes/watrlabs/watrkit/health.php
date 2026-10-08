@@ -33,7 +33,6 @@ class health {
             curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT_MS=>1000, CURLOPT_TIMEOUT_MS=>2000]);
             $body = curl_exec($ch);
             $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
             $data = $body ? json_decode($body, true) : null;
             $checks["Realtime chat"] = $code === 200 && !empty($data["ok"])
                 ? ["ok"=>true, "detail"=>(int) ($data["users"] ?? 0) . " people connected"]
@@ -102,7 +101,6 @@ class health {
             ]);
             curl_exec($ch);
             $sent = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE) < 300;
-            curl_close($ch);
         }
 
         $email = trim($_ENV["ALERT_EMAIL"] ?? "");
