@@ -627,6 +627,44 @@ function plainAnswer(raw){
 
 // ---------- the artifact panel ----------
 
+// a srcdoc frame gets this page's CSP, which is none, so the artifact's own goes in as a <meta> before anything
+// the model wrote (see artifacts::CSP: nothing can phone home with the viewer's ip). it goes straight after the
+// doctype so the page doesn't drop into quirks mode. the script sends link clicks up here instead of letting the
+// frame open them, and takes webrtc away (it can reach any server, and browsers don't all honour "webrtc 'block'")
+const artifactPreamble = '<meta http-equiv="Content-Security-Policy" content="' + (aiData.artifactCsp || "default-src 'none'").replace(/"/g, "&quot;") + '">'
+    + "<script>(function(){"
+    + "window.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href]');if(!a)return;"
+    + "var h=a.getAttribute('href')||'';if(h.charAt(0)==='#'||/^\\s*javascript:/i.test(h))return;e.preventDefault();"
+    + "parent.postMessage({watrArtifactLink:a.href},'*');},true);"
+    + "['RTCPeerConnection','webkitRTCPeerConnection','RTCDataChannel','RTCIceCandidate'].forEach(function(k){try{Object.defineProperty(window,k,{value:undefined});}catch(e){}});"
+    + "})();</script>";
+
+function lockedDown(html){
+    let doctype = /^\s*<!doctype[^>]*>/i.exec(html);
+    return doctype ? doctype[0] + artifactPreamble + html.slice(doctype[0].length) : artifactPreamble + html;
+}
+
+// a link clicked inside an artifact. it could go anywhere, so say where before opening it
+window.addEventListener("message", function(event) {
+    if(event.source !== artifactPanel.frame.contentWindow || !event.data || typeof event.data.watrArtifactLink !== "string"){
+        return;
+    }
+
+    let url;
+    try {
+        url = new URL(event.data.watrArtifactLink);
+    } catch (e) {
+        return;
+    }
+    if(url.protocol !== "https:" && url.protocol !== "http:"){
+        return;
+    }
+
+    if(confirm("This artifact wants to open:\n\n" + url.href + "\n\nThat site will see your IP address, like any link you open. Go there?")){
+        window.open(url.href, "_blank", "noopener,noreferrer");
+    }
+});
+
 const artifactPanel = {
     root: document.getElementById("aiArtifactPanel"),
     frame: document.getElementById("aiArtifactFrame"),
@@ -751,9 +789,9 @@ function renderArtifactBody(update){
             decorateCode(artifactPanel.doc, false);
             artifactPanel.frame.srcdoc = "";
         } else if(part.type === "svg"){
-            artifactPanel.frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;height:100%;background:#fff}body{display:grid;place-items:center}svg{max-width:100%;max-height:100vh;height:auto}</style></head><body>' + part.content + "</body></html>";
+            artifactPanel.frame.srcdoc = lockedDown('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;height:100%;background:#fff}body{display:grid;place-items:center}svg{max-width:100%;max-height:100vh;height:auto}</style></head><body>' + part.content + "</body></html>");
         } else {
-            artifactPanel.frame.srcdoc = part.content;
+            artifactPanel.frame.srcdoc = lockedDown(part.content);
         }
         return;
     }

@@ -123,14 +123,14 @@
             </div>
         </div>
         <div class="aiArtifactBody">
-            <iframe id="aiArtifactFrame" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+            <iframe id="aiArtifactFrame" title="Preview" sandbox="allow-scripts allow-forms allow-modals allow-downloads"{# artifacts::SANDBOX #}></iframe>
             <div class="aiText aiArtifactDoc" id="aiArtifactDoc" hidden></div>
             <pre class="aiArtifactCode" id="aiArtifactCode" hidden><code></code></pre>
         </div>
     </aside>
 </div>
 <script id="aiData" type="application/json">{{ aiData|raw }}</script>
-<script src="/assets/js/ai.js?t=14" defer></script>
+<script src="/assets/js/ai.js?t=15" defer></script>
 {% endif %}
 {% if state != 'ready' %}<script>Bloop.scan();</script>{% endif %}
 {% endblock %}

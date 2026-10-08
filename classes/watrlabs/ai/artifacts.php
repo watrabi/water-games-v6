@@ -26,6 +26,23 @@ class artifacts {
     const PATTERN = '/<artifact\b([^>]*)>(.*?)<\/artifact>/s';
     const EDIT_PATTERN = '/^<<<<<<< SEARCH[ \t]*\n(.*?)\n?^=======[ \t]*\n(.*?)\n?^>>>>>>> REPLACE[ \t]*$/ms';
 
+    // what an html/svg artifact may load. anyone can make the model write one that reports to their own server
+    // (a webhook), which would hand them the viewer's ip address and browser. so nothing leaves the page except
+    // libraries and fonts from the big CDNs, which don't show their logs to whoever wrote the code. images have
+    // to be inline (data:/blob:), and fetch, forms, beacons, frames and webrtc are all off. sent as a header on
+    // /ai/artifacts/..., and put in the preview's srcdoc by ai.js as a <meta> (it gets it from aiData)
+    const CDNS = "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com";
+    const CSP = "default-src 'none'; "
+        . "script-src 'unsafe-inline' 'unsafe-eval' blob: " . self::CDNS . "; "
+        . "style-src 'unsafe-inline' https://fonts.googleapis.com " . self::CDNS . "; "
+        . "font-src data: https://fonts.gstatic.com " . self::CDNS . "; "
+        . "img-src data: blob:; media-src data: blob:; worker-src blob:; "
+        . "connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; manifest-src 'none'; "
+        . "webrtc 'block'";
+
+    // the sandbox both kinds of preview run in. no popups: a link out goes through the page, which asks first
+    const SANDBOX = "allow-scripts allow-forms allow-modals allow-downloads";
+
     // the current version goes back to the model when an edit misses, cut down if it's huge
     const FEEDBACK_MAX_CHARS = 60000;
 
@@ -42,7 +59,7 @@ class artifacts {
                 . "<artifact id=\"short-kebab-id\" type=\"html|svg|markdown|code\" title=\"Short title\" language=\"python\">\n"
                 . "the complete content, no code fences\n"
                 . "</artifact>\n"
-                . "type=\"html\" is one self-contained page with inline CSS and JS (libraries from cdnjs.cloudflare.com are fine); localStorage and cookies don't work in it. "
+                . "type=\"html\" is one self-contained page with inline CSS and JS (libraries from cdnjs.cloudflare.com are fine); localStorage, cookies, fetch and images from other sites don't work in it, so draw pictures with SVG/canvas or data: URLs. "
                 . "language is only for type=\"code\". To change one, write the whole thing again with the same id. Keep the text around it short.";
         }
 
@@ -63,8 +80,10 @@ class artifacts {
             . "</body>\n</html>\n"
             . "</artifact>\n\n"
             . "Rules:\n"
-            . "- type=\"html\" is one self-contained page: inline CSS and JS. Libraries can come from cdnjs.cloudflare.com or cdn.jsdelivr.net. "
-            . "It runs in a sandboxed preview with no access to this site, and localStorage, cookies and top-level navigation don't work there.\n"
+            . "- type=\"html\" is one self-contained page: inline CSS and JS. Libraries can come from cdnjs.cloudflare.com, cdn.jsdelivr.net or unpkg.com, fonts from Google Fonts. "
+            . "It runs in a sandboxed preview with no access to this site, and localStorage, cookies and top-level navigation don't work there. "
+            . "It can't reach the internet either: fetch, websockets, forms and images or files from other sites are blocked, "
+            . "so draw pictures with SVG, canvas or data: URLs, and keep any data in the page itself.\n"
             . "- language is only for type=\"code\".\n"
             . "- To change an artifact you already made, send only the changes: the same id with mode=\"edit\", and one or more SEARCH/REPLACE blocks:\n"
             . "<artifact id=\"counter\" mode=\"edit\">\n"

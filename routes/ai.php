@@ -104,6 +104,7 @@ function aiPage(?int $chatId){
         "defaultModel"=>$default["id"],
         "models"=>config::publicModels(),
         "messages"=>$messages,
+        "artifactCsp"=>artifacts::CSP,
         "remaining"=>$limit > 0 ? max(0, $limit - $chats->promptsToday($currentuser->id)) : null,
     ];
 
@@ -167,7 +168,7 @@ $router->get("/ai/artifacts/{chat}/{ref}/{version}", function($chat, $ref, $vers
     }
 
     header("Content-Type: " . $mime);
-    header("Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads");
+    header("Content-Security-Policy: sandbox " . artifacts::SANDBOX . "; " . artifacts::CSP);
     header("X-Content-Type-Options: nosniff");
     header("Referrer-Policy: no-referrer");
     header("Cache-Control: private, no-store");
