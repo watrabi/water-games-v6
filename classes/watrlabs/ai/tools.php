@@ -381,12 +381,28 @@ class tools {
         }
 
         foreach($ips as $ip){
-            if(!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)){
+            if(!self::isPublicIp($ip)){
                 throw new \InvalidArgumentException("That address isn't allowed.");
             }
         }
 
         return $ips;
+    }
+
+    // php's NO_PRIV / NO_RES flags miss a few ways back to the server: ipv6 addresses that wrap an ipv4 one
+    // (::ffff:127.0.0.1, 64:ff9b::a00:1), carrier grade NAT (tailscale lives in 100.64.0.0/10) and 6to4
+    static function isPublicIp(string $ip): bool {
+        if(!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)){
+            return false;
+        }
+
+        foreach(["::ffff:0:0/96", "::/96", "64:ff9b::/96", "64:ff9b:1::/48", "2002::/16", "100.64.0.0/10", "192.0.0.0/24", "198.18.0.0/15"] as $range){
+            if(\watrlabs\authentication\security::inRange($ip, $range)){
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static function fetchPage(array $input){

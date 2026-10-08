@@ -44,6 +44,20 @@ if($isSoftMaintenanceEnabled){
     }
 }
 
+// the same on every page. routes that need something stricter (AI artifacts, attachments) send their own CSP on top
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: SAMEORIGIN");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+if(!empty($_SERVER["HTTPS"])){
+    header("Strict-Transport-Security: max-age=31536000");
+}
+
+if(!\watrlabs\watrkit\csrf::sameOrigin($_SERVER['REQUEST_METHOD'], $_SERVER)){
+    http_response_code(403);
+    header("Content-Type: application/json");
+    exit(json_encode(["status"=>"error", "message"=>"That request came from another site, so it was blocked. Refresh the page and try again."]));
+}
+
 ob_start();
 
 $auth = new authentication();
