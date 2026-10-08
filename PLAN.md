@@ -244,3 +244,10 @@ Routes / pages:
   and optionally ALERT_WEBHOOK, plus MAIL_* for recap/alert emails (prod has no mail configured).
   Prod already has Turnstile keys, so sign-up/forgot have the captcha, and sign-in now asks for it after 3 wrong passwords.
 
+- 2026-10-08: **batch 2 deployed to prod** (4b83b20, 935fd31, 8bd0656) with bin/deploy.sh through the aaPanel MCP.
+  The first run stopped at the migration: prod is MySQL 8.0, which refuses a primary key column that isn't explicitly
+  NOT NULL (the local database allowed it), so rate_limits failed after the earlier tables were already made. The deploy
+  script stopped before copying code, as intended. The migration now checks each step before running it, so it resumed
+  cleanly. **Write migrations for MySQL 8** (explicit `'null' => false` on key columns). Prod CLI PHP is 8.5, and
+  bin/bootstrap.php hides vendor deprecation notices. After the deploy, health checks are all ok except email (no MAIL_*).
+  The crons (backup.sh, cron.php) are still **not installed**; adding them was refused by the permission check.
