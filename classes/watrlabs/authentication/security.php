@@ -66,7 +66,11 @@ class security {
     // Retrieved 2026-07-09, License - CC BY-SA 4.0
 
     // cloudflare's published ranges (https://www.cloudflare.com/ips/). only requests that really come from
-    // cloudflare get to tell us the visitor's address, anyone else could put anything in that header
+    // cloudflare get to tell us the visitor's address, anyone else could put anything in that header.
+    //
+    // behind a cloudflare tunnel (games.watr.lol), cloudflared connects from 127.0.0.1, and nginx swaps in the
+    // real address itself (set_real_ip_from 127.0.0.1 + real_ip_header CF-Connecting-IP), so REMOTE_ADDR is
+    // already the visitor by the time php sees it. keep that nginx config if you move servers
     const CLOUDFLARE_RANGES = [
         "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
         "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
