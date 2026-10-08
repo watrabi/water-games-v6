@@ -175,6 +175,7 @@ class assistant {
 
             // run every tool call from this answer, then send all the results back in one message
             $results = [];
+            $files = [];
             foreach($blocks as $block){
                 if($block["type"] !== "tool_use"){
                     continue;
@@ -188,7 +189,10 @@ class assistant {
                         $this->emit($event);
                     }
                 } elseif($useSandbox && sandbox::handles($block["name"])){
-                    [$output, $isError] = sandbox::run($block, $user, $chatId);
+                    [$output, $isError, $file] = sandbox::run($block, $user, $chatId);
+                    if($file){
+                        $files[] = $file;
+                    }
                 } else {
                     [$output, $isError] = tools::run($block);
                 }
@@ -208,11 +212,16 @@ class assistant {
                 $this->emit(["type"=>"tool_result", "id"=>$block["id"], "content"=>mb_substr($output, 0, 2000), "is_error"=>$isError]);
             }
 
+            // files shared from the sandbox are saved for the page to show, the model only gets the tool result
+            foreach($files as $file){
+                $this->emit($file + ["url"=>"/ai/attachments/" . $file["attachment"]]);
+            }
+
             if($feedback){
                 $results[] = $feedback;
             }
 
-            $this->chats->addMessage($chatId, "user", $results, null, false);
+            $this->chats->addMessage($chatId, "user", array_merge($results, $files), null, false);
             $history[] = ["role"=>"user", "content"=>$results];
 
             if(connection_aborted()){
@@ -355,6 +364,10 @@ class assistant {
             $content = [];
 
             foreach($row["content"] as $block){
+                if($block["type"] === "file"){
+                    continue; // shown to the person, the model already had the tool result
+                }
+
                 if($block["type"] === "image"){
                     if(!$caps["vision"]){
                         $content[] = ["type"=>"text", "text"=>"[an image was shared here]"];

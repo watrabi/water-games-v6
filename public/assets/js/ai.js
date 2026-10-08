@@ -33,7 +33,8 @@ const toolLabels = {
     create_theme: ["Making a theme", "Made a theme"],
     edit_theme: ["Changing the theme", "Changed the theme"],
     use_theme: ["Switching themes", "Switched themes"],
-    run_code: ["Running code", "Ran code"]
+    run_code: ["Running code", "Ran code"],
+    share_file: ["Sharing a file", "Shared a file"]
 };
 
 // a theme the ai just made or switched to: redraw the page in it without reloading
@@ -1117,6 +1118,31 @@ function toolResult(turn, id, content, isError){
     chip.body.append(el("pre", "aiToolResult", content));
 }
 
+// a file the ai shared from its sandbox: pictures show, anything else is a download
+function addFile(turn, file){
+    closeText(turn);
+
+    if(/^image\/(png|jpeg|gif|webp)$/.test(file.mime)){
+        let link = el("a", "aiSharedImage");
+        link.href = file.url;
+        link.target = "_blank";
+        let img = el("img");
+        img.src = file.url;
+        img.alt = file.name;
+        img.loading = "lazy";
+        link.append(img);
+        turn.body.append(link);
+        return;
+    }
+
+    let card = el("a", "aiSharedFile");
+    card.href = file.url;
+    card.setAttribute("download", file.name);
+    let size = file.size < 1024 ? file.size + " B" : file.size < 1048576 ? Math.round(file.size / 1024) + " KB" : (file.size / 1048576).toFixed(1) + " MB";
+    card.append(el("i", "ph-bold ph-file-arrow-down"), el("span", "aiSharedName", file.name), el("span", "aiSharedSize", size));
+    turn.body.append(card);
+}
+
 function addNotice(turn, text, kind){
     closeText(turn);
     let notice = el("p", "aiNotice " + (kind || ""), text);
@@ -1203,6 +1229,9 @@ function renderSaved(messages){
                     break;
                 case "notice":
                     addNotice(turn, block.text, block.kind);
+                    break;
+                case "file":
+                    addFile(turn, block);
                     break;
             }
         });
@@ -1344,6 +1373,9 @@ function send(options){
                 break;
             case "notice":
                 addNotice(turn, event.text);
+                break;
+            case "file":
+                addFile(turn, event);
                 break;
             case "artifact":
                 flushText(turn);

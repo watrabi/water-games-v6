@@ -138,7 +138,7 @@ class chats {
     public function uploadsToday(int $userId){
         global $db;
 
-        return $db->table("ai_attachments")->where("userid", $userId)->where("created", ">", time() - 86400)->count();
+        return $db->table("ai_attachments")->where("userid", $userId)->whereNull("name")->where("created", ">", time() - 86400)->count();
     }
 
     // checks an uploaded file really is an image and stores it outside the web root
@@ -179,6 +179,35 @@ class chats {
         ]);
 
         return ["id"=>(int) $id, "mime"=>$info["mime"]];
+    }
+
+    // a file the AI made in its sandbox. stored like an upload, but only plain images ever show inline
+    public function storeFile(int $userId, string $bytes, string $name){
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: "application/octet-stream";
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $ext = preg_match('/^[a-z0-9]{1,8}$/', $ext) ? $ext : "bin";
+        $dir = self::attachmentDir($userId);
+
+        if(!is_dir($dir)){
+            mkdir($dir, 0750, true);
+        }
+
+        $file = bin2hex(random_bytes(16)) . "." . $ext;
+        if(file_put_contents($dir . "/" . $file, $bytes) === false){
+            throw new \RuntimeException("Couldn't save the file.");
+        }
+
+        global $db;
+        $id = $db->table("ai_attachments")->insert([
+            "userid"=>$userId,
+            "path"=>$userId . "/" . $file,
+            "mime"=>mb_substr($mime, 0, 40),
+            "name"=>mb_substr($name, 0, 160),
+            "size"=>strlen($bytes),
+            "created"=>time(),
+        ]);
+
+        return ["id"=>(int) $id, "mime"=>$mime, "name"=>$name, "size"=>strlen($bytes)];
     }
 
     public function attachment(int $id, int $userId){

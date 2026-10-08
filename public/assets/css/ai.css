@@ -414,6 +414,42 @@ body.aiBody #main {
     color: var(--muted);
 }
 
+/* files the ai shared from its sandbox */
+.aiSharedImage img {
+    display: block;
+    max-width: min(100%, 520px);
+    max-height: 420px;
+    border: 1px solid var(--line);
+}
+
+.aiSharedFile {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background-color: var(--raised);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.aiSharedFile:hover {
+    border-color: var(--link);
+}
+
+.aiSharedName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aiSharedSize {
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
 .aiNotice {
     font-size: 13px;
     color: var(--muted);

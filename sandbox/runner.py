@@ -1,14 +1,15 @@
 # runs the AI's code in a throwaway docker container, one per run. php calls this over localhost;
 # it's the only thing that touches docker, so the website itself never gets docker (which is root).
 #
-#   POST /run  {"workspace": "c123", "language": "python"|"bash", "code": "..."}
+#   POST /run   {"workspace": "c123", "language": "python"|"bash", "code": "..."}
+#   POST /file  {"workspace": "c123", "path": "chart.png"}   a file from /work, base64, for showing in the chat
 #   header     Authorization: Bearer $SANDBOX_TOKEN
 #
 # every run: fresh container, not root, no capabilities, read-only system, 512 MB, 1 cpu, 128 processes,
 # killed after RUN_SECONDS. the chat's folder is mounted at /work and kept between runs for a week.
 # it can reach the internet but not the home network or this server, see ensure_firewall()
 
-import hmac, json, os, re, shutil, subprocess, threading, time, uuid
+import base64, hmac, json, os, re, shutil, stat, subprocess, threading, time, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOKEN = os.environ.get("SANDBOX_TOKEN", "")
@@ -19,6 +20,7 @@ RUN_SECONDS = int(os.environ.get("SANDBOX_RUN_SECONDS", "60"))
 MAX_RUNNING = int(os.environ.get("SANDBOX_MAX_RUNNING", "3"))
 WORKSPACE_MB = 200
 OUTPUT_BYTES = 16000
+FILE_BYTES = 10 * 1024 * 1024
 KEEP_DAYS = 7
 UID = 10001
 
@@ -140,6 +142,47 @@ def run(workspace, language, code):
     }
 
 
+# a file the container made, read as root, so it must not be able to point us anywhere else: every part of
+# the path is opened without following symlinks, starting from the chat's folder
+def read_file(workspace, path):
+    folder = os.path.join(WORK_ROOT, workspace)
+    path = path.strip()
+    if path.startswith("/work/"):
+        path = path[len("/work/"):]
+    parts = [p for p in path.split("/") if p not in ("", ".")]
+    if not parts or ".." in parts or not os.path.isdir(folder):
+        return {"ok": False, "error": "Give a file path inside /work, like chart.png or /work/out/report.pdf."}
+
+    fd = os.open(folder, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in parts[:-1]:
+            nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = nxt
+        file_fd = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+    except FileNotFoundError:
+        return {"ok": False, "error": "There's no file at /work/%s." % "/".join(parts)}
+    except OSError:
+        return {"ok": False, "error": "/work/%s can't be shared (links and special files can't)." % "/".join(parts)}
+    finally:
+        os.close(fd)
+
+    try:
+        info = os.fstat(file_fd)
+        if not stat.S_ISREG(info.st_mode):
+            return {"ok": False, "error": "/work/%s isn't a file." % "/".join(parts)}
+        if info.st_size > FILE_BYTES:
+            return {"ok": False, "error": "That file is %.1f MB, the limit for sharing is 10 MB." % (info.st_size / 1048576)}
+        with os.fdopen(file_fd, "rb") as f:
+            file_fd = None
+            data = f.read(FILE_BYTES + 1)
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+
+    return {"ok": True, "name": parts[-1], "size": len(data), "data": base64.b64encode(data).decode()}
+
+
 # chats nobody has run code in for a week lose their folder
 def prune():
     while True:
@@ -164,7 +207,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if self.path != "/run":
+        if self.path not in ("/run", "/file"):
             return self.answer(404, {"ok": False, "error": "not found"})
         if not TOKEN or not hmac.compare_digest(self.headers.get("Authorization", ""), "Bearer " + TOKEN):
             return self.answer(403, {"ok": False, "error": "bad token"})
@@ -174,6 +217,11 @@ class Handler(BaseHTTPRequestHandler):
             if length > 200000:
                 return self.answer(413, {"ok": False, "error": "That code is too long."})
             request = json.loads(self.rfile.read(length))
+            workspace = str(request.get("workspace", ""))
+            if self.path == "/file":
+                if not re.fullmatch(r"[a-z0-9-]{1,64}", workspace):
+                    return self.answer(400, {"ok": False, "error": "bad request"})
+                return self.answer(200, read_file(workspace, str(request.get("path", ""))))
             workspace = str(request.get("workspace", ""))
             language = str(request.get("language", "python"))
             code = str(request.get("code", ""))

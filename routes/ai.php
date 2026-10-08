@@ -38,6 +38,9 @@ function aiDisplayMessages(array $messages, int $chatId){
                 case "image":
                     $content[] = ["type"=>"image", "url"=>"/ai/attachments/" . (int) $block["attachment"]];
                     break;
+                case "file":
+                    $content[] = $block + ["url"=>"/ai/attachments/" . (int) $block["attachment"]];
+                    break;
                 case "reasoning":
                     $content[] = ["type"=>"thinking", "text"=>$block["text"]];
                     break;
@@ -291,7 +294,16 @@ $router->get("/ai/attachments/{id}", function($id){
         return $router->return_status(404);
     }
 
-    header("Content-Type: " . $attachment->mime);
+    // same site as everything else, so only plain images show inline. anything else the AI made
+    // (html, svg, ...) downloads instead of running here
+    if(in_array($attachment->mime, chats::ALLOWED_MIME, true)){
+        header("Content-Type: " . $attachment->mime);
+    } else {
+        header("Content-Type: application/octet-stream");
+        $name = preg_replace('/[^\w.\- ]+/u', "_", $attachment->name ?: "file");
+        header("Content-Disposition: attachment; filename=\"" . $name . "\"; filename*=UTF-8''" . rawurlencode($attachment->name ?: "file"));
+    }
+    header("Content-Security-Policy: sandbox; default-src 'none'");
     header("Content-Length: " . filesize($file));
     header("Cache-Control: private, max-age=86400");
     header("X-Content-Type-Options: nosniff");
