@@ -138,3 +138,11 @@ Routes / pages:
   settings tabs offset, dashboard AI provider names.
   **To ship:** deploy the code, `vendor/bin/phinx migrate` on the server, add MAIL_* to the server's .env for reset
   emails, optionally add the bin/backup.sh cron. fileinfo is already installed on prod PHP 8.5.
+- 2026-10-08: **deployed to prod** (96df1ca, then 2584a3e/54a1dbe). Deploys are manual: back up to
+  /www/backup/site/, `git clone --branch claude/keen-fermat-93ac9e` to /tmp, run the new migration first, then
+  rsync code excluding .env, phinx.php, vendor/, storage/, public/uploads/, public/game-files/ (prod has games that
+  aren't in the repo). Prod is behind a Cloudflare tunnel: nginx sets the real visitor address from
+  CF-Connecting-IP for requests from 127.0.0.1, so PHP's REMOTE_ADDR is already the visitor.
+- 2026-10-08: play spam fix. `watrkit/playcounter.php` + `play_views` table: one counted play per person per game
+  per 30 min (songs 10 min), accounts by id, guests by HMAC of IP. Existing inflated counts were left alone
+  (owner's call); admins can reset a game's count from its edit page.
